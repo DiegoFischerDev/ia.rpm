@@ -1,0 +1,16 @@
+{
+  "name": "ia-app",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "App mínima para testar Node.js na Hostinger (ia.rafaapelomundo.com)",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
