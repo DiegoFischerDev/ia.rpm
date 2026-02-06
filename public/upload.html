@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Envio de documentos – Crédito Habitação</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-elevated: #f1f5f9;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --accent: #0d9488;
+      --accent-hover: #0f766e;
+      --success: #059669;
+      --error: #dc2626;
+      --border: #e2e8f0;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.06);
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 1.5rem 1rem 3rem;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    .container { max-width: 560px; margin: 0 auto; }
+    .page-header {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .page-header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text);
+      margin: 0 0 0.5rem 0;
+      letter-spacing: -0.02em;
+    }
+    .page-header p {
+      color: var(--text-muted);
+      font-size: 0.9375rem;
+      margin: 0;
+    }
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+    .card h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 1.25rem 0;
+      color: var(--text);
+    }
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      margin-bottom: 0.375rem;
+    }
+    input[type="text"],
+    input[type="email"],
+    input[type="number"],
+    textarea,
+    select {
+      width: 100%;
+      padding: 0.625rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font: inherit;
+      font-size: 0.9375rem;
+      margin-bottom: 1rem;
+      background: var(--surface);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    select { cursor: pointer; }
+    input[readonly] { background: var(--surface-elevated); cursor: default; }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(13, 148, 136, .12);
+    }
+    .doc-block {
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: var(--surface-elevated);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+    .doc-block:last-child { margin-bottom: 0; }
+    .doc-title { font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.25rem; }
+    .doc-hint { font-size: 0.8125rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+    .doc-upload-zone {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    .doc-upload-zone input[type="file"] {
+      flex: 1 1 200px;
+      min-width: 0;
+      margin: 0;
+      font-size: 0.8125rem;
+      padding: 0.5rem;
+    }
+    .doc-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.875rem;
+      color: var(--success);
+      font-weight: 500;
+    }
+    .doc-status::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem 0.875rem;
+      font: inherit;
+      font-size: 0.875rem;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      border: none;
+      transition: background .15s, transform .05s;
+    }
+    .btn:active { transform: scale(0.98); }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      width: 100%;
+      padding: 0.75rem 1.25rem;
+      font-size: 1rem;
+      margin-top: 0.5rem;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-outline {
+      background: transparent;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .btn-outline:hover { background: rgba(13, 148, 136, .08); }
+    .footnote {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.5rem;
+      padding-left: 0.75rem;
+      border-left: 3px solid var(--border);
+    }
+    .footnote a { color: var(--accent); text-decoration: none; }
+    .footnote a:hover { text-decoration: underline; }
+    .conditional { display: none; }
+    .conditional.visible { display: block; }
+    .checkbox-wrap { margin: 1rem 0; }
+    .checkbox-wrap label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+    .checkbox-wrap input { width: auto; margin: 0; }
+    .error-msg { color: var(--error); font-size: 0.875rem; margin-top: 0.75rem; }
+    .progress-text { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem; }
+    .progress-bar {
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width .3s ease;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="page-header">
+      <h1>Envio de documentos</h1>
+      <p id="pageSubtitle">Os documentos ficam guardados apenas no seu dispositivo até fazer o envio para a gestora. A equipe do RPM não tem acesso a essas informações.</p>
+    </header>
+
+    <div id="stepGate">
+      <div id="stepNomeEmail" class="card" style="display:none;">
+        <h2>Confirme os seus dados</h2>
+        <p class="doc-hint">Introduza o seu nome e email. Enviaremos um código de confirmação por email.</p>
+        <label for="gate_nome">Nome completo *</label>
+        <input type="text" id="gate_nome" placeholder="Ex.: Maria Silva" autocomplete="name">
+        <label for="gate_email">Email *</label>
+        <input type="email" id="gate_email" placeholder="email@exemplo.pt" autocomplete="email">
+        <div id="gateError1" class="error-msg" style="display:none;"></div>
+        <button type="button" class="btn btn-primary" id="btnAvançar">Avançar</button>
+      </div>
+      <div id="stepCode" class="card" style="display:none;">
+        <h2>Código de confirmação</h2>
+        <p class="doc-hint">Enviamos um código de 6 algarismos para o seu email. Introduza-o abaixo.</p>
+        <label for="gate_code">Código *</label>
+        <input type="text" id="gate_code" placeholder="000000" maxlength="6" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code">
+        <div id="gateError2" class="error-msg" style="display:none;"></div>
+        <button type="button" class="btn btn-primary" id="btnConfirmar">Confirmar</button>
+      </div>
+      <div id="stepEnterEmail" class="card" style="display:none;">
+        <h2>Continuar</h2>
+        <p class="doc-hint">Introduza o email que utilizou para aceder a esta página.</p>
+        <label for="gate_email_return">Email *</label>
+        <input type="email" id="gate_email_return" placeholder="email@exemplo.pt" autocomplete="email">
+        <div id="gateError3" class="error-msg" style="display:none;"></div>
+        <button type="button" class="btn btn-primary" id="btnContinuar">Continuar</button>
+      </div>
+    </div>
+
+    <div id="mainForm" style="display:none;">
+    <div id="progressWrap" class="card" style="display:none;">
+      <p class="progress-text" id="progressText">0 de 10 documentos anexados</p>
+      <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+
+    <form id="form">
+      <div class="card">
+        <h2>Dados pessoais</h2>
+        <label for="nome">O seu nome completo *</label>
+        <input type="text" id="nome" name="nome" required placeholder="Ex.: Maria Silva" autocomplete="name">
+        <label for="estado_civil">Estado civil e regime de casamento (se aplicável)</label>
+        <select id="estado_civil" name="estado_civil">
+          <option value="">Selecione...</option>
+          <option value="Solteiro(a)">Solteiro(a)</option>
+          <option value="Casado(a) – comunhão de bens">Casado(a) – comunhão de bens</option>
+          <option value="Casado(a) – separação de bens">Casado(a) – separação de bens</option>
+          <option value="União de facto">União de facto</option>
+          <option value="Divorciado(a)">Divorciado(a)</option>
+          <option value="Viúvo(a)">Viúvo(a)</option>
+          <option value="Outro">Outro</option>
+        </select>
+        <label for="num_dependentes">N.º de dependentes</label>
+        <input type="number" id="num_dependentes" name="num_dependentes" min="0" placeholder="0">
+        <label for="email">O seu email (para receber cópia) *</label>
+        <input type="email" id="email" name="email" required placeholder="email@exemplo.pt" readonly title="Apenas este email pode enviar documentos por este link.">
+        <p class="doc-hint" id="emailTravaHint" style="display:none;">Apenas este email pode preencher e enviar documentos por este link.</p>
+        <label for="mensagem_gestora">Mensagem para a gestora (opcional)</label>
+        <textarea id="mensagem_gestora" name="mensagem_gestora" rows="3" placeholder="Alguma informação adicional..."></textarea>
+      </div>
+
+      <div class="card">
+        <h2>Documentos obrigatórios</h2>
+        <div id="docList"></div>
+      </div>
+
+      <div class="card">
+        <div class="checkbox-wrap">
+          <label>
+            <input type="checkbox" id="financiamento_100" name="financiamento_100" value="1">
+            Solicito financiamento no âmbito dos 100% (documentos adicionais obrigatórios)
+          </label>
+        </div>
+        <div id="docs_100" class="conditional">
+          <div id="docList100"></div>
+        </div>
+      </div>
+
+      <div id="formError" class="error-msg" style="display:none;"></div>
+      <button type="submit" class="btn btn-primary" id="submitBtn" disabled>Enviar para a gestora</button>
+    </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const pathParts = window.location.pathname.split('/').filter(Boolean);
+      const leadId = pathParts[pathParts.length - 1];
+      if (!leadId || !/^\d+$/.test(leadId)) {
+        document.body.innerHTML = '<div class="container"><p class="error-msg">Link inválido.</p></div>';
+        return;
+      }
+
+      const STORAGE_KEY = 'lead_' + leadId + '_email';
+      const IDB_NAME = 'ia_app_lead_docs';
+      const IDB_STORE = 'files';
+      let pendingEmailForConfirm = '';
+      function getVerifiedEmail() { return sessionStorage.getItem(STORAGE_KEY) || ''; }
+      function setVerifiedEmail(email) { sessionStorage.setItem(STORAGE_KEY, email); }
+
+      function idbOpen() {
+        return new Promise(function (resolve, reject) {
+          var r = indexedDB.open(IDB_NAME, 1);
+          r.onerror = function () { reject(r.error); };
+          r.onsuccess = function () { resolve(r.result); };
+          r.onupgradeneeded = function () { r.result.createObjectStore(IDB_STORE, { keyPath: 'key' }); };
+        });
+      }
+      function idbSave(leadId, fieldName, file) {
+        return idbOpen().then(function (db) {
+          return new Promise(function (resolve, reject) {
+            var tx = db.transaction(IDB_STORE, 'readwrite');
+            var store = tx.objectStore(IDB_STORE);
+            store.put({ key: leadId + '_' + fieldName, file: file });
+            tx.oncomplete = function () { resolve(); };
+            tx.onerror = function () { reject(tx.error); };
+          });
+        });
+      }
+      function idbGet(leadId, fieldName) {
+        return idbOpen().then(function (db) {
+          return new Promise(function (resolve, reject) {
+            var tx = db.transaction(IDB_STORE, 'readonly');
+            var req = tx.objectStore(IDB_STORE).get(leadId + '_' + fieldName);
+            tx.oncomplete = function () { resolve(req.result ? req.result.file : null); };
+            tx.onerror = function () { reject(tx.error); };
+          });
+        });
+      }
+      function idbGetAllKeys(leadId) {
+        return idbOpen().then(function (db) {
+          return new Promise(function (resolve, reject) {
+            var tx = db.transaction(IDB_STORE, 'readonly');
+            var req = tx.objectStore(IDB_STORE).getAllKeys();
+            var prefix = leadId + '_';
+            tx.oncomplete = function () {
+              var keys = (req.result || []).filter(function (k) { return String(k).indexOf(prefix) === 0; });
+              resolve(keys.map(function (k) { return String(k).slice(prefix.length); }));
+            };
+            tx.onerror = function () { reject(tx.error); };
+          });
+        });
+      }
+      function idbClearLead(leadId) {
+        return idbGetAllKeys(leadId).then(function (fieldNames) {
+          return idbOpen().then(function (db) {
+            return new Promise(function (resolve, reject) {
+              var tx = db.transaction(IDB_STORE, 'readwrite');
+              var store = tx.objectStore(IDB_STORE);
+              fieldNames.forEach(function (fn) { store.delete(leadId + '_' + fn); });
+              tx.oncomplete = function () { resolve(); };
+              tx.onerror = function () { reject(tx.error); };
+            });
+          });
+        });
+      }
+
+      function showStep(stepId) {
+        ['stepNomeEmail', 'stepCode', 'stepEnterEmail', 'mainForm'].forEach(function (id) {
+          var el = document.getElementById(id);
+          if (el) el.style.display = id === stepId ? 'block' : 'none';
+        });
+      }
+
+      const DOCS_BASE = [
+        { field: 'cartao_residencia_ou_passaporte', label: '1. Cartão de residência ou passaporte', hint: '' },
+        { field: 'recibo_vencimento_1', label: '2. Recibo de vencimento (1º)', hint: 'Últimos 3 recibos + contrato ou declaração de efetividade.' },
+        { field: 'recibo_vencimento_2', label: 'Recibo de vencimento (2º)', hint: '' },
+        { field: 'recibo_vencimento_3', label: 'Recibo de vencimento (3º)', hint: '' },
+        { field: 'contrato_ou_declaracao_efetividade', label: 'Contrato ou declaração de efetividade', hint: '' },
+        { field: 'irs_declaracao', label: '3. Declaração de IRS (último ano)', hint: '' },
+        { field: 'irs_nota_liquidacao', label: 'Nota de liquidação IRS', hint: '' },
+        { field: 'comprovativo_morada', label: '4. Comprovativo de morada', hint: 'Retirado do site das Finanças.' },
+        { field: 'mapa_responsabilidades', label: '5. Mapa de responsabilidades de crédito', hint: '', footnote: '* Aceda ao site do Banco de Portugal → Particulares → Central de Responsabilidades de Crédito → aceite as condições → data (mês/ano) → autentique-se (CC ou Portal das Finanças). Download automático.' },
+        { field: 'rgpd_assinado', label: '6. Documento RGPD assinado', hint: 'Imprimir/assinar ou chave móvel digital.', footnote: '** Assinatura com chave móvel: https://bit.ly/assinarcmd — siga os passos, faça download e anexe aqui.' },
+      ];
+      const DOCS_100 = [
+        { field: 'declaracao_nao_divida', label: 'Declaração de não dívida (Finanças e Segurança Social)', hint: 'Pode obter online nos sites oficiais.' },
+        { field: 'declaracao_predial', label: 'Declaração Predial negativa', hint: 'Retira-se no site das Finanças.' },
+      ];
+
+      let docsState = {};
+      const requiredBase = DOCS_BASE.map((d) => d.field);
+      const required100 = DOCS_100.map((d) => d.field);
+
+      function getRequired() {
+        const is100 = document.getElementById('financiamento_100').checked;
+        return is100 ? [...requiredBase, ...required100] : requiredBase;
+      }
+
+      function countUploaded() {
+        const req = getRequired();
+        return req.filter((f) => docsState[f]).length;
+      }
+
+      function updateProgress() {
+        const req = getRequired();
+        const n = req.filter((f) => docsState[f]).length;
+        const total = req.length;
+        const wrap = document.getElementById('progressWrap');
+        const text = document.getElementById('progressText');
+        const fill = document.getElementById('progressFill');
+        wrap.style.display = 'block';
+        text.textContent = n + ' de ' + total + ' documentos anexados';
+        fill.style.width = total ? (100 * n / total) + '%' : '0%';
+        document.getElementById('submitBtn').disabled = n !== total;
+      }
+
+      function renderDocBlock(item, container, showReplace) {
+        const uploaded = !!docsState[item.field];
+        const div = document.createElement('div');
+        div.className = 'doc-block';
+        div.dataset.field = item.field;
+        div.innerHTML =
+          '<div class="doc-title">' + escapeHtml(item.label) + '</div>' +
+          (item.hint ? '<div class="doc-hint">' + escapeHtml(item.hint) + '</div>' : '') +
+          '<div class="doc-upload-zone">' +
+          (uploaded
+            ? '<span class="doc-status">Anexado</span><button type="button" class="btn btn-outline" data-action="replace">Trocar</button><input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + escapeHtml(item.field) + '" style="display:none;">'
+            : '<input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + escapeHtml(item.field) + '">') +
+          '</div>' +
+          (item.footnote ? '<p class="footnote">' + item.footnote.replace(/https:\/\/bit\.ly\/assinarcmd/, '<a href="https://bit.ly/assinarcmd" target="_blank" rel="noopener">https://bit.ly/assinarcmd</a>') + '</p>' : '');
+        container.appendChild(div);
+
+        const fileInput = div.querySelector('input[type="file"]');
+        const replaceBtn = div.querySelector('[data-action="replace"]');
+        if (replaceBtn) {
+          replaceBtn.addEventListener('click', () => { fileInput.style.display = 'block'; replaceBtn.style.display = 'none'; fileInput.click(); });
+          fileInput.addEventListener('change', () => uploadOne(leadId, item.field, fileInput, div));
+        } else {
+          fileInput.addEventListener('change', () => uploadOne(leadId, item.field, fileInput, div));
+        }
+      }
+
+      function escapeHtml(s) {
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+
+      function uploadOne(leadId, fieldName, fileInput, blockEl) {
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) return;
+        blockEl.querySelector('.doc-upload-zone').innerHTML = '<span style="color:var(--text-muted);font-size:0.875rem;">A guardar…</span>';
+        idbSave(leadId, fieldName, file)
+          .then(function () {
+            docsState[fieldName] = true;
+            const zone = blockEl.querySelector('.doc-upload-zone');
+            zone.innerHTML = '<span class="doc-status">Anexado</span><button type="button" class="btn btn-outline" data-action="replace">Trocar</button><input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + fieldName + '" style="display:none;">';
+            zone.querySelector('[data-action="replace"]').addEventListener('click', function () {
+              const input = zone.querySelector('input[type="file"]');
+              input.style.display = 'block';
+              zone.querySelector('[data-action="replace"]').style.display = 'none';
+              input.click();
+            });
+            zone.querySelector('input[type="file"]').addEventListener('change', function () { uploadOne(leadId, fieldName, zone.querySelector('input[type="file"]'), blockEl); });
+            updateProgress();
+          })
+          .catch(function () {
+            blockEl.querySelector('.doc-upload-zone').innerHTML = '<span class="error-msg">Erro ao guardar. Tente novamente.</span><input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + fieldName + '">';
+            blockEl.querySelector('input[type="file"]').addEventListener('change', function () { uploadOne(leadId, fieldName, blockEl.querySelector('input[type="file"]'), blockEl); });
+            updateProgress();
+          });
+      }
+
+      function renderAll() {
+        const listEl = document.getElementById('docList');
+        listEl.innerHTML = '';
+        DOCS_BASE.forEach((item) => renderDocBlock(item, listEl));
+
+        const list100 = document.getElementById('docList100');
+        list100.innerHTML = '';
+        DOCS_100.forEach((item) => renderDocBlock(item, list100));
+
+        document.getElementById('financiamento_100').addEventListener('change', () => {
+          document.getElementById('docs_100').classList.toggle('visible', document.getElementById('financiamento_100').checked);
+          updateProgress();
+        });
+        document.getElementById('docs_100').classList.toggle('visible', document.getElementById('financiamento_100').checked);
+        updateProgress();
+      }
+
+      function saveDados() {
+        const nome = document.getElementById('nome').value.trim();
+        const estado_civil = document.getElementById('estado_civil').value;
+        const num_dependentes = document.getElementById('num_dependentes').value;
+        fetch('/api/leads/' + leadId, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: getVerifiedEmail(), nome: nome || '', estado_civil: estado_civil || '', num_dependentes: num_dependentes === '' ? '' : String(num_dependentes) }),
+        }).catch(() => {});
+      }
+
+      const docListKeys = [...requiredBase, ...required100];
+      function isDocKey(k) { return docListKeys.includes(k); }
+
+      function loadDocuments() {
+        const email = getVerifiedEmail();
+        if (!email) return;
+        fetch('/api/leads/' + leadId + '/documents?email=' + encodeURIComponent(email))
+          .then(function (r) { if (!r.ok) return r.json().then(function (d) { throw new Error(d.message || 'Erro'); }); return r.json(); })
+          .then(function (data) {
+            const nome = data.nome, estado_civil = data.estado_civil, num_dependentes = data.num_dependentes;
+            return idbGetAllKeys(leadId).then(function (keys) {
+              docsState = {};
+              keys.forEach(function (k) { docsState[k] = true; });
+              const nomeEl = document.getElementById('nome');
+              if (nomeEl) nomeEl.value = (nome != null ? nome : '') || '';
+              const estadoEl = document.getElementById('estado_civil');
+              if (estadoEl && (estado_civil || '') !== undefined) estadoEl.value = estado_civil || '';
+              const numDepEl = document.getElementById('num_dependentes');
+              if (numDepEl && num_dependentes !== undefined) numDepEl.value = num_dependentes === '' || num_dependentes == null ? '' : String(num_dependentes);
+            var emailFormEl = document.getElementById('email');
+            if (emailFormEl) {
+              emailFormEl.value = email;
+              emailFormEl.readOnly = true;
+              var hint = document.getElementById('emailTravaHint');
+              if (hint) hint.style.display = 'block';
+            }
+            nomeEl.addEventListener('blur', saveDados);
+              numDepEl.addEventListener('blur', saveDados);
+              estadoEl.addEventListener('change', saveDados);
+              renderAll();
+            });
+          })
+          .catch(function () {
+            docsState = {};
+            renderAll();
+          });
+      }
+
+      fetch('/api/leads/' + leadId + '/status')
+        .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
+        .then((data) => {
+          if (!data.hasEmail) {
+            showStep('stepNomeEmail');
+            if (data.nome) document.getElementById('gate_nome').value = data.nome;
+            return;
+          }
+          var savedEmail = getVerifiedEmail();
+          if (!savedEmail) {
+            showStep('stepEnterEmail');
+            return;
+          }
+          showStep('mainForm');
+          loadDocuments();
+        })
+        .catch(() => { showStep('stepNomeEmail'); });
+
+      document.getElementById('btnAvançar').addEventListener('click', function () {
+        var nome = document.getElementById('gate_nome').value.trim();
+        var email = document.getElementById('gate_email').value.trim();
+        var errEl = document.getElementById('gateError1');
+        errEl.style.display = 'none';
+        if (!email) { errEl.textContent = 'Indique o seu email.'; errEl.style.display = 'block'; return; }
+        this.disabled = true;
+        fetch('/api/leads/' + leadId + '/request-verification', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ nome: nome, email: email }),
+        })
+          .then(function (r) {
+            if (r.ok) {
+              pendingEmailForConfirm = email;
+              showStep('stepCode');
+              document.getElementById('gate_code').value = '';
+              return;
+            }
+            return r.json().then(function (d) { throw new Error(d.message || 'Erro'); });
+          })
+          .catch(function (err) {
+            errEl.textContent = err.message || 'Erro. Tente novamente.';
+            errEl.style.display = 'block';
+          })
+          .finally(function () { document.getElementById('btnAvançar').disabled = false; });
+      });
+
+      document.getElementById('btnConfirmar').addEventListener('click', function () {
+        var code = document.getElementById('gate_code').value.trim();
+        var errEl = document.getElementById('gateError2');
+        errEl.style.display = 'none';
+        if (!code) { errEl.textContent = 'Indique o código.'; errEl.style.display = 'block'; return; }
+        this.disabled = true;
+        fetch('/api/leads/' + leadId + '/confirm-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: code }),
+        })
+          .then(function (r) {
+            if (r.ok) {
+              setVerifiedEmail(pendingEmailForConfirm);
+              showStep('mainForm');
+              loadDocuments();
+              return;
+            }
+            return r.json().then(function (d) { throw new Error(d.message || 'Erro'); });
+          })
+          .catch(function (err) {
+            errEl.textContent = err.message || 'Código inválido ou expirado.';
+            errEl.style.display = 'block';
+          })
+          .finally(function () { document.getElementById('btnConfirmar').disabled = false; });
+      });
+
+      document.getElementById('btnContinuar').addEventListener('click', function () {
+        var email = document.getElementById('gate_email_return').value.trim();
+        var errEl = document.getElementById('gateError3');
+        errEl.style.display = 'none';
+        if (!email) { errEl.textContent = 'Indique o seu email.'; errEl.style.display = 'block'; return; }
+        this.disabled = true;
+        fetch('/api/leads/' + leadId + '/access', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email }),
+        })
+          .then(function (r) {
+            if (r.ok) {
+              setVerifiedEmail(email);
+              showStep('mainForm');
+              loadDocuments();
+              return;
+            }
+            return r.json().then(function (d) { throw new Error(d.message || 'Erro'); });
+          })
+          .catch(function (err) {
+            errEl.textContent = err.message || 'Email incorreto.';
+            errEl.style.display = 'block';
+          })
+          .finally(function () { document.getElementById('btnContinuar').disabled = false; });
+      });
+
+      document.getElementById('form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const errEl = document.getElementById('formError');
+        errEl.style.display = 'none';
+        const req = getRequired();
+        const missing = req.filter(function (f) { return !docsState[f]; });
+        if (missing.length) {
+          errEl.textContent = 'Faltam ' + missing.length + ' documento(s). Anexe todos os obrigatórios.';
+          errEl.style.display = 'block';
+          return;
+        }
+        saveDados();
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        var fd = new FormData();
+        fd.append('nome', document.getElementById('nome').value.trim());
+        fd.append('email', getVerifiedEmail() || document.getElementById('email').value.trim());
+        fd.append('estado_civil', document.getElementById('estado_civil').value);
+        fd.append('num_dependentes', document.getElementById('num_dependentes').value);
+        fd.append('mensagem_gestora', document.getElementById('mensagem_gestora').value.trim());
+        fd.append('financiamento_100', document.getElementById('financiamento_100').checked ? '1' : '0');
+        Promise.all(req.map(function (fieldName) { return idbGet(leadId, fieldName); }))
+          .then(function (files) {
+            req.forEach(function (fieldName, i) {
+              if (files[i]) fd.append(fieldName, files[i]);
+            });
+            return fetch('/api/leads/' + leadId + '/send-email', { method: 'POST', body: fd });
+          })
+          .then(function (r) {
+            if (r.ok) {
+              return idbClearLead(leadId).then(function () { window.location.href = '/confirmacao/' + leadId; });
+            }
+            return r.json().then(function (d) { throw new Error(d.message || 'Erro ao enviar'); });
+          })
+          .catch(function (err) {
+            errEl.textContent = err.message || 'Erro ao enviar. Tente novamente.';
+            errEl.style.display = 'block';
+            btn.disabled = false;
+          });
+      });
+    })();
+  </script>
+</body>
+</html>

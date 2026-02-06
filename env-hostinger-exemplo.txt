@@ -1,0 +1,28 @@
+# ============================================
+# .env para o ia-app na Hostinger
+# ============================================
+# Criar este ficheiro na PASTA PAI de public_html
+# (ex.: se o site está em domains/ia.rafaapelomundo.com/public_html/,
+#       criar .env em domains/ia.rafaapelomundo.com/.env)
+# ============================================
+
+# Base de dados (mesmo MySQL do evo – usar os mesmos valores do .env do evo)
+DB_HOST=localhost
+DB_PORT=3306
+DB_USER=u150959679_evo
+DB_PASSWORD=SUA_SENHA_MYSQL
+DB_NAME=u150959679_evo_leads
+
+# Email da gestora (destinatária dos documentos)
+GESTORA_EMAIL=email.da.gestora@exemplo.pt
+
+# Resend (https://resend.com) – envio transacional; Reply-To = lead (troca só entre lead e gestora)
+# 1) Criar conta em resend.com
+# 2) Adicionar e verificar o domínio (ex.: ia.rafaapelomundo.com) em Domains
+# 3) Criar API Key em API Keys e colar abaixo
+# 4) MAIL_FROM tem de ser um email desse domínio verificado (ex.: noreply@ia.rafaapelomundo.com)
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxx
+MAIL_FROM=noreply@ia.rafaapelomundo.com
+
+# Porta (a que o Node corre na Hostinger; ex.: 3000)
+PORT=3000
