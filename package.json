@@ -4,7 +4,8 @@
   "private": true,
   "description": "App mínima para testar Node.js na Hostinger (ia.rafaapelomundo.com)",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "node -v"
   },
   "dependencies": {
     "express": "^4.21.0",
