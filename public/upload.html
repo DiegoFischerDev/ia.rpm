@@ -218,11 +218,63 @@
     .conditional.visible { display: block; }
     .card-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; margin-bottom: 1.25rem; }
     .card-title-row h2 { margin: 0; }
-    .card-title-row .consent-checkbox { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--text); }
-    .card-title-row .consent-checkbox input { width: auto; margin: 0; }
+    .card-title-row .consent-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text);
+      min-height: 44px;
+      padding: 0.5rem 0;
+      margin: -0.5rem 0;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    .card-title-row .consent-checkbox input {
+      width: auto;
+      margin: 0;
+      flex-shrink: 0;
+    }
+    @media (max-width: 600px), (pointer: coarse) {
+      .card-title-row .consent-checkbox {
+        min-height: 48px;
+        padding: 0.75rem 0.5rem;
+        margin: -0.75rem -0.5rem 0.75rem -0.5rem;
+        border-radius: var(--radius-sm);
+        background: var(--surface-elevated);
+      }
+      .card-title-row .consent-checkbox input {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 22px;
+        accent-color: var(--accent);
+      }
+    }
     .checkbox-wrap { margin: 1rem 0; }
-    .checkbox-wrap label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+    .checkbox-wrap label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      min-height: 44px;
+      padding: 0.5rem 0;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
     .checkbox-wrap input { width: auto; margin: 0; }
+    @media (max-width: 600px), (pointer: coarse) {
+      .checkbox-wrap label { padding: 0.5rem 0.25rem; margin: -0.25rem 0; }
+      .checkbox-wrap input {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 22px;
+        accent-color: var(--accent);
+      }
+    }
     .error-msg { color: var(--error); font-size: 0.875rem; margin-top: 0.75rem; }
     .progress-text { font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1rem; }
     .progress-bar {
@@ -324,12 +376,6 @@
   <div class="container">
     <header class="page-header">
       <h1>Envio de documentos</h1>
-      <p id="pageIntro">🏡✨ Estás a um passo de iniciar a tua jornada para sair do arrendamento e conquistar a casa própria! 🔑<br><br>
-      ✅ Esta plataforma foi criada para te ajudar a organizar, de forma simples e prática, todos os documentos necessários. Assim que tiveres tudo pronto, podes submeter o formulário e enviar os teus documentos por e-mail diretamente para um dos nossos parceiros habilitados em gestão de crédito.<br><br>
-      ✅ O teu caso será analisado e será definida a melhor estratégia para ti. A gestora de crédito entrará em contacto contigo via Email ou WhatsApp para explicar quais serão os próximos passos.<br><br>
-      Sabemos que são muitos documentos, mas não desistas 💪 Assim que tiveres tudo em mãos, todo o resto do processo será muito mais simples e fluido.<br><br>
-      Boa sorte! ✨<br><br>
-      Rafa pelo mundo</p>
     </header>
 
     <div id="stepGate">
@@ -447,6 +493,15 @@
       <button type="submit" class="btn btn-primary" id="submitBtn" disabled><span class="btn-text">Enviar para a gestora</span></button>
       <button type="button" class="btn btn-outline" id="btnSemDocs" style="margin-top:0.75rem; display:none; color:var(--error); border-color:var(--error);">Não tenho todos os docs</button>
     </form>
+
+    <section id="pageIntro" class="card" style="margin-top:2rem;">
+      <p style="margin:0; line-height:1.65;">🏡✨ Estás a um passo de iniciar a tua jornada para sair do arrendamento e conquistar a casa própria! 🔑<br><br>
+      ✅ Esta plataforma foi criada para te ajudar a organizar, de forma simples e prática, todos os documentos necessários. Assim que tiveres tudo pronto, podes submeter o formulário e enviar os teus documentos por e-mail diretamente para um dos nossos parceiros habilitados em gestão de crédito.<br><br>
+      ✅ O teu caso será analisado e será definida a melhor estratégia para ti. A gestora de crédito entrará em contacto contigo via Email ou WhatsApp para explicar quais serão os próximos passos.<br><br>
+      Sabemos que são muitos documentos, mas não desistas 💪 Assim que tiveres tudo em mãos, todo o resto do processo será muito mais simples e fluido.<br><br>
+      Boa sorte! ✨<br><br>
+      Rafa pelo mundo</p>
+    </section>
     </div>
   </div>
 
