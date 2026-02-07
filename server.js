@@ -52,6 +52,7 @@ const {
   STANDARD_NAMES,
   saveGestoraRgpd,
   readGestoraRgpd,
+  hasGestoraRgpd,
 } = require('./storage');
 
 function logStartup(msg) {
@@ -769,14 +770,16 @@ app.patch('/api/dashboard/leads/:id', requireDashboardAuth, async (req, res) => 
   const id = req.params.id;
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
   const user = req.session.dashboardUser;
+  let body = req.body;
   if (user.role === 'gestora') {
     const lead = await getLeadById(id).catch(() => null);
     if (!lead || lead.gestora_id !== user.id) {
       return res.status(403).json({ message: 'Só pode editar leads que lhe estão atribuídos.' });
     }
+    body = { estado_docs: req.body && req.body.estado_docs != null ? String(req.body.estado_docs).trim() : undefined };
   }
   try {
-    await updateLeadAdmin(id, req.body);
+    await updateLeadAdmin(id, body);
     res.json({ ok: true });
   } catch (err) {
     logStartup(`updateLeadAdmin error: ${err.message}`);
@@ -847,10 +850,25 @@ app.get('/api/dashboard/profile', requireDashboardAuth, async (req, res) => {
   try {
     const g = await getGestoraById(user.id);
     if (!g) return res.status(404).json({ message: 'Gestora não encontrada.' });
-    res.json({ nome: g.nome, email: g.email, email_para_leads: g.email_para_leads || g.email || '', whatsapp: g.whatsapp || '' });
+    const has_rgpd = await hasGestoraRgpd(user.id);
+    res.json({ nome: g.nome, email: g.email, email_para_leads: g.email_para_leads || g.email || '', whatsapp: g.whatsapp || '', has_rgpd });
   } catch (err) {
     logStartup(`getProfile error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao carregar perfil.' });
+  }
+});
+
+// PDF RGPD da própria gestora (para ver no perfil)
+app.get('/api/dashboard/profile/rgpd', requireDashboardAuth, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (user.role !== 'gestora') return res.status(403).send();
+  try {
+    const buffer = await readGestoraRgpd(user.id);
+    if (!buffer || !buffer.length) return res.status(404).json({ message: 'Ainda não enviou nenhum documento RGPD.' });
+    res.type('application/pdf').setHeader('Content-Disposition', 'inline; filename="RGPD.pdf"').send(buffer);
+  } catch (err) {
+    logStartup(`getProfileRgpd error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao obter o documento.' });
   }
 });
 

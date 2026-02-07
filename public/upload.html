@@ -652,9 +652,11 @@
       function setGestoraWhatsappDisplay(whatsappNumber, nome) {
         var wrap = document.getElementById('gestoraWhatsappWrap');
         var ref = document.getElementById('gestoraWhatsappRef');
-        if (wrap && ref && whatsappNumber) {
+        var hasNumber = whatsappNumber && String(whatsappNumber).replace(/\D/g, '').length > 0;
+        if (wrap && ref && hasNumber) {
+          var digits = String(whatsappNumber).replace(/\D/g, '');
           var msg = WHATSAPP_MSG.replace('{nome}', (nome || '')).trim();
-          ref.href = 'https://wa.me/' + whatsappNumber + '?text=' + encodeURIComponent(msg);
+          ref.href = 'https://wa.me/' + digits + '?text=' + encodeURIComponent(msg);
           wrap.style.display = 'block';
         } else if (wrap) wrap.style.display = 'none';
       }

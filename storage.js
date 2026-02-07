@@ -59,6 +59,17 @@ async function readGestoraRgpd(gestoraId) {
   }
 }
 
+async function hasGestoraRgpd(gestoraId) {
+  const filePath = path.join(getGestoraDir(gestoraId), RGPD_FILENAME);
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch (err) {
+    if (err.code === 'ENOENT') return false;
+    throw err;
+  }
+}
+
 function getExt(originalName) {
   if (!originalName || typeof originalName !== 'string') return '.pdf';
   const i = originalName.lastIndexOf('.');
@@ -177,5 +188,6 @@ module.exports = {
   deleteLeadStorage,
   saveGestoraRgpd,
   readGestoraRgpd,
+  hasGestoraRgpd,
   cleanupOldStorage,
 };

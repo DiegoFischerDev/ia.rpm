@@ -80,6 +80,7 @@
     .screen.visible { display: block !important; }
     .main .screen { display: none; }
     .main .screen.visible { display: block !important; }
+    .main #screenPerfil.visible { display: flex !important; }
     .login-wrap { max-width: 400px; margin: 5rem auto; padding: 2.5rem; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border); }
     .login-wrap h1 { margin: 0 0 1.5rem; font-size: 1.5rem; font-weight: 700; color: var(--text); }
     label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
@@ -188,7 +189,7 @@
         <div class="table-wrap card">
           <table>
             <thead>
-              <tr>
+              <tr id="leadsHeadRow">
                 <th>ID</th>
                 <th>WhatsApp</th>
                 <th>Nome</th>
@@ -252,10 +253,10 @@
           </table>
         </div>
       </div>
-      <div id="screenPerfil" class="screen">
-        <h2 class="page-title">Perfil</h2>
-        <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1.25rem;">Atualize os seus dados e o documento RGPD que os seus leads descarregam.</p>
-        <div class="card" style="max-width:480px;padding:1.5rem;">
+      <div id="screenPerfil" class="screen" style="display:flex;flex-direction:column;align-items:center;">
+        <h2 class="page-title" style="width:100%;">Perfil</h2>
+        <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1.25rem;width:100%;">Atualize os seus dados e o documento RGPD que os seus leads descarregam.</p>
+        <div class="card" style="max-width:480px;width:100%;padding:1.5rem;margin-left:auto;margin-right:auto;">
           <form id="profileForm">
             <label>Nome</label>
             <input type="text" id="profileNome" readonly disabled style="background:var(--bg);color:var(--text-muted);">
@@ -265,15 +266,39 @@
             <input type="email" id="profileEmailParaLeads" placeholder="leads@exemplo.pt" autocomplete="email">
             <label>WhatsApp (com indicativo, ex: 351912345678)</label>
             <input type="text" id="profileWhatsapp" placeholder="351912345678">
+            <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Os seus leads terão acesso a este número. Deixe em branco se não quiser ser contactada por WhatsApp.</p>
             <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;">
-            <label>Alterar palavra-passe</label>
-            <input type="password" id="profileCurrentPassword" placeholder="Palavra-passe atual (deixar vazio para não alterar)" autocomplete="current-password">
-            <input type="password" id="profileNewPassword" placeholder="Nova palavra-passe (mín. 6 caracteres)" autocomplete="new-password">
-            <input type="password" id="profileNewPasswordConfirm" placeholder="Confirmar nova palavra-passe" autocomplete="new-password">
+            <div id="profilePasswordSection">
+              <button type="button" id="profileBtnAlterarPassword" class="btn btn-outline">Alterar palavra-passe</button>
+              <div id="profilePasswordArea" style="display:none;">
+                <label style="margin-top:1rem;">Palavra-passe atual</label>
+                <input type="password" id="profileCurrentPassword" placeholder="Palavra-passe atual" autocomplete="current-password">
+                <label>Nova palavra-passe (mín. 6 caracteres)</label>
+                <input type="password" id="profileNewPassword" placeholder="Nova palavra-passe" autocomplete="new-password">
+                <label>Confirmar nova palavra-passe</label>
+                <input type="password" id="profileNewPasswordConfirm" placeholder="Confirmar" autocomplete="new-password">
+                <button type="button" id="profilePasswordCancelar" class="btn btn-outline btn-sm" style="margin-top:0.5rem;">Cancelar</button>
+              </div>
+            </div>
             <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;">
             <label>Documento RGPD (PDF)</label>
-            <p class="text-muted" style="font-size:0.8125rem;margin-bottom:0.5rem;">Os leads atribuídos a si descarregam este PDF. Suba um ficheiro para substituir o atual.</p>
-            <input type="file" id="profileRgpd" accept=".pdf">
+            <p class="text-muted" style="font-size:0.8125rem;margin-bottom:0.5rem;">Os leads atribuídos a si descarregam este PDF.</p>
+            <div id="profileRgpdEnviado" style="display:none;">
+              <p class="text-muted" style="font-size:0.875rem;margin-bottom:0.75rem;">Documento enviado.</p>
+              <div class="actions" style="margin-bottom:1rem;">
+                <a href="#" id="profileRgpdVer" target="_blank" rel="noopener" class="btn btn-secondary">Ver</a>
+                <button type="button" id="profileRgpdSubstituir" class="btn btn-outline">Substituir</button>
+              </div>
+            </div>
+            <div id="profileRgpdNaoEnviado" style="display:none;">
+              <p class="text-muted" style="font-size:0.875rem;margin-bottom:0.5rem;">Ainda não enviou nenhum documento. Suba um PDF.</p>
+              <input type="file" id="profileRgpd" accept=".pdf">
+            </div>
+            <div id="profileRgpdSubstituirArea" style="display:none;">
+              <p class="text-muted" style="font-size:0.875rem;margin-bottom:0.5rem;">Escolha um novo ficheiro PDF para substituir o atual.</p>
+              <input type="file" id="profileRgpdSubstituirInput" accept=".pdf">
+              <button type="button" id="profileRgpdSubstituirCancelar" class="btn btn-outline btn-sm" style="margin-top:0.5rem;">Cancelar</button>
+            </div>
             <p id="profileError" class="error-msg" style="display:none;margin-top:0.5rem;"></p>
             <p id="profileSuccess" class="text-muted" style="display:none;margin-top:0.5rem;"></p>
             <div style="margin-top:1.25rem;">
@@ -545,58 +570,89 @@
         showScreen(screenId);
       });
 
+      var ESTADO_DOCS_OPCOES = ['aguardando_docs', 'sem_docs', 'docs_enviados', 'inviavel', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
       function loadLeads() {
         const tbody = document.getElementById('leadsBody');
-        tbody.innerHTML = '<tr><td colspan="11">A carregar…</td></tr>';
+        const isGestora = user && user.role === 'gestora';
+        const colCount = isGestora ? 7 : 10;
+        const headRow = document.getElementById('leadsHeadRow');
+        if (headRow) {
+          headRow.innerHTML = isGestora
+            ? '<th>ID</th><th>Atualizado</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Estado docs</th><th></th>'
+            : '<th>ID</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Estado conversa</th><th>Estado docs</th><th>Docs enviados</th><th>Gestora</th><th>Atualizado</th><th></th>';
+        }
+        tbody.innerHTML = '<tr><td colspan="' + colCount + '">A carregar…</td></tr>';
         fetch(API + '/leads', { credentials: 'include' })
           .then((r) => r.json().then((data) => (r.ok ? data : Promise.reject(data))))
           .then((rows) => {
             tbody.innerHTML = '';
             if (!rows.length) {
-              tbody.innerHTML = '<tr><td colspan="11">Nenhum lead.</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="' + colCount + '">Nenhum lead.</td></tr>';
               return;
             }
             rows.forEach((r) => {
               const tr = document.createElement('tr');
-              tr.innerHTML =
-                '<td>' +
-                r.id +
-                '</td><td>' +
-                escapeHtml(r.whatsapp_number || '') +
-                '</td><td>' +
-                escapeHtml(r.nome || '') +
-                '</td><td>' +
-                escapeHtml(r.email || '') +
-                '</td><td>' +
-                escapeHtml(r.estado_conversa || '') +
-                '</td><td>' +
-                escapeHtml(r.estado_docs || '') +
-                '</td><td>' +
-                (r.docs_enviados ? 'Sim' : 'Não') +
-                '</td><td>' +
-                escapeHtml(r.gestora_nome || '—') +
-                '</td><td>' +
-                escapeHtml(formatDate(r.updated_at)) +
-                '</td><td class="actions">' +
-                '<button type="button" class="btn btn-secondary btn-sm btn-edit-lead" data-id="' + r.id + '">Editar</button>' +
-                (user.role === 'admin' ? '<button type="button" class="btn btn-danger btn-sm btn-delete-lead" data-id="' + r.id + '">Apagar</button>' : '') +
-                '</td>';
+              if (isGestora) {
+                var sel = '<select class="lead-estado-docs-select" data-id="' + r.id + '">';
+                ESTADO_DOCS_OPCOES.forEach(function (v) {
+                  sel += '<option value="' + escapeHtml(v) + '"' + (r.estado_docs === v ? ' selected' : '') + '>' + escapeHtml(v) + '</option>';
+                });
+                sel += '</select>';
+                var num = (r.whatsapp_number || '').replace(/\D/g, '');
+                var waUrl = num ? 'https://wa.me/' + num : '#';
+                var waBtn = num ? '<a href="' + waUrl + '" target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp btn-sm">WhatsApp</a>' : '<span class="text-muted">—</span>';
+                tr.innerHTML =
+                  '<td>' + r.id + '</td><td>' + escapeHtml(formatDate(r.updated_at)) +
+                  '</td><td>' + escapeHtml(r.whatsapp_number || '') +
+                  '</td><td>' + escapeHtml(r.nome || '') +
+                  '</td><td>' + escapeHtml(r.email || '') +
+                  '</td><td>' + sel + '</td><td class="actions">' + waBtn + '</td>';
+              } else {
+                tr.innerHTML =
+                  '<td>' + r.id + '</td><td>' +
+                  escapeHtml(r.whatsapp_number || '') + '</td><td>' + escapeHtml(r.nome || '') + '</td><td>' + escapeHtml(r.email || '') +
+                  '</td><td>' + escapeHtml(r.estado_conversa || '') + '</td><td>' + escapeHtml(r.estado_docs || '') +
+                  '</td><td>' + (r.docs_enviados ? 'Sim' : 'Não') + '</td><td>' + escapeHtml(r.gestora_nome || '—') +
+                  '</td><td>' + escapeHtml(formatDate(r.updated_at)) +
+                  '</td><td class="actions">' +
+                  '<button type="button" class="btn btn-secondary btn-sm btn-edit-lead" data-id="' + r.id + '">Editar</button>' +
+                  '<button type="button" class="btn btn-danger btn-sm btn-delete-lead" data-id="' + r.id + '">Apagar</button>' +
+                  '</td>';
+              }
               tbody.appendChild(tr);
             });
-            tbody.querySelectorAll('.btn-edit-lead').forEach((b) =>
-              b.addEventListener('click', function () {
-                openEditLead(rows.find((x) => x.id === parseInt(this.dataset.id, 10)));
-              })
-            );
-            tbody.querySelectorAll('.btn-delete-lead').forEach((b) =>
-              b.addEventListener('click', function () {
-                if (confirm('Apagar este lead?')) deleteLead(this.dataset.id);
-              })
-            );
+            if (isGestora) {
+              tbody.querySelectorAll('.lead-estado-docs-select').forEach(function (sel) {
+                sel.addEventListener('change', function () {
+                  var id = this.dataset.id;
+                  var val = this.value;
+                  fetch(API + '/leads/' + id, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ estado_docs: val }),
+                  })
+                    .then(function (res) { return res.ok ? undefined : res.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                    .then(function () { loadLeads(); })
+                    .catch(function (err) { alert(err.message || 'Erro ao atualizar estado.'); });
+                });
+              });
+            } else {
+              tbody.querySelectorAll('.btn-edit-lead').forEach((b) =>
+                b.addEventListener('click', function () {
+                  openEditLead(rows.find((x) => x.id === parseInt(this.dataset.id, 10)));
+                })
+              );
+              tbody.querySelectorAll('.btn-delete-lead').forEach((b) =>
+                b.addEventListener('click', function () {
+                  if (confirm('Apagar este lead?')) deleteLead(this.dataset.id);
+                })
+              );
+            }
           })
           .catch((err) => {
             const msg = (err && (err.detail || err.message)) || 'Erro ao carregar.';
-            tbody.innerHTML = '<tr><td colspan="11" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="' + colCount + '" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
           });
       }
 
@@ -661,8 +717,17 @@
             document.getElementById('profileNewPassword').value = '';
             document.getElementById('profileNewPasswordConfirm').value = '';
             document.getElementById('profileRgpd').value = '';
+            var subInput = document.getElementById('profileRgpdSubstituirInput');
+            if (subInput) subInput.value = '';
+            document.getElementById('profilePasswordArea').style.display = 'none';
+            document.getElementById('profileBtnAlterarPassword').style.display = '';
             document.getElementById('profileError').style.display = 'none';
             document.getElementById('profileSuccess').style.display = 'none';
+            var hasRgpd = !!data.has_rgpd;
+            document.getElementById('profileRgpdEnviado').style.display = hasRgpd ? 'block' : 'none';
+            document.getElementById('profileRgpdNaoEnviado').style.display = !hasRgpd ? 'block' : 'none';
+            document.getElementById('profileRgpdSubstituirArea').style.display = 'none';
+            if (hasRgpd) document.getElementById('profileRgpdVer').href = API + '/profile/rgpd';
           })
           .catch(() => {
             document.getElementById('profileError').textContent = 'Erro ao carregar perfil.';
@@ -695,7 +760,8 @@
         fd.append('email_para_leads', document.getElementById('profileEmailParaLeads').value.trim().toLowerCase());
         fd.append('currentPassword', document.getElementById('profileCurrentPassword').value);
         fd.append('newPassword', newP);
-        var rgpdInput = document.getElementById('profileRgpd');
+        var rgpdInput = document.getElementById('profileRgpdSubstituirInput');
+        if (!rgpdInput.files || !rgpdInput.files[0]) rgpdInput = document.getElementById('profileRgpd');
         if (rgpdInput.files && rgpdInput.files[0]) fd.append('rgpd', rgpdInput.files[0]);
         fetch(API + '/profile', {
           method: 'POST',
@@ -710,11 +776,37 @@
             document.getElementById('profileNewPassword').value = '';
             document.getElementById('profileNewPasswordConfirm').value = '';
             document.getElementById('profileRgpd').value = '';
+            var subInput = document.getElementById('profileRgpdSubstituirInput');
+            if (subInput) subInput.value = '';
+            document.getElementById('profileRgpdSubstituirArea').style.display = 'none';
+            loadProfile();
           })
           .catch(function (d) {
             errEl.textContent = (d && d.message) || 'Erro ao atualizar perfil.';
             errEl.style.display = 'block';
           });
+      });
+
+      document.getElementById('profileBtnAlterarPassword').addEventListener('click', function () {
+        document.getElementById('profileBtnAlterarPassword').style.display = 'none';
+        document.getElementById('profilePasswordArea').style.display = 'block';
+      });
+      document.getElementById('profilePasswordCancelar').addEventListener('click', function () {
+        document.getElementById('profilePasswordArea').style.display = 'none';
+        document.getElementById('profileBtnAlterarPassword').style.display = '';
+        document.getElementById('profileCurrentPassword').value = '';
+        document.getElementById('profileNewPassword').value = '';
+        document.getElementById('profileNewPasswordConfirm').value = '';
+      });
+      document.getElementById('profileRgpdSubstituir').addEventListener('click', function () {
+        document.getElementById('profileRgpdEnviado').style.display = 'none';
+        document.getElementById('profileRgpdSubstituirArea').style.display = 'block';
+        document.getElementById('profileRgpdSubstituirInput').value = '';
+      });
+      document.getElementById('profileRgpdSubstituirCancelar').addEventListener('click', function () {
+        document.getElementById('profileRgpdSubstituirArea').style.display = 'none';
+        document.getElementById('profileRgpdEnviado').style.display = 'block';
+        document.getElementById('profileRgpdSubstituirInput').value = '';
       });
 
       function openEditLead(lead) {
