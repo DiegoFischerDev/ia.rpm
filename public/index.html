@@ -6,78 +6,120 @@
   <title>Dashboard – Crédito Habitação</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f1f5f9;
+      --bg: #f8fafc;
       --surface: #ffffff;
       --sidebar: #0f172a;
+      --sidebar-hover: #1e293b;
       --text: #0f172a;
       --text-muted: #64748b;
       --accent: #0d9488;
       --accent-hover: #0f766e;
+      --accent-soft: rgba(13, 148, 136, 0.12);
       --error: #dc2626;
       --border: #e2e8f0;
-      --radius: 8px;
+      --radius: 10px;
+      --radius-lg: 14px;
+      --shadow: 0 1px 3px rgba(0,0,0,.06);
+      --shadow-md: 0 4px 12px rgba(0,0,0,.08);
+      --badge: #f59e0b;
+      --badge-bg: rgba(245, 158, 11, 0.2);
     }
     * { box-sizing: border-box; }
-    body { margin: 0; font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    body { margin: 0; font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; line-height: 1.5; }
     .app { display: flex; min-height: 100vh; }
     .sidebar {
-      width: 220px;
-      background: var(--sidebar);
+      width: 260px;
+      background: linear-gradient(180deg, var(--sidebar) 0%, #1e293b 100%);
       color: #fff;
       padding: 1.5rem 0;
       flex-shrink: 0;
+      box-shadow: 2px 0 20px rgba(0,0,0,.06);
     }
-    .sidebar a, .sidebar button {
-      display: block;
+    .sidebar-nav-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       width: 100%;
       padding: 0.75rem 1.25rem;
-      color: rgba(255,255,255,.85);
+      color: rgba(255,255,255,.88);
       text-decoration: none;
       border: none;
       background: none;
       font: inherit;
       text-align: left;
       cursor: pointer;
+      transition: background .15s, color .15s;
     }
-    .sidebar a:hover, .sidebar button:hover { background: rgba(255,255,255,.08); color: #fff; }
-    .sidebar a.active { background: var(--accent); color: #fff; }
-    .main { flex: 1; padding: 1.5rem 2rem; overflow: auto; }
+    .sidebar-nav-item:hover { background: var(--sidebar-hover); color: #fff; }
+    .sidebar-nav-item.active { background: var(--accent); color: #fff; }
+    .nav-label { flex: 1; }
+    .nav-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #fff;
+      background: var(--badge);
+      border-radius: 11px;
+      animation: pulse-badge 2s ease-in-out infinite;
+    }
+    .nav-badge.hidden { display: none; }
+    @keyframes pulse-badge {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.85; }
+    }
+    .main { flex: 1; padding: 2rem 2.5rem; overflow: auto; }
     .screen { display: none; }
     .screen.visible { display: block !important; }
     .main .screen { display: none; }
     .main .screen.visible { display: block !important; }
-    .login-wrap { max-width: 360px; margin: 4rem auto; padding: 2rem; background: var(--surface); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.06); }
-    .login-wrap h1 { margin: 0 0 1.5rem; font-size: 1.25rem; }
-    label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.375rem; }
+    .login-wrap { max-width: 400px; margin: 5rem auto; padding: 2.5rem; background: var(--surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: 1px solid var(--border); }
+    .login-wrap h1 { margin: 0 0 1.5rem; font-size: 1.5rem; font-weight: 700; color: var(--text); }
+    label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text); }
     input[type="email"], input[type="password"], input[type="text"], input[type="number"], select {
-      width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); font: inherit; margin-bottom: 1rem;
+      width: 100%; padding: 0.65rem 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); font: inherit; margin-bottom: 1rem; transition: border-color .15s, box-shadow .15s;
     }
-    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border-radius: var(--radius); font: inherit; font-weight: 500; cursor: pointer; border: none; }
+    input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem; padding: 0.55rem 1rem; border-radius: var(--radius); font: inherit; font-weight: 600; cursor: pointer; border: none; transition: background .15s, transform .05s; }
+    .btn:active { transform: scale(0.98); }
     .btn-primary { background: var(--accent); color: #fff; }
-    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:hover { background: var(--accent-hover); color: #fff; }
     .btn-secondary { background: var(--border); color: var(--text); }
+    .btn-secondary:hover { background: #cbd5e1; }
     .btn-danger { background: var(--error); color: #fff; }
-    .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
+    .btn-danger:hover { background: #b91c1c; color: #fff; }
+    .btn-sm { padding: 0.4rem 0.75rem; font-size: 0.8125rem; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+    .btn-outline:hover { background: var(--bg); border-color: var(--text-muted); }
     .error-msg { color: var(--error); font-size: 0.875rem; margin-top: 0.5rem; }
-    .page-title { margin: 0 0 1.25rem; font-size: 1.25rem; font-weight: 600; }
-    table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
-    th, td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
-    th { background: var(--bg); font-weight: 600; font-size: 0.8125rem; color: var(--text-muted); }
+    .page-title { margin: 0 0 1.5rem; font-size: 1.375rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+    .card { background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: var(--bg); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
     tr:last-child td { border-bottom: none; }
-    .actions { display: flex; gap: 0.5rem; }
-    .toolbar { margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+    tbody tr { transition: background .12s; }
+    tbody tr:hover { background: var(--accent-soft); }
+    .actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+    .toolbar { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
     .modal-overlay.visible { display: flex; }
-    .modal { background: var(--surface); border-radius: 12px; padding: 1.5rem; max-width: 420px; width: 100%; max-height: 90vh; overflow: auto; }
-    .modal h3 { margin: 0 0 1rem; font-size: 1rem; }
-    .modal-actions { margin-top: 1.25rem; display: flex; gap: 0.5rem; justify-content: flex-end; }
-    .table-wrap { overflow-x: auto; }
+    .modal { background: var(--surface); border-radius: var(--radius-lg); padding: 1.75rem; max-width: 440px; width: 100%; max-height: 90vh; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,.15); }
+    .modal h3 { margin: 0 0 1.25rem; font-size: 1.125rem; font-weight: 700; }
+    .modal-actions { margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .table-wrap { overflow-x: auto; border-radius: var(--radius-lg); }
     .text-muted { color: var(--text-muted); font-size: 0.875rem; }
     .btn-whatsapp { background: #25d366; color: #fff; }
     .btn-whatsapp:hover { background: #20bd5a; color: #fff; }
+    .btn-devolver { background: var(--accent-soft); color: var(--accent); border: 1px solid rgba(13,148,136,.3); }
+    .btn-devolver:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -95,15 +137,18 @@
 
   <div id="dashboardApp" class="app screen">
     <nav class="sidebar">
-      <a href="#leads" id="navLeads" class="active">Leads</a>
-      <a href="#rafa" id="navRafa">Falar com Rafa</a>
-      <a href="#gestoras" id="navGestoras">Gestoras</a>
-      <button type="button" id="btnLogout">Sair</button>
+      <a href="#leads" id="navLeads" class="sidebar-nav-item active">Leads</a>
+      <a href="#rafa" id="navRafa" class="sidebar-nav-item">
+        <span class="nav-label">Falar com Rafa</span>
+        <span id="navRafaBadge" class="nav-badge hidden">0</span>
+      </a>
+      <a href="#gestoras" id="navGestoras" class="sidebar-nav-item">Gestoras</a>
+      <button type="button" id="btnLogout" class="sidebar-nav-item" style="width:100%;">Sair</button>
     </nav>
     <main class="main">
       <div id="screenLeads" class="screen visible">
         <h2 class="page-title">Leads</h2>
-        <div class="table-wrap">
+        <div class="table-wrap card">
           <table>
             <thead>
               <tr>
@@ -114,7 +159,6 @@
                 <th>Estado conversa</th>
                 <th>Estado docs</th>
                 <th>Docs enviados</th>
-                <th>Gestora ID</th>
                 <th>Gestora</th>
                 <th>Atualizado</th>
                 <th></th>
@@ -126,8 +170,8 @@
       </div>
       <div id="screenRafa" class="screen">
         <h2 class="page-title">Falar com Rafa</h2>
-        <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Leads que pediram para falar contigo. Clica no WhatsApp para abrir a conversa.</p>
-        <div class="table-wrap">
+        <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1.25rem;">Leads que pediram para falar contigo. Abre a conversa no WhatsApp ou devolve o lead a aguardar escolha.</p>
+        <div class="table-wrap card">
           <table>
             <thead>
               <tr>
@@ -147,7 +191,7 @@
           <h2 class="page-title" style="margin:0;">Gestoras de crédito</h2>
           <button type="button" class="btn btn-primary" id="btnNovaGestora">Nova gestora</button>
         </div>
-        <div class="table-wrap">
+        <div class="table-wrap card">
           <table>
             <thead>
               <tr>
@@ -221,7 +265,7 @@
 
       function showScreen(id) {
         document.querySelectorAll('.main .screen').forEach((s) => s.classList.remove('visible'));
-        document.querySelectorAll('.sidebar a').forEach((a) => a.classList.remove('active'));
+        document.querySelectorAll('.sidebar-nav-item').forEach((el) => el.classList.remove('active'));
         const s = document.getElementById('screen' + id.charAt(0).toUpperCase() + id.slice(1));
         const a = document.getElementById('nav' + id.charAt(0).toUpperCase() + id.slice(1));
         if (s) s.classList.add('visible');
@@ -229,6 +273,20 @@
         if (id === 'leads') loadLeads();
         if (id === 'gestoras') loadGestoras();
         if (id === 'rafa') loadRafa();
+      }
+
+      function updateRafaBadge() {
+        fetch(API + '/leads/rafa/count', { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : { count: 0 }))
+          .then((data) => {
+            const badge = document.getElementById('navRafaBadge');
+            const n = data.count || 0;
+            badge.textContent = n > 99 ? '99+' : String(n);
+            badge.classList.toggle('hidden', n === 0);
+          })
+          .catch(() => {
+            document.getElementById('navRafaBadge').classList.add('hidden');
+          });
       }
 
       function checkAuth() {
@@ -244,6 +302,7 @@
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('dashboardApp').classList.add('visible');
             document.getElementById('dashboardApp').style.display = 'flex';
+            updateRafaBadge();
             const hash = (window.location.hash || '#leads').slice(1) || 'leads';
             const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : 'leads';
             showScreen(screenId);
@@ -295,13 +354,13 @@
 
       function loadLeads() {
         const tbody = document.getElementById('leadsBody');
-        tbody.innerHTML = '<tr><td colspan="11">A carregar…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="10">A carregar…</td></tr>';
         fetch(API + '/leads', { credentials: 'include' })
-          .then((r) => (r.ok ? r.json() : Promise.reject()))
+          .then((r) => r.json().then((data) => (r.ok ? data : Promise.reject(data))))
           .then((rows) => {
             tbody.innerHTML = '';
             if (!rows.length) {
-              tbody.innerHTML = '<tr><td colspan="11">Nenhum lead.</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="10">Nenhum lead.</td></tr>';
               return;
             }
             rows.forEach((r) => {
@@ -321,8 +380,6 @@
                 escapeHtml(r.estado_docs || '') +
                 '</td><td>' +
                 (r.docs_enviados ? 'Sim' : 'Não') +
-                '</td><td>' +
-                (r.gestora_id != null ? r.gestora_id : '—') +
                 '</td><td>' +
                 escapeHtml(r.gestora_nome || '—') +
                 '</td><td>' +
@@ -348,8 +405,9 @@
               })
             );
           })
-          .catch(() => {
-            tbody.innerHTML = '<tr><td colspan="11">Erro ao carregar.</td></tr>';
+          .catch((err) => {
+            const msg = (err && (err.detail || err.message)) || 'Erro ao carregar.';
+            tbody.innerHTML = '<tr><td colspan="10" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
           });
       }
 
@@ -357,9 +415,10 @@
         const tbody = document.getElementById('rafaBody');
         tbody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
         fetch(API + '/leads/rafa', { credentials: 'include' })
-          .then((r) => (r.ok ? r.json() : Promise.reject()))
+          .then((r) => r.json().then((data) => (r.ok ? data : Promise.reject(data))))
           .then((rows) => {
             tbody.innerHTML = '';
+            updateRafaBadge();
             if (!rows.length) {
               tbody.innerHTML = '<tr><td colspan="5">Nenhum lead a aguardar. Quando alguém pedir "Falar com Rafa", aparece aqui.</td></tr>';
               return;
@@ -375,12 +434,28 @@
                 '<td>' + escapeHtml(formatDate(r.updated_at)) + '</td>' +
                 '<td class="actions">' +
                 '<a href="' + waUrl + '" target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp btn-sm">WhatsApp</a>' +
+                '<button type="button" class="btn btn-devolver btn-sm btn-rafa-devolver" data-id="' + r.id + '">Devolver a aguardar</button>' +
                 '</td>';
               tbody.appendChild(tr);
             });
+            tbody.querySelectorAll('.btn-rafa-devolver').forEach((btn) => {
+              btn.addEventListener('click', function () {
+                const id = this.dataset.id;
+                if (!confirm('Devolver este lead ao estado «aguardando escolha»?')) return;
+                fetch(API + '/leads/' + id, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ estado_conversa: 'aguardando_escolha' }),
+                })
+                  .then((res) => (res.ok ? loadRafa() : res.json().then((d) => Promise.reject(new Error(d.message || 'Erro')))))
+                  .catch((err) => alert(err.message || 'Erro ao atualizar'));
+              });
+            });
           })
-          .catch(() => {
-            tbody.innerHTML = '<tr><td colspan="5">Erro ao carregar.</td></tr>';
+          .catch((err) => {
+            const msg = (err && (err.detail || err.message)) || 'Erro ao carregar.';
+            tbody.innerHTML = '<tr><td colspan="5" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
           });
       }
 
@@ -419,6 +494,7 @@
           .then(function () {
             document.getElementById('modalLead').classList.remove('visible');
             loadLeads();
+            updateRafaBadge();
           })
           .catch(function (err) { alert(err.message || 'Erro ao guardar'); });
       });

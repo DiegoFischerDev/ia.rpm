@@ -134,6 +134,15 @@ async function getLeadsForRafa(estadoConversa) {
   return rows;
 }
 
+/** Conta leads em estado_conversa = com_rafa (para badge no menu). */
+async function getLeadsForRafaCount() {
+  const rows = await query(
+    'SELECT COUNT(*) AS n FROM ch_leads WHERE estado_conversa = ?',
+    ['com_rafa']
+  );
+  return (rows[0] && rows[0].n) ? Number(rows[0].n) : 0;
+}
+
 /** Dashboard: lista todos os leads. */
 async function getAllLeads() {
   const rows = await query(
@@ -238,6 +247,7 @@ module.exports = {
   updateLeadGestora,
   updateLeadEstadoDocs,
   getLeadsForRafa,
+  getLeadsForRafaCount,
   getAllLeads,
   updateLeadAdmin,
   deleteLead,

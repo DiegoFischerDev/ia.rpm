@@ -25,6 +25,7 @@ const {
   updateLeadGestora,
   updateLeadEstadoDocs,
   getLeadsForRafa,
+  getLeadsForRafaCount,
   getAllLeads,
   updateLeadAdmin,
   deleteLead,
@@ -645,7 +646,7 @@ app.get('/api/dashboard/leads', requireDashboardAuth, async (req, res) => {
     res.json(rows);
   } catch (err) {
     logStartup(`getAllLeads error: ${err.message}`);
-    res.status(500).json({ message: 'Erro ao listar leads.' });
+    res.status(500).json({ message: 'Erro ao listar leads.', detail: err.message });
   }
 });
 
@@ -655,7 +656,17 @@ app.get('/api/dashboard/leads/rafa', requireDashboardAuth, async (req, res) => {
     res.json(rows);
   } catch (err) {
     logStartup(`getLeadsForRafa error: ${err.message}`);
-    res.status(500).json({ message: 'Erro ao listar leads.' });
+    res.status(500).json({ message: 'Erro ao listar leads.', detail: err.message });
+  }
+});
+
+app.get('/api/dashboard/leads/rafa/count', requireDashboardAuth, async (req, res) => {
+  try {
+    const count = await getLeadsForRafaCount();
+    res.json({ count });
+  } catch (err) {
+    logStartup(`getLeadsForRafaCount error: ${err.message}`);
+    res.status(500).json({ count: 0 });
   }
 });
 
