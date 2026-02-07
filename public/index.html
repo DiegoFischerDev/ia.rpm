@@ -75,6 +75,9 @@
     .modal h3 { margin: 0 0 1rem; font-size: 1rem; }
     .modal-actions { margin-top: 1.25rem; display: flex; gap: 0.5rem; justify-content: flex-end; }
     .table-wrap { overflow-x: auto; }
+    .text-muted { color: var(--text-muted); font-size: 0.875rem; }
+    .btn-whatsapp { background: #25d366; color: #fff; }
+    .btn-whatsapp:hover { background: #20bd5a; color: #fff; }
   </style>
 </head>
 <body>
@@ -93,6 +96,7 @@
   <div id="dashboardApp" class="app screen">
     <nav class="sidebar">
       <a href="#leads" id="navLeads" class="active">Leads</a>
+      <a href="#rafa" id="navRafa">Falar com Rafa</a>
       <a href="#gestoras" id="navGestoras">Gestoras</a>
       <button type="button" id="btnLogout">Sair</button>
     </nav>
@@ -107,14 +111,34 @@
                 <th>WhatsApp</th>
                 <th>Nome</th>
                 <th>Email</th>
-                <th>Estado</th>
+                <th>Estado conversa</th>
+                <th>Estado docs</th>
                 <th>Docs enviados</th>
                 <th>Gestora ID</th>
+                <th>Gestora</th>
                 <th>Atualizado</th>
                 <th></th>
               </tr>
             </thead>
             <tbody id="leadsBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="screenRafa" class="screen">
+        <h2 class="page-title">Falar com Rafa</h2>
+        <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Leads que pediram para falar contigo. Clica no WhatsApp para abrir a conversa.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>WhatsApp</th>
+                <th>Email</th>
+                <th>Atualizado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="rafaBody"></tbody>
           </table>
         </div>
       </div>
@@ -150,14 +174,18 @@
       <input type="text" id="editLeadNome">
       <label>Email</label>
       <input type="email" id="editLeadEmail">
-      <label>Estado</label>
-      <select id="editLeadEstado">
+      <label>Estado conversa</label>
+      <select id="editLeadEstadoConversa">
         <option value="aguardando_escolha">aguardando_escolha</option>
-        <option value="em_conversa">em_conversa</option>
+        <option value="com_joana">com_joana</option>
+        <option value="com_gestora">com_gestora</option>
+        <option value="com_rafa">com_rafa</option>
+      </select>
+      <label>Estado docs</label>
+      <select id="editLeadEstadoDocs">
         <option value="aguardando_docs">aguardando_docs</option>
         <option value="sem_docs">sem_docs</option>
         <option value="docs_enviados">docs_enviados</option>
-        <option value="falar_com_rafa">falar_com_rafa</option>
       </select>
       <label>Gestora ID</label>
       <input type="number" id="editLeadGestoraId" min="0" placeholder="vazio">
@@ -200,6 +228,7 @@
         if (a) a.classList.add('active');
         if (id === 'leads') loadLeads();
         if (id === 'gestoras') loadGestoras();
+        if (id === 'rafa') loadRafa();
       }
 
       function checkAuth() {
@@ -216,7 +245,8 @@
             document.getElementById('dashboardApp').classList.add('visible');
             document.getElementById('dashboardApp').style.display = 'flex';
             const hash = (window.location.hash || '#leads').slice(1) || 'leads';
-            showScreen(hash === 'gestoras' ? 'gestoras' : 'leads');
+            const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : 'leads';
+            showScreen(screenId);
           })
           .catch(() => {
             document.getElementById('loginScreen').classList.add('visible');
@@ -259,18 +289,19 @@
       window.addEventListener('hashchange', function () {
         if (!user) return;
         const hash = (window.location.hash || '#leads').slice(1) || 'leads';
-        showScreen(hash === 'gestoras' ? 'gestoras' : 'leads');
+        const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : 'leads';
+        showScreen(screenId);
       });
 
       function loadLeads() {
         const tbody = document.getElementById('leadsBody');
-        tbody.innerHTML = '<tr><td colspan="9">A carregar…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11">A carregar…</td></tr>';
         fetch(API + '/leads', { credentials: 'include' })
           .then((r) => (r.ok ? r.json() : Promise.reject()))
           .then((rows) => {
             tbody.innerHTML = '';
             if (!rows.length) {
-              tbody.innerHTML = '<tr><td colspan="9">Nenhum lead.</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="11">Nenhum lead.</td></tr>';
               return;
             }
             rows.forEach((r) => {
@@ -285,11 +316,15 @@
                 '</td><td>' +
                 escapeHtml(r.email || '') +
                 '</td><td>' +
-                escapeHtml(r.estado || '') +
+                escapeHtml(r.estado_conversa || '') +
+                '</td><td>' +
+                escapeHtml(r.estado_docs || '') +
                 '</td><td>' +
                 (r.docs_enviados ? 'Sim' : 'Não') +
                 '</td><td>' +
                 (r.gestora_id != null ? r.gestora_id : '—') +
+                '</td><td>' +
+                escapeHtml(r.gestora_nome || '—') +
                 '</td><td>' +
                 escapeHtml(formatDate(r.updated_at)) +
                 '</td><td class="actions">' +
@@ -314,7 +349,38 @@
             );
           })
           .catch(() => {
-            tbody.innerHTML = '<tr><td colspan="9">Erro ao carregar.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11">Erro ao carregar.</td></tr>';
+          });
+      }
+
+      function loadRafa() {
+        const tbody = document.getElementById('rafaBody');
+        tbody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
+        fetch(API + '/leads/rafa', { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : Promise.reject()))
+          .then((rows) => {
+            tbody.innerHTML = '';
+            if (!rows.length) {
+              tbody.innerHTML = '<tr><td colspan="5">Nenhum lead a aguardar. Quando alguém pedir "Falar com Rafa", aparece aqui.</td></tr>';
+              return;
+            }
+            rows.forEach((r) => {
+              const tr = document.createElement('tr');
+              const num = (r.whatsapp_number || '').replace(/\D/g, '');
+              const waUrl = num ? 'https://wa.me/' + num : '#';
+              tr.innerHTML =
+                '<td>' + escapeHtml(r.nome || '—') + '</td>' +
+                '<td>' + escapeHtml(r.whatsapp_number || '—') + '</td>' +
+                '<td>' + escapeHtml(r.email || '—') + '</td>' +
+                '<td>' + escapeHtml(formatDate(r.updated_at)) + '</td>' +
+                '<td class="actions">' +
+                '<a href="' + waUrl + '" target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp btn-sm">WhatsApp</a>' +
+                '</td>';
+              tbody.appendChild(tr);
+            });
+          })
+          .catch(() => {
+            tbody.innerHTML = '<tr><td colspan="5">Erro ao carregar.</td></tr>';
           });
       }
 
@@ -322,7 +388,8 @@
         document.getElementById('editLeadId').value = lead.id;
         document.getElementById('editLeadNome').value = lead.nome || '';
         document.getElementById('editLeadEmail').value = lead.email || '';
-        document.getElementById('editLeadEstado').value = lead.estado || 'aguardando_escolha';
+        document.getElementById('editLeadEstadoConversa').value = lead.estado_conversa || 'aguardando_escolha';
+        document.getElementById('editLeadEstadoDocs').value = lead.estado_docs || 'aguardando_docs';
         document.getElementById('editLeadGestoraId').value = lead.gestora_id != null ? lead.gestora_id : '';
         document.getElementById('modalLead').classList.add('visible');
       }
@@ -335,7 +402,8 @@
         const payload = {
           nome: document.getElementById('editLeadNome').value.trim() || null,
           email: document.getElementById('editLeadEmail').value.trim() || null,
-          estado: document.getElementById('editLeadEstado').value,
+          estado_conversa: document.getElementById('editLeadEstadoConversa').value,
+          estado_docs: document.getElementById('editLeadEstadoDocs').value,
           gestora_id: document.getElementById('editLeadGestoraId').value.trim() ? parseInt(document.getElementById('editLeadGestoraId').value, 10) : null,
         };
         fetch(API + '/leads/' + id, {

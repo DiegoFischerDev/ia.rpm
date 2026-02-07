@@ -29,7 +29,7 @@ async function getLeadById(id) {
 
 async function updateLeadDocsEnviados(id) {
   await query(
-    `UPDATE ch_leads SET estado = ?, docs_enviados = 1, docs_enviados_em = NOW(), updated_at = NOW() WHERE id = ?`,
+    `UPDATE ch_leads SET estado_docs = ?, docs_enviados = 1, docs_enviados_em = NOW(), updated_at = NOW() WHERE id = ?`,
     ['docs_enviados', id]
   );
 }
@@ -105,25 +105,31 @@ async function getNextGestoraForLead() {
 }
 
 async function updateLeadGestora(leadId, gestoraId) {
+  let gestoraNome = null;
+  if (gestoraId) {
+    const g = await getGestoraById(gestoraId);
+    if (g && g.nome) gestoraNome = g.nome.trim() || null;
+  }
   await query(
-    'UPDATE ch_leads SET gestora_id = ?, updated_at = NOW() WHERE id = ?',
-    [gestoraId || null, leadId]
+    'UPDATE ch_leads SET gestora_id = ?, gestora_nome = ?, updated_at = NOW() WHERE id = ?',
+    [gestoraId || null, gestoraNome, leadId]
   );
 }
 
-async function updateLeadEstado(leadId, estado) {
+/** Atualiza estado_docs (ex.: sem_docs). */
+async function updateLeadEstadoDocs(leadId, estadoDocs) {
   await query(
-    'UPDATE ch_leads SET estado = ?, updated_at = NOW() WHERE id = ?',
-    [estado || null, leadId]
+    'UPDATE ch_leads SET estado_docs = ?, updated_at = NOW() WHERE id = ?',
+    [estadoDocs || null, leadId]
   );
 }
 
-/** Lista para Rafa: apenas id, nome, email e whatsapp (sem dados sensíveis). */
-async function getLeadsForRafa(estado) {
-  if (!estado || typeof estado !== 'string') return [];
+/** Lista para Rafa: por estado_conversa (ex.: com_rafa). */
+async function getLeadsForRafa(estadoConversa) {
+  if (!estadoConversa || typeof estadoConversa !== 'string') return [];
   const rows = await query(
-    'SELECT id, nome, email, whatsapp_number, estado_anterior, updated_at FROM ch_leads WHERE estado = ? ORDER BY updated_at DESC',
-    [estado.trim()]
+    'SELECT id, nome, email, whatsapp_number, estado_conversa, estado_docs, updated_at FROM ch_leads WHERE estado_conversa = ? ORDER BY updated_at DESC',
+    [estadoConversa.trim()]
   );
   return rows;
 }
@@ -131,7 +137,7 @@ async function getLeadsForRafa(estado) {
 /** Dashboard: lista todos os leads. */
 async function getAllLeads() {
   const rows = await query(
-    'SELECT id, whatsapp_number, nome, email, estado, estado_anterior, docs_enviados, docs_enviados_em, gestora_id, created_at, updated_at FROM ch_leads ORDER BY updated_at DESC'
+    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, created_at, updated_at FROM ch_leads ORDER BY updated_at DESC'
   );
   return rows;
 }
@@ -139,7 +145,7 @@ async function getAllLeads() {
 /** Dashboard: atualizar lead (admin). */
 async function updateLeadAdmin(id, dados) {
   if (!dados || typeof dados !== 'object') return;
-  const allowed = ['nome', 'email', 'estado', 'gestora_id'];
+  const allowed = ['nome', 'email', 'estado_conversa', 'estado_docs', 'gestora_id', 'gestora_nome'];
   const set = [];
   const values = [];
   for (const key of allowed) {
@@ -150,6 +156,18 @@ async function updateLeadAdmin(id, dados) {
     else if (key === 'gestora_id') val = parseInt(val, 10) || null;
     set.push(`${key} = ?`);
     values.push(val);
+  }
+  // Se gestora_id foi alterado e gestora_nome não foi enviado, sincronizar nome da gestora
+  if ('gestora_id' in dados && !('gestora_nome' in dados)) {
+    const gid = dados.gestora_id === '' || dados.gestora_id === null ? null : parseInt(dados.gestora_id, 10) || null;
+    if (gid) {
+      const g = await getGestoraById(gid);
+      set.push('gestora_nome = ?');
+      values.push((g && g.nome) ? g.nome.trim() || null : null);
+    } else {
+      set.push('gestora_nome = ?');
+      values.push(null);
+    }
   }
   if (set.length === 0) return;
   set.push('updated_at = NOW()');
@@ -202,7 +220,7 @@ async function updateGestora(id, dados) {
 
 /** Dashboard: apagar gestora. */
 async function deleteGestora(id) {
-  await query('UPDATE ch_leads SET gestora_id = NULL WHERE gestora_id = ?', [id]);
+  await query('UPDATE ch_leads SET gestora_id = NULL, gestora_nome = NULL WHERE gestora_id = ?', [id]);
   await query('DELETE FROM ch_gestoras WHERE id = ?', [id]);
 }
 
@@ -218,7 +236,7 @@ module.exports = {
   getActiveGestoras,
   getNextGestoraForLead,
   updateLeadGestora,
-  updateLeadEstado,
+  updateLeadEstadoDocs,
   getLeadsForRafa,
   getAllLeads,
   updateLeadAdmin,

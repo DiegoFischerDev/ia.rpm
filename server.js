@@ -23,7 +23,7 @@ const {
   getGestoraById,
   getNextGestoraForLead,
   updateLeadGestora,
-  updateLeadEstado,
+  updateLeadEstadoDocs,
   getLeadsForRafa,
   getAllLeads,
   updateLeadAdmin,
@@ -160,7 +160,8 @@ async function validateLeadUploadPage(leadId) {
     return { error: 500, message: 'Erro ao verificar dados.' };
   }
   if (!lead) return { error: 404, message: 'Link não encontrado.' };
-  if (lead.estado !== 'aguardando_docs' && lead.estado !== 'docs_enviados' && lead.estado !== 'sem_docs') {
+  const docsOk = lead.estado_docs === 'aguardando_docs' || lead.estado_docs === 'docs_enviados' || lead.estado_docs === 'sem_docs';
+  if (!docsOk) {
     return { error: 403, message: 'Este link já não está disponível.' };
   }
   return { lead };
@@ -196,13 +197,13 @@ async function validateLeadAguardandoDocs(leadId) {
     return { error: 500, message: 'Erro ao verificar dados.' };
   }
   if (!lead) return { error: 404, message: 'Link não encontrado.' };
-  if (lead.estado !== 'aguardando_docs') {
+  if (lead.estado_docs !== 'aguardando_docs') {
     return { error: 403, message: 'Este link já não aceita envio de documentos.' };
   }
   return { lead };
 }
 
-// Permite envio de documentos quando: aguardando_docs OU sem_docs, e ainda não enviou (não reenvio).
+// Permite envio de documentos quando: estado_docs aguardando_docs OU sem_docs, e ainda não enviou (não reenvio).
 async function validateLeadCanSendDocs(leadId) {
   if (!/^\d+$/.test(leadId)) return { error: 400, message: 'ID de lead inválido.' };
   let lead;
@@ -217,7 +218,7 @@ async function validateLeadCanSendDocs(leadId) {
   if (jaEnviou) {
     return { error: 403, message: 'Já enviaste os documentos. Não é possível reenviar.' };
   }
-  if (lead.estado !== 'aguardando_docs' && lead.estado !== 'sem_docs') {
+  if (lead.estado_docs !== 'aguardando_docs' && lead.estado_docs !== 'sem_docs') {
     return { error: 403, message: 'Este link já não aceita envio de documentos.' };
   }
   return { lead };
@@ -259,12 +260,13 @@ async function getGestoraContactForLead(lead) {
 
 // Lista para Rafa: apenas nome, email e whatsapp (sem dados sensíveis como estado civil, vínculo, etc.)
 app.get('/api/leads', async (req, res) => {
-  const estado = (req.query && req.query.estado) || '';
-  if (estado !== 'falar_com_rafa') {
-    return res.status(400).json({ message: 'Parâmetro estado inválido.' });
+  const estadoConversa = (req.query && req.query.estado) || (req.query && req.query.estado_conversa) || '';
+  const filter = estadoConversa === 'falar_com_rafa' ? 'com_rafa' : estadoConversa;
+  if (filter !== 'com_rafa') {
+    return res.status(400).json({ message: 'Parâmetro estado inválido (use estado=falar_com_rafa ou estado_conversa=com_rafa).' });
   }
   try {
-    const leads = await getLeadsForRafa(estado);
+    const leads = await getLeadsForRafa('com_rafa');
     res.json(leads);
   } catch (err) {
     logStartup(`getLeadsForRafa error: ${err.message}`);
@@ -278,8 +280,8 @@ app.get('/api/leads/:leadId/status', async (req, res) => {
   const v = await validateLeadUploadPage(req.params.leadId);
   if (v.error) return res.status(v.error).json({ message: v.message });
   const lead = v.lead;
-  const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1);
-  const semDocs = lead.estado === 'sem_docs';
+  const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1) || lead.estado_docs === 'docs_enviados';
+  const semDocs = lead.estado_docs === 'sem_docs';
   const payload = {
     hasEmail: !!(lead.email && lead.email.trim()),
     nome: '', // só devolvido após confirmação de email (POST /access)
@@ -308,10 +310,10 @@ app.post('/api/leads/:leadId/sem-docs', async (req, res) => {
   const stored = normalizeEmail(lead.email);
   if (stored !== email) return res.status(403).json({ message: 'Email incorreto.' });
   try {
-    await updateLeadEstado(leadId, 'sem_docs');
+    await updateLeadEstadoDocs(leadId, 'sem_docs');
     res.json({ ok: true });
   } catch (err) {
-    logStartup(`updateLeadEstado sem_docs error: ${err.message}`);
+    logStartup(`updateLeadEstadoDocs sem_docs error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao atualizar.' });
   }
 });
@@ -380,7 +382,7 @@ app.post('/api/leads/:leadId/access', async (req, res) => {
   const stored = normalizeEmail(lead.email);
   if (provided !== stored) return res.status(403).json({ message: 'Email incorreto.' });
   const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1);
-  const semDocs = lead.estado === 'sem_docs';
+  const semDocs = lead.estado_docs === 'sem_docs';
   const contact = await getGestoraContactForLead(lead);
   res.json({
     ok: true,
@@ -643,6 +645,16 @@ app.get('/api/dashboard/leads', requireDashboardAuth, async (req, res) => {
     res.json(rows);
   } catch (err) {
     logStartup(`getAllLeads error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao listar leads.' });
+  }
+});
+
+app.get('/api/dashboard/leads/rafa', requireDashboardAuth, async (req, res) => {
+  try {
+    const rows = await getLeadsForRafa('com_rafa');
+    res.json(rows);
+  } catch (err) {
+    logStartup(`getLeadsForRafa error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar leads.' });
   }
 });
