@@ -379,10 +379,12 @@
             <div id="profileRgpdNaoEnviado" style="display:none;">
               <p class="text-muted" style="font-size:0.875rem;margin-bottom:0.5rem;">Ainda não enviou nenhum documento. Suba um PDF.</p>
               <input type="file" id="profileRgpd" accept=".pdf">
+              <p id="profileRgpdPreview" style="display:none;margin:0.75rem 0 0 0;"><img src="documento.png" alt="" style="max-height:64px;height:auto;vertical-align:middle;"></p>
             </div>
             <div id="profileRgpdSubstituirArea" style="display:none;">
               <p class="text-muted" style="font-size:0.875rem;margin-bottom:0.5rem;">Escolha um novo ficheiro PDF para substituir o atual.</p>
               <input type="file" id="profileRgpdSubstituirInput" accept=".pdf">
+              <p id="profileRgpdSubstituirPreview" style="display:none;margin:0.75rem 0 0 0;"><img src="documento.png" alt="" style="max-height:64px;height:auto;vertical-align:middle;"></p>
               <button type="button" id="profileRgpdSubstituirCancelar" class="btn btn-outline btn-sm" style="margin-top:0.5rem;">Cancelar</button>
             </div>
             <p id="profileError" class="error-msg" style="display:none;margin-top:0.5rem;"></p>
@@ -824,6 +826,8 @@
             document.getElementById('profileRgpdEnviado').style.display = hasRgpd ? 'block' : 'none';
             document.getElementById('profileRgpdNaoEnviado').style.display = !hasRgpd ? 'block' : 'none';
             document.getElementById('profileRgpdSubstituirArea').style.display = 'none';
+            document.getElementById('profileRgpdPreview').style.display = 'none';
+            document.getElementById('profileRgpdSubstituirPreview').style.display = 'none';
             if (hasRgpd) document.getElementById('profileRgpdVer').href = API + '/profile/rgpd';
           })
           .catch(() => {
@@ -899,11 +903,19 @@
         document.getElementById('profileRgpdEnviado').style.display = 'none';
         document.getElementById('profileRgpdSubstituirArea').style.display = 'block';
         document.getElementById('profileRgpdSubstituirInput').value = '';
+        document.getElementById('profileRgpdSubstituirPreview').style.display = 'none';
       });
       document.getElementById('profileRgpdSubstituirCancelar').addEventListener('click', function () {
         document.getElementById('profileRgpdSubstituirArea').style.display = 'none';
         document.getElementById('profileRgpdEnviado').style.display = 'block';
         document.getElementById('profileRgpdSubstituirInput').value = '';
+        document.getElementById('profileRgpdSubstituirPreview').style.display = 'none';
+      });
+      document.getElementById('profileRgpd').addEventListener('change', function () {
+        document.getElementById('profileRgpdPreview').style.display = (this.files && this.files[0]) ? 'block' : 'none';
+      });
+      document.getElementById('profileRgpdSubstituirInput').addEventListener('change', function () {
+        document.getElementById('profileRgpdSubstituirPreview').style.display = (this.files && this.files[0]) ? 'block' : 'none';
       });
 
       function openEditLead(lead) {
