@@ -386,20 +386,31 @@ app.post('/api/leads/:leadId/request-verification', async (req, res) => {
 
 // Confirmar código e atribuir nome + email ao lead; atribuir gestora para liberar RGPD
 app.post('/api/leads/:leadId/confirm-email', async (req, res) => {
-  const v = await validateLeadAguardandoDocs(req.params.leadId);
+  const leadId = req.params.leadId;
+  if (!/^\d+$/.test(leadId)) return res.status(400).json({ message: 'ID inválido.' });
+  const v = await validateLeadAguardandoDocs(leadId);
   if (v.error) return res.status(v.error).json({ message: v.message });
   const code = (req.body && req.body.code && String(req.body.code).trim()) || '';
   const lead = v.lead;
   if (lead.email_verification_code !== code) {
     return res.status(400).json({ message: 'Código inválido ou expirado.' });
   }
-  const ok = await confirmEmailAndSetLead(req.params.leadId);
+  const ok = await confirmEmailAndSetLead(leadId);
   if (!ok) return res.status(400).json({ message: 'Código inválido ou expirado.' });
-  const leadId = req.params.leadId;
-  const leadAfter = await getLeadById(leadId).catch(() => null);
-  if (leadAfter && !leadAfter.gestora_id) {
-    const next = await getNextGestoraForLead();
-    if (next) await updateLeadGestora(leadId, next.id);
+  try {
+    const leadAfter = await getLeadById(leadId);
+    const hasGestora = leadAfter && (leadAfter.gestora_id != null && leadAfter.gestora_id !== '');
+    if (!hasGestora) {
+      const next = await getNextGestoraForLead();
+      if (next && next.id) {
+        await updateLeadGestora(Number(leadId), next.id);
+        logStartup(`confirm-email: gestora ${next.id} atribuída ao lead ${leadId}`);
+      } else {
+        logStartup(`confirm-email: nenhuma gestora ativa para atribuir ao lead ${leadId}`);
+      }
+    }
+  } catch (err) {
+    logStartup(`confirm-email atribuir gestora: ${err.message}`);
   }
   res.json({ ok: true });
 });
