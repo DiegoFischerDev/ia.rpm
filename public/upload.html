@@ -277,6 +277,7 @@
       <div id="stepDocsEnviados" class="card" style="display:none;">
         <h2>Documentos recebidos</h2>
         <p class="doc-hint">Os seus documentos foram enviados com sucesso. A gestora irá analisá-los e contactá-lo(a) por email.</p>
+        <p class="doc-hint" id="gestoraNomeWrap" style="display:none;">A sua gestora de crédito: <strong id="gestoraNomeRef"></strong></p>
         <p class="doc-hint" id="gestoraEmailWrap" style="display:none;">Email de contacto da gestora: <a href="#" id="gestoraEmailRef" class="doc-link-inline"></a></p>
         <p class="doc-hint" id="gestoraWhatsappWrap" style="display:none;">Contactar a gestora por <a href="#" id="gestoraWhatsappRef" class="doc-link-inline" target="_blank" rel="noopener">WhatsApp</a></p>
       </div>
@@ -451,7 +452,16 @@
           wrap.style.display = 'block';
         } else if (wrap) wrap.style.display = 'none';
       }
+      function setGestoraNomeDisplay(nome) {
+        var wrap = document.getElementById('gestoraNomeWrap');
+        var ref = document.getElementById('gestoraNomeRef');
+        if (wrap && ref && nome) {
+          ref.textContent = nome;
+          wrap.style.display = 'block';
+        } else if (wrap) wrap.style.display = 'none';
+      }
       function setDocsEnviadosDisplay(data) {
+        setGestoraNomeDisplay(data.gestoraNome);
         setGestoraEmailDisplay(data.gestoraEmail);
         setGestoraWhatsappDisplay(data.gestoraWhatsapp, data.nome);
       }
@@ -764,13 +774,11 @@
         .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
         .then((data) => {
           if (data.docsEnviados) {
-            setDocsEnviadosDisplay(data);
-            showStep('stepDocsEnviados');
+            showStep('stepEnterEmail');
             return;
           }
           if (!data.hasEmail) {
             showStep('stepNomeEmail');
-            if (data.nome) document.getElementById('gate_nome').value = data.nome;
             return;
           }
           var savedEmail = getVerifiedEmail();

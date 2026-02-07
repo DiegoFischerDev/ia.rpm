@@ -173,30 +173,40 @@ async function getGestoraContactForLead(lead) {
     const g = await getGestoraById(lead.gestora_id);
     if (g) {
       return {
+        gestoraNome: g.nome || '',
         gestoraEmail: g.email || '',
         gestoraWhatsapp: (g.whatsapp || '').replace(/\D/g, ''),
       };
     }
   }
   return {
+    gestoraNome: '',
     gestoraEmail: process.env.GESTORA_EMAIL || '',
     gestoraWhatsapp: (process.env.GESTORA_WHATSAPP || '').replace(/\D/g, ''),
   };
 }
 
 // Estado do lead: tem email? docs já enviados? (para o front saber que ecrã mostrar)
+// Quando docsEnviados, não devolvemos contactos da gestora; o lead tem de confirmar email via POST /access
 app.get('/api/leads/:leadId/status', async (req, res) => {
   const v = await validateLeadUploadPage(req.params.leadId);
   if (v.error) return res.status(v.error).json({ message: v.message });
   const lead = v.lead;
-  const contact = await getGestoraContactForLead(lead);
-  res.json({
+  const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1);
+  const payload = {
     hasEmail: !!(lead.email && lead.email.trim()),
-    nome: lead.nome || '',
-    docsEnviados: !!(lead.docs_enviados && Number(lead.docs_enviados) === 1),
-    gestoraEmail: contact.gestoraEmail,
-    gestoraWhatsapp: contact.gestoraWhatsapp,
-  });
+    nome: '', // só devolvido após confirmação de email (POST /access)
+    docsEnviados,
+  };
+  if (!docsEnviados) {
+    const contact = await getGestoraContactForLead(lead);
+    payload.gestoraEmail = contact.gestoraEmail;
+    payload.gestoraWhatsapp = contact.gestoraWhatsapp;
+  } else {
+    payload.gestoraEmail = '';
+    payload.gestoraWhatsapp = '';
+  }
+  res.json(payload);
 });
 
 // Pedir código de confirmação (nome + email) — só quando o lead ainda não tem email
@@ -267,6 +277,7 @@ app.post('/api/leads/:leadId/access', async (req, res) => {
   res.json({
     ok: true,
     docsEnviados,
+    gestoraNome: contact.gestoraNome,
     gestoraEmail: contact.gestoraEmail,
     gestoraWhatsapp: contact.gestoraWhatsapp,
     nome: lead.nome || '',
