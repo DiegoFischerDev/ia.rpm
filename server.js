@@ -384,7 +384,7 @@ app.post('/api/leads/:leadId/request-verification', async (req, res) => {
   res.json({ ok: true });
 });
 
-// Confirmar código e atribuir nome + email ao lead
+// Confirmar código e atribuir nome + email ao lead; atribuir gestora para liberar RGPD
 app.post('/api/leads/:leadId/confirm-email', async (req, res) => {
   const v = await validateLeadAguardandoDocs(req.params.leadId);
   if (v.error) return res.status(v.error).json({ message: v.message });
@@ -395,6 +395,12 @@ app.post('/api/leads/:leadId/confirm-email', async (req, res) => {
   }
   const ok = await confirmEmailAndSetLead(req.params.leadId);
   if (!ok) return res.status(400).json({ message: 'Código inválido ou expirado.' });
+  const leadId = req.params.leadId;
+  const leadAfter = await getLeadById(leadId).catch(() => null);
+  if (leadAfter && !leadAfter.gestora_id) {
+    const next = await getNextGestoraForLead();
+    if (next) await updateLeadGestora(leadId, next.id);
+  }
   res.json({ ok: true });
 });
 

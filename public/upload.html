@@ -9,9 +9,9 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #f5f5f5;
-      --surface: #ffffff;
-      --surface-elevated: #ebebeb;
+      --bg: #ffffff;
+      --surface: #f5f5f5;
+      --surface-elevated: #ffffff;
       --text: #000000;
       --text-muted: #555555;
       --accent: #edbfbf;
@@ -73,6 +73,7 @@
     }
     .card {
       background: var(--surface);
+      /* Secções (Documentos obrigatórios, Mensagem, etc.) em cinza claro */
       border-radius: var(--radius);
       padding: 1.5rem;
       margin-bottom: 1.25rem;
@@ -104,11 +105,11 @@
       font: inherit;
       font-size: 0.9375rem;
       margin-bottom: 1rem;
-      background: var(--surface);
+      background: #ffffff;
       transition: border-color .15s, box-shadow .15s;
     }
     select { cursor: pointer; }
-    input[readonly] { background: var(--surface-elevated); cursor: default; }
+    input[readonly] { background: #f5f5f5; cursor: default; }
     input:focus, textarea:focus, select:focus {
       outline: none;
       border-color: var(--accent);
@@ -120,6 +121,7 @@
       background: var(--surface-elevated);
       border-radius: var(--radius-sm);
       border: 1px solid var(--border);
+      /* Cada bloco (ex.: 1. Cartão de residência...) em branco */
     }
     .doc-block:last-child { margin-bottom: 0; }
     .doc-title { font-weight: 600; font-size: 0.9375rem; margin-bottom: 0.25rem; }
@@ -435,13 +437,7 @@
       <input type="checkbox" id="consent_rafa" name="consent_rafa" value="1" style="position:absolute;opacity:0;pointer-events:none;" aria-hidden="true" tabindex="-1">
 
       <div class="card">
-        <div class="card-title-row">
-          <h2>Documentos obrigatórios</h2>
-          <label class="consent-checkbox">
-            <input type="checkbox" id="consent_intermediaria" name="consent_intermediaria" required>
-            Aceito compartilhar esses docs com a intermediária de crédito
-          </label>
-        </div>
+        <h2>Documentos obrigatórios</h2>
         <p class="doc-hint doc-privacy">Os documentos ficam guardados apenas no seu dispositivo até fazer o envio para a gestora.</p>
         <label for="estado_civil">Estado civil e regime de casamento</label>
         <select id="estado_civil" name="estado_civil">
@@ -490,6 +486,11 @@
       <div class="card">
         <label for="mensagem_gestora">Mensagem para a gestora (opcional)</label>
         <textarea id="mensagem_gestora" name="mensagem_gestora" rows="3" placeholder="Alguma informação adicional..."></textarea>
+        <label class="consent-checkbox" style="margin-top:1rem;">
+          <input type="checkbox" id="consent_intermediaria" name="consent_intermediaria" required>
+          Aceito compartilhar esses docs com a intermediária de crédito
+        </label>
+        <button type="button" class="btn btn-outline" id="btnSemDocs" style="margin-top:0.75rem; display:none; color:var(--error); border-color:var(--error);">Não tenho todos os docs</button>
       </div>
 
       <div id="semDocsDisclaimer" style="display:none; margin-bottom:1rem;">
@@ -497,7 +498,6 @@
       </div>
       <div id="formError" class="error-msg" style="display:none;"></div>
       <button type="submit" class="btn btn-primary" id="submitBtn" disabled><span class="btn-text">Enviar para a gestora</span></button>
-      <button type="button" class="btn btn-outline" id="btnSemDocs" style="margin-top:0.75rem; display:none; color:var(--error); border-color:var(--error);">Não tenho todos os docs</button>
     </form>
     </div>
   </div>
