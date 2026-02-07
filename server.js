@@ -8,11 +8,13 @@ for (const p of envPaths) {
   require('dotenv').config({ path: p });
 }
 
+const crypto = require('crypto');
 const express = require('express');
 const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const fs = require('fs');
 const multer = require('multer');
+const bcrypt = require('bcryptjs');
 const { Resend } = require('resend');
 const {
   getLeadById,
@@ -21,6 +23,12 @@ const {
   setEmailVerification,
   confirmEmailAndSetLead,
   getGestoraById,
+  getGestoraByEmail,
+  getLeadsByGestoraId,
+  setGestoraPassword,
+  setGestoraPasswordResetToken,
+  getGestoraByResetToken,
+  clearGestoraPasswordReset,
   getNextGestoraForLead,
   updateLeadGestora,
   updateLeadEstadoDocs,
@@ -41,6 +49,8 @@ const {
   deleteLeadStorage,
   cleanupOldStorage,
   STANDARD_NAMES,
+  saveGestoraRgpd,
+  readGestoraRgpd,
 } = require('./storage');
 
 function logStartup(msg) {
@@ -273,6 +283,25 @@ app.get('/api/leads', async (req, res) => {
     logStartup(`getLeadsForRafa error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar leads.' });
   }
+});
+
+// PDF RGPD: da gestora do lead se existir, senão modelo padrão
+app.get('/api/leads/:leadId/rgpd', async (req, res) => {
+  const leadId = req.params.leadId;
+  if (!/^\d+$/.test(leadId)) return res.status(400).send();
+  const lead = await getLeadById(leadId).catch(() => null);
+  if (!lead) return res.status(404).send();
+  if (lead.gestora_id) {
+    const buffer = await readGestoraRgpd(lead.gestora_id).catch(() => null);
+    if (buffer && buffer.length) {
+      res.type('application/pdf').setHeader('Content-Disposition', 'inline; filename="RGPD.pdf"').send(buffer);
+      return;
+    }
+  }
+  const defaultPath = path.join(__dirname, 'public', 'RGPD.pdf');
+  res.sendFile(defaultPath, { headers: { 'Content-Disposition': 'inline; filename="RGPD.pdf"' } }, (err) => {
+    if (err) res.status(404).send();
+  });
 });
 
 // Estado do lead: tem email? docs já enviados? (para o front saber que ecrã mostrar)
@@ -611,22 +640,39 @@ function requireDashboardAuth(req, res, next) {
   res.redirect('/');
 }
 
+function requireAdminAuth(req, res, next) {
+  if (req.session && req.session.dashboardUser && req.session.dashboardUser.role === 'admin') return next();
+  if (req.path.startsWith('/api/')) return res.status(403).json({ message: 'Acesso reservado ao administrador.' });
+  res.redirect('/');
+}
+
 // Redirecionar /dashboard para a página principal (dashboard está em /)
 app.get('/dashboard', (req, res) => res.redirect(301, '/'));
 app.get('/dashboard/*', (req, res) => res.redirect(301, '/'));
 
-// Login admin
-app.post('/api/dashboard/login', (req, res) => {
+// Login admin ou gestora
+app.post('/api/dashboard/login', async (req, res) => {
   const email = (req.body.email || '').trim().toLowerCase();
   const password = String(req.body.password || '');
-  if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-    return res.status(503).json({ message: 'Dashboard não configurado (ADMIN_EMAIL/ADMIN_PASSWORD).' });
+  if (!email) return res.status(400).json({ message: 'Indique o email.' });
+  // 1) Tentar admin
+  if (ADMIN_EMAIL && ADMIN_PASSWORD && email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    req.session.dashboardUser = { role: 'admin', email };
+    return res.json({ ok: true, user: req.session.dashboardUser });
   }
-  if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
-    return res.status(401).json({ message: 'Email ou palavra-passe incorretos.' });
+  // 2) Tentar gestora
+  const gestora = await getGestoraByEmail(email).catch(() => null);
+  if (gestora && gestora.ativo) {
+    if (!gestora.password) {
+      return res.status(401).json({ message: 'Use «Perdi a senha» para definir a sua palavra-passe pela primeira vez.' });
+    }
+    const match = await bcrypt.compare(password, gestora.password);
+    if (match) {
+      req.session.dashboardUser = { role: 'gestora', id: gestora.id, email: gestora.email, nome: gestora.nome || '' };
+      return res.json({ ok: true, user: req.session.dashboardUser });
+    }
   }
-  req.session.dashboardUser = { role: 'admin', email };
-  res.json({ ok: true, user: req.session.dashboardUser });
+  return res.status(401).json({ message: 'Email ou palavra-passe incorretos.' });
 });
 
 app.post('/api/dashboard/logout', (req, res) => {
@@ -639,18 +685,66 @@ app.get('/api/dashboard/me', (req, res) => {
   res.json({ user: req.session.dashboardUser });
 });
 
-// API protegida (admin)
+// Perdi a senha (gestoras): envia link por email
+app.post('/api/dashboard/forgot-password', async (req, res) => {
+  const email = (req.body && req.body.email || '').trim().toLowerCase();
+  if (!email) return res.status(400).json({ message: 'Indique o seu email.' });
+  const gestora = await getGestoraByEmail(email).catch(() => null);
+  if (gestora && gestora.ativo) {
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+    await setGestoraPasswordResetToken(gestora.id, token, expiresAt);
+    const baseUrl = (process.env.APP_URL || process.env.UPLOAD_BASE_URL || '').replace(/\/$/, '') || req.protocol + '://' + (req.get('host') || '');
+    const resetLink = baseUrl + '/#reset-password?token=' + encodeURIComponent(token);
+    const resend = getResendClient();
+    const mailFrom = process.env.MAIL_FROM || process.env.RESEND_FROM;
+    if (resend && mailFrom) {
+      try {
+        await resend.emails.send({
+          from: mailFrom.includes('<') ? mailFrom : `Crédito Habitação <${mailFrom}>`,
+          to: [gestora.email],
+          subject: 'Redefinir palavra-passe – Dashboard',
+          text: `Olá ${gestora.nome || 'Gestora'},\n\nRecebemos um pedido para redefinir a sua palavra-passe. Clique no link abaixo (válido 1 hora):\n\n${resetLink}\n\nSe não pediu isto, ignore este email.`,
+        });
+      } catch (err) {
+        logStartup(`forgot-password send email error: ${err.message}`);
+      }
+    }
+  }
+  res.json({ message: 'Se existir uma conta com este email, receberá um link para redefinir a palavra-passe.' });
+});
+
+// Redefinir palavra-passe com token (gestoras)
+app.post('/api/dashboard/reset-password', async (req, res) => {
+  const token = (req.body && req.body.token || '').trim();
+  const password = req.body && req.body.password;
+  if (!token) return res.status(400).json({ message: 'Token em falta.' });
+  if (!password || String(password).length < 6) {
+    return res.status(400).json({ message: 'A nova palavra-passe deve ter pelo menos 6 caracteres.' });
+  }
+  const gestora = await getGestoraByResetToken(token).catch(() => null);
+  if (!gestora) return res.status(400).json({ message: 'Link inválido ou expirado. Peça um novo em «Perdi a senha».' });
+  const hash = await bcrypt.hash(String(password), 10);
+  await setGestoraPassword(gestora.id, hash);
+  await clearGestoraPasswordReset(gestora.id);
+  res.json({ message: 'Palavra-passe alterada. Pode fazer login.' });
+});
+
+// API protegida (admin ou gestora conforme role)
 app.get('/api/dashboard/leads', requireDashboardAuth, async (req, res) => {
   try {
-    const rows = await getAllLeads();
+    const user = req.session.dashboardUser;
+    const rows = user.role === 'gestora'
+      ? await getLeadsByGestoraId(user.id)
+      : await getAllLeads();
     res.json(rows);
   } catch (err) {
-    logStartup(`getAllLeads error: ${err.message}`);
+    logStartup(`getLeads error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar leads.', detail: err.message });
   }
 });
 
-app.get('/api/dashboard/leads/rafa', requireDashboardAuth, async (req, res) => {
+app.get('/api/dashboard/leads/rafa', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   try {
     const rows = await getLeadsForRafa('com_rafa');
     res.json(rows);
@@ -660,7 +754,7 @@ app.get('/api/dashboard/leads/rafa', requireDashboardAuth, async (req, res) => {
   }
 });
 
-app.get('/api/dashboard/leads/rafa/count', requireDashboardAuth, async (req, res) => {
+app.get('/api/dashboard/leads/rafa/count', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   try {
     const count = await getLeadsForRafaCount();
     res.json({ count });
@@ -673,6 +767,13 @@ app.get('/api/dashboard/leads/rafa/count', requireDashboardAuth, async (req, res
 app.patch('/api/dashboard/leads/:id', requireDashboardAuth, async (req, res) => {
   const id = req.params.id;
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  const user = req.session.dashboardUser;
+  if (user.role === 'gestora') {
+    const lead = await getLeadById(id).catch(() => null);
+    if (!lead || lead.gestora_id !== user.id) {
+      return res.status(403).json({ message: 'Só pode editar leads que lhe estão atribuídos.' });
+    }
+  }
   try {
     await updateLeadAdmin(id, req.body);
     res.json({ ok: true });
@@ -682,7 +783,7 @@ app.patch('/api/dashboard/leads/:id', requireDashboardAuth, async (req, res) => 
   }
 });
 
-app.delete('/api/dashboard/leads/:id', requireDashboardAuth, async (req, res) => {
+app.delete('/api/dashboard/leads/:id', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   const id = req.params.id;
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
   try {
@@ -694,7 +795,7 @@ app.delete('/api/dashboard/leads/:id', requireDashboardAuth, async (req, res) =>
   }
 });
 
-app.get('/api/dashboard/gestoras', requireDashboardAuth, async (req, res) => {
+app.get('/api/dashboard/gestoras', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   try {
     const rows = await getAllGestoras();
     res.json(rows);
@@ -704,7 +805,7 @@ app.get('/api/dashboard/gestoras', requireDashboardAuth, async (req, res) => {
   }
 });
 
-app.post('/api/dashboard/gestoras', requireDashboardAuth, async (req, res) => {
+app.post('/api/dashboard/gestoras', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   try {
     const row = await createGestora(req.body);
     res.status(201).json(row);
@@ -714,7 +815,7 @@ app.post('/api/dashboard/gestoras', requireDashboardAuth, async (req, res) => {
   }
 });
 
-app.patch('/api/dashboard/gestoras/:id', requireDashboardAuth, async (req, res) => {
+app.patch('/api/dashboard/gestoras/:id', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   const id = req.params.id;
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
   try {
@@ -726,7 +827,7 @@ app.patch('/api/dashboard/gestoras/:id', requireDashboardAuth, async (req, res) 
   }
 });
 
-app.delete('/api/dashboard/gestoras/:id', requireDashboardAuth, async (req, res) => {
+app.delete('/api/dashboard/gestoras/:id', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   const id = req.params.id;
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
   try {
@@ -735,6 +836,69 @@ app.delete('/api/dashboard/gestoras/:id', requireDashboardAuth, async (req, res)
   } catch (err) {
     logStartup(`deleteGestora error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao apagar.' });
+  }
+});
+
+// Perfil da gestora (só role gestora): ver e atualizar dados próprios + RGPD
+app.get('/api/dashboard/profile', requireDashboardAuth, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (user.role !== 'gestora') return res.status(403).json({ message: 'Acesso reservado à gestora.' });
+  try {
+    const g = await getGestoraById(user.id);
+    if (!g) return res.status(404).json({ message: 'Gestora não encontrada.' });
+    res.json({ nome: g.nome, email: g.email, whatsapp: g.whatsapp || '' });
+  } catch (err) {
+    logStartup(`getProfile error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao carregar perfil.' });
+  }
+});
+
+const profileUpload = uploadMemory.fields([
+  { name: 'whatsapp', maxCount: 1 },
+  { name: 'email', maxCount: 1 },
+  { name: 'currentPassword', maxCount: 1 },
+  { name: 'newPassword', maxCount: 1 },
+  { name: 'rgpd', maxCount: 1 },
+]);
+
+app.post('/api/dashboard/profile', requireDashboardAuth, profileUpload, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (user.role !== 'gestora') return res.status(403).json({ message: 'Acesso reservado à gestora.' });
+  const gestoraId = user.id;
+  const body = req.body || {};
+  const whatsapp = (body.whatsapp !== undefined && body.whatsapp !== null ? String(body.whatsapp) : '').trim();
+  const email = (body.email !== undefined && body.email !== null ? String(body.email) : '').trim().toLowerCase();
+  const currentPassword = (body.currentPassword != null ? String(body.currentPassword) : '').trim();
+  const newPassword = (body.newPassword != null ? String(body.newPassword) : '').trim();
+  const rgpdFile = req.files && req.files.rgpd && req.files.rgpd[0] ? req.files.rgpd[0] : null;
+
+  try {
+    const updates = {};
+    if (whatsapp !== '') updates.whatsapp = whatsapp.replace(/\D/g, '');
+    if (email !== '') updates.email = email;
+    if (Object.keys(updates).length) await updateGestora(gestoraId, updates);
+
+    if (newPassword) {
+      if (!currentPassword) return res.status(400).json({ message: 'Indique a palavra-passe atual para alterar.' });
+      const gestora = await getGestoraByEmail(user.email).catch(() => null) || await getGestoraById(gestoraId);
+      if (!gestora || !gestora.password) return res.status(400).json({ message: 'Palavra-passe atual incorreta.' });
+      const match = await bcrypt.compare(currentPassword, gestora.password);
+      if (!match) return res.status(400).json({ message: 'Palavra-passe atual incorreta.' });
+      if (newPassword.length < 6) return res.status(400).json({ message: 'A nova palavra-passe deve ter pelo menos 6 caracteres.' });
+      const hash = await bcrypt.hash(newPassword, 10);
+      await setGestoraPassword(gestoraId, hash);
+    }
+
+    if (rgpdFile && rgpdFile.buffer && rgpdFile.buffer.length) {
+      const name = (rgpdFile.originalname || '').toLowerCase();
+      if (!name.endsWith('.pdf')) return res.status(400).json({ message: 'O documento RGPD deve ser um PDF.' });
+      await saveGestoraRgpd(gestoraId, rgpdFile.buffer);
+    }
+
+    res.json({ ok: true, message: 'Perfil atualizado.' });
+  } catch (err) {
+    logStartup(`updateProfile error: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao atualizar perfil.' });
   }
 });
 

@@ -28,6 +28,37 @@ function getLeadDir(leadId) {
   return path.join(STORAGE_DIR, String(leadId));
 }
 
+const GESTORAS_DIR = path.join(STORAGE_DIR, 'gestoras');
+
+function getGestoraDir(gestoraId) {
+  return path.join(GESTORAS_DIR, String(gestoraId));
+}
+
+const RGPD_FILENAME = 'rgpd.pdf';
+
+async function ensureGestoraDir(gestoraId) {
+  const dir = getGestoraDir(gestoraId);
+  await fs.mkdir(dir, { recursive: true });
+  return dir;
+}
+
+async function saveGestoraRgpd(gestoraId, buffer) {
+  const dir = await ensureGestoraDir(gestoraId);
+  const filePath = path.join(dir, RGPD_FILENAME);
+  await fs.writeFile(filePath, buffer);
+  return filePath;
+}
+
+async function readGestoraRgpd(gestoraId) {
+  const filePath = path.join(getGestoraDir(gestoraId), RGPD_FILENAME);
+  try {
+    return await fs.readFile(filePath);
+  } catch (err) {
+    if (err.code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
 function getExt(originalName) {
   if (!originalName || typeof originalName !== 'string') return '.pdf';
   const i = originalName.lastIndexOf('.');
@@ -114,6 +145,7 @@ async function cleanupOldStorage() {
     const maxAge = RETENTION_DAYS * 24 * 60 * 60 * 1000;
     for (const ent of entries) {
       if (!ent.isDirectory()) continue;
+      if (ent.name === 'gestoras') continue;
       const dirPath = path.join(STORAGE_DIR, ent.name);
       let newest = 0;
       try {
@@ -143,5 +175,7 @@ module.exports = {
   readDocument,
   getAttachmentsForLead,
   deleteLeadStorage,
+  saveGestoraRgpd,
+  readGestoraRgpd,
   cleanupOldStorage,
 };

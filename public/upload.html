@@ -815,7 +815,7 @@
         div.innerHTML =
           '<div class="doc-title">' + escapeHtml(d.label) + '</div>' +
           (!uploaded && d.description ? '<div class="doc-hint">' + escapeHtml(d.description) + '</div>' : '') +
-          (!uploaded ? '<p class="doc-hint">Descarregue o documento: <a href="/RGPD.pdf" target="_blank" rel="noopener" class="doc-link-inline">RGPD.pdf</a></p>' : '') +
+          (!uploaded ? '<p class="doc-hint">Descarregue o documento: <a href="/api/leads/' + leadId + '/rgpd" target="_blank" rel="noopener" class="doc-link-inline">RGPD.pdf</a></p>' : '') +
           '<div class="doc-upload-zone">' +
           (uploaded ? uploadedZoneHtml(d.field) : '<input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + escapeHtml(d.field) + '">') +
           '</div>' +
@@ -938,7 +938,7 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
                 var html = '';
                 if (item.description) html += '<div class="doc-hint">' + (item.description.indexOf('<a ') !== -1 ? item.description : escapeHtml(item.description)) + '</div>';
                 if (item.stepByStep) html += '<div class="doc-step">' + (item.stepByStep.indexOf('<') !== -1 ? item.stepByStep : escapeHtml(item.stepByStep)) + '</div>';
-                if (item === DOC_RGPD) html += '<p class="doc-hint">Descarregue o documento: <a href="/RGPD.pdf" target="_blank" rel="noopener" class="doc-link-inline">RGPD.pdf</a></p>';
+                if (item === DOC_RGPD) html += '<p class="doc-hint">Descarregue o documento: <a href="/api/leads/' + leadId + '/rgpd" target="_blank" rel="noopener" class="doc-link-inline">RGPD.pdf</a></p>';
                 if (item.footnote) html += '<p class="footnote">' + (item.footnote.indexOf('<a ') !== -1 ? item.footnote : escapeHtml(item.footnote)) + '</p>';
                 wrap.innerHTML = html;
                 blockEl.insertBefore(wrap, zone);

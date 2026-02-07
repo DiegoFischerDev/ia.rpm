@@ -124,14 +124,50 @@
 </head>
 <body>
   <div id="loginScreen" class="login-wrap screen">
-    <h1>Dashboard – Login</h1>
-    <form id="loginForm">
-      <label for="loginEmail">Email</label>
-      <input type="email" id="loginEmail" required autocomplete="email">
-      <label for="loginPassword">Palavra-passe</label>
-      <input type="password" id="loginPassword" required autocomplete="current-password">
-      <p id="loginError" class="error-msg" style="display:none;"></p>
-      <button type="submit" class="btn btn-primary" style="width:100%;">Entrar</button>
+    <div id="loginFormWrap">
+      <h1>Dashboard – Login</h1>
+      <form id="loginForm">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" required autocomplete="email">
+        <label for="loginPassword">Palavra-passe</label>
+        <input type="password" id="loginPassword" required autocomplete="current-password">
+        <p id="loginError" class="error-msg" style="display:none;"></p>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Entrar</button>
+        <p style="margin-top:1rem;text-align:center;">
+          <button type="button" id="btnPerdiSenha" class="btn btn-outline btn-sm">Perdi a senha</button>
+        </p>
+      </form>
+    </div>
+    <div id="forgotPasswordWrap" style="display:none;">
+      <h1>Redefinir palavra-passe</h1>
+      <p class="text-muted" style="margin-bottom:1rem;">Introduza o email da sua conta. Enviaremos um link para redefinir a palavra-passe.</p>
+      <form id="forgotPasswordForm">
+        <label for="forgotEmail">Email</label>
+        <input type="email" id="forgotEmail" required autocomplete="email">
+        <p id="forgotError" class="error-msg" style="display:none;"></p>
+        <p id="forgotSuccess" class="text-muted" style="display:none;"></p>
+        <button type="submit" class="btn btn-primary" style="width:100%;">Enviar link</button>
+        <p style="margin-top:1rem;text-align:center;">
+          <button type="button" id="btnVoltarLogin" class="btn btn-outline btn-sm">Voltar ao login</button>
+        </p>
+      </form>
+    </div>
+  </div>
+
+  <div id="resetPasswordScreen" class="login-wrap screen" style="display:none;">
+    <h1>Nova palavra-passe</h1>
+    <p class="text-muted" style="margin-bottom:1rem;">Defina uma nova palavra-passe (mínimo 6 caracteres).</p>
+    <form id="resetPasswordForm">
+      <label for="resetPassword">Nova palavra-passe</label>
+      <input type="password" id="resetPassword" required minlength="6" autocomplete="new-password">
+      <label for="resetPasswordConfirm">Confirmar palavra-passe</label>
+      <input type="password" id="resetPasswordConfirm" required minlength="6" autocomplete="new-password">
+      <p id="resetError" class="error-msg" style="display:none;"></p>
+      <p id="resetSuccess" class="text-muted" style="display:none;"></p>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Alterar palavra-passe</button>
+      <p style="margin-top:1rem;text-align:center;">
+        <a href="/" class="btn btn-outline btn-sm">Voltar ao login</a>
+      </p>
     </form>
   </div>
 
@@ -143,6 +179,7 @@
         <span id="navRafaBadge" class="nav-badge hidden">0</span>
       </a>
       <a href="#gestoras" id="navGestoras" class="sidebar-nav-item">Gestoras</a>
+      <a href="#perfil" id="navPerfil" class="sidebar-nav-item" style="display:none;">Perfil</a>
       <button type="button" id="btnLogout" class="sidebar-nav-item" style="width:100%;">Sair</button>
     </nav>
     <main class="main">
@@ -207,6 +244,34 @@
           </table>
         </div>
       </div>
+      <div id="screenPerfil" class="screen">
+        <h2 class="page-title">Perfil</h2>
+        <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1.25rem;">Atualize os seus dados e o documento RGPD que os seus leads descarregam.</p>
+        <div class="card" style="max-width:480px;padding:1.5rem;">
+          <form id="profileForm">
+            <label>Nome</label>
+            <input type="text" id="profileNome" readonly disabled style="background:var(--bg);color:var(--text-muted);">
+            <label>Email</label>
+            <input type="email" id="profileEmail" autocomplete="email">
+            <label>WhatsApp (com indicativo, ex: 351912345678)</label>
+            <input type="text" id="profileWhatsapp" placeholder="351912345678">
+            <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;">
+            <label>Alterar palavra-passe</label>
+            <input type="password" id="profileCurrentPassword" placeholder="Palavra-passe atual (deixar vazio para não alterar)" autocomplete="current-password">
+            <input type="password" id="profileNewPassword" placeholder="Nova palavra-passe (mín. 6 caracteres)" autocomplete="new-password">
+            <input type="password" id="profileNewPasswordConfirm" placeholder="Confirmar nova palavra-passe" autocomplete="new-password">
+            <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;">
+            <label>Documento RGPD (PDF)</label>
+            <p class="text-muted" style="font-size:0.8125rem;margin-bottom:0.5rem;">Os leads atribuídos a si descarregam este PDF. Suba um ficheiro para substituir o atual.</p>
+            <input type="file" id="profileRgpd" accept=".pdf">
+            <p id="profileError" class="error-msg" style="display:none;margin-top:0.5rem;"></p>
+            <p id="profileSuccess" class="text-muted" style="display:none;margin-top:0.5rem;"></p>
+            <div style="margin-top:1.25rem;">
+              <button type="submit" class="btn btn-primary">Guardar alterações</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -231,8 +296,10 @@
         <option value="sem_docs">sem_docs</option>
         <option value="docs_enviados">docs_enviados</option>
       </select>
-      <label>Gestora ID</label>
-      <input type="number" id="editLeadGestoraId" min="0" placeholder="vazio">
+      <div id="editLeadGestoraRow">
+        <label>Gestora ID</label>
+        <input type="number" id="editLeadGestoraId" min="0" placeholder="vazio">
+      </div>
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" id="modalLeadCancel">Cancelar</button>
         <button type="button" class="btn btn-primary" id="modalLeadSave">Guardar</button>
@@ -273,6 +340,7 @@
         if (id === 'leads') loadLeads();
         if (id === 'gestoras') loadGestoras();
         if (id === 'rafa') loadRafa();
+        if (id === 'perfil') loadProfile();
       }
 
       function updateRafaBadge() {
@@ -300,20 +368,127 @@
             user = data.user;
             document.getElementById('loginScreen').classList.remove('visible');
             document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('resetPasswordScreen').style.display = 'none';
             document.getElementById('dashboardApp').classList.add('visible');
             document.getElementById('dashboardApp').style.display = 'flex';
-            updateRafaBadge();
-            const hash = (window.location.hash || '#leads').slice(1) || 'leads';
-            const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : 'leads';
+            if (user.role === 'admin') {
+              updateRafaBadge();
+              document.getElementById('navRafa').style.display = '';
+              document.getElementById('navGestoras').style.display = '';
+              document.getElementById('navPerfil').style.display = 'none';
+            } else {
+              document.getElementById('navRafa').style.display = 'none';
+              document.getElementById('navGestoras').style.display = 'none';
+              document.getElementById('navPerfil').style.display = '';
+            }
+            const hash = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
+            const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : hash === 'perfil' ? 'perfil' : 'leads';
             showScreen(screenId);
           })
           .catch(() => {
+            tryShowResetPassword();
             document.getElementById('loginScreen').classList.add('visible');
             document.getElementById('loginScreen').style.display = 'block';
             document.getElementById('dashboardApp').classList.remove('visible');
             document.getElementById('dashboardApp').style.display = 'none';
           });
       }
+
+      function tryShowResetPassword() {
+        const hash = (window.location.hash || '').slice(1);
+        const parts = hash.split('?');
+        const page = parts[0];
+        const params = {};
+        if (parts[1]) parts[1].split('&').forEach(function (p) {
+          const kv = p.split('=');
+          if (kv[0]) params[kv[0]] = decodeURIComponent(kv[1] || '');
+        });
+        if (page === 'reset-password' && params.token) {
+          document.getElementById('loginScreen').style.display = 'none';
+          document.getElementById('resetPasswordScreen').style.display = 'block';
+          document.getElementById('resetPasswordScreen').classList.add('visible');
+          window.resetPasswordToken = params.token;
+        }
+      }
+
+      document.getElementById('btnPerdiSenha').addEventListener('click', function () {
+        document.getElementById('loginFormWrap').style.display = 'none';
+        document.getElementById('forgotPasswordWrap').style.display = 'block';
+        document.getElementById('forgotSuccess').style.display = 'none';
+        document.getElementById('forgotError').style.display = 'none';
+      });
+      document.getElementById('btnVoltarLogin').addEventListener('click', function () {
+        document.getElementById('forgotPasswordWrap').style.display = 'none';
+        document.getElementById('loginFormWrap').style.display = 'block';
+      });
+      document.getElementById('forgotPasswordForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var errEl = document.getElementById('forgotError');
+        var okEl = document.getElementById('forgotSuccess');
+        errEl.style.display = 'none';
+        okEl.style.display = 'none';
+        fetch(API + '/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email: document.getElementById('forgotEmail').value.trim().toLowerCase() }),
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (d) {
+            okEl.textContent = d.message || 'Se existir uma conta com este email, receberá um link para redefinir a palavra-passe.';
+            okEl.style.display = 'block';
+          })
+          .catch(function () {
+            errEl.textContent = 'Erro ao enviar. Tente novamente.';
+            errEl.style.display = 'block';
+          });
+      });
+      document.getElementById('resetPasswordForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var p1 = document.getElementById('resetPassword').value;
+        var p2 = document.getElementById('resetPasswordConfirm').value;
+        var errEl = document.getElementById('resetError');
+        var okEl = document.getElementById('resetSuccess');
+        errEl.style.display = 'none';
+        okEl.style.display = 'none';
+        if (p1 !== p2) {
+          errEl.textContent = 'As palavras-passe não coincidem.';
+          errEl.style.display = 'block';
+          return;
+        }
+        if (p1.length < 6) {
+          errEl.textContent = 'A palavra-passe deve ter pelo menos 6 caracteres.';
+          errEl.style.display = 'block';
+          return;
+        }
+        var token = window.resetPasswordToken || (function () {
+          var h = (window.location.hash || '').slice(1).split('?')[1] || '';
+          var p = h.split('&').find(function (x) { return x.indexOf('token=') === 0; });
+          return p ? decodeURIComponent(p.replace('token=', '')) : '';
+        })();
+        if (!token) {
+          errEl.textContent = 'Link inválido ou expirado. Peça um novo em «Perdi a senha».';
+          errEl.style.display = 'block';
+          return;
+        }
+        fetch(API + '/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ token: token, password: p1 }),
+        })
+          .then(function (r) { return r.json().then(function (d) { return r.ok ? d : Promise.reject(d); }); })
+          .then(function (d) {
+            okEl.textContent = d.message || 'Palavra-passe alterada. Pode fazer login.';
+            okEl.style.display = 'block';
+            window.resetPasswordToken = null;
+            window.location.hash = '';
+          })
+          .catch(function (d) {
+            errEl.textContent = (d && d.message) || 'Erro. Tente novamente ou peça um novo link.';
+            errEl.style.display = 'block';
+          });
+      });
 
       document.getElementById('loginForm').addEventListener('submit', function (e) {
         e.preventDefault();
@@ -347,8 +522,8 @@
 
       window.addEventListener('hashchange', function () {
         if (!user) return;
-        const hash = (window.location.hash || '#leads').slice(1) || 'leads';
-        const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : 'leads';
+        const hash = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
+        const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : hash === 'perfil' ? 'perfil' : 'leads';
         showScreen(screenId);
       });
 
@@ -385,12 +560,8 @@
                 '</td><td>' +
                 escapeHtml(formatDate(r.updated_at)) +
                 '</td><td class="actions">' +
-                '<button type="button" class="btn btn-secondary btn-sm btn-edit-lead" data-id="' +
-                r.id +
-                '">Editar</button>' +
-                '<button type="button" class="btn btn-danger btn-sm btn-delete-lead" data-id="' +
-                r.id +
-                '">Apagar</button>' +
+                '<button type="button" class="btn btn-secondary btn-sm btn-edit-lead" data-id="' + r.id + '">Editar</button>' +
+                (user.role === 'admin' ? '<button type="button" class="btn btn-danger btn-sm btn-delete-lead" data-id="' + r.id + '">Apagar</button>' : '') +
                 '</td>';
               tbody.appendChild(tr);
             });
@@ -459,6 +630,74 @@
           });
       }
 
+      function loadProfile() {
+        if (user && user.role !== 'gestora') return;
+        fetch(API + '/profile', { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : Promise.reject()))
+          .then((data) => {
+            document.getElementById('profileNome').value = data.nome || '';
+            document.getElementById('profileEmail').value = data.email || '';
+            document.getElementById('profileWhatsapp').value = data.whatsapp || '';
+            document.getElementById('profileCurrentPassword').value = '';
+            document.getElementById('profileNewPassword').value = '';
+            document.getElementById('profileNewPasswordConfirm').value = '';
+            document.getElementById('profileRgpd').value = '';
+            document.getElementById('profileError').style.display = 'none';
+            document.getElementById('profileSuccess').style.display = 'none';
+          })
+          .catch(() => {
+            document.getElementById('profileError').textContent = 'Erro ao carregar perfil.';
+            document.getElementById('profileError').style.display = 'block';
+          });
+      }
+
+      document.getElementById('profileForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var errEl = document.getElementById('profileError');
+        var okEl = document.getElementById('profileSuccess');
+        errEl.style.display = 'none';
+        okEl.style.display = 'none';
+        var newP = document.getElementById('profileNewPassword').value;
+        var newPConfirm = document.getElementById('profileNewPasswordConfirm').value;
+        if (newP || newPConfirm) {
+          if (newP.length < 6) {
+            errEl.textContent = 'A nova palavra-passe deve ter pelo menos 6 caracteres.';
+            errEl.style.display = 'block';
+            return;
+          }
+          if (newP !== newPConfirm) {
+            errEl.textContent = 'A confirmação da nova palavra-passe não coincide.';
+            errEl.style.display = 'block';
+            return;
+          }
+        }
+        var fd = new FormData();
+        fd.append('whatsapp', document.getElementById('profileWhatsapp').value.trim());
+        fd.append('email', document.getElementById('profileEmail').value.trim().toLowerCase());
+        fd.append('currentPassword', document.getElementById('profileCurrentPassword').value);
+        fd.append('newPassword', newP);
+        var rgpdInput = document.getElementById('profileRgpd');
+        if (rgpdInput.files && rgpdInput.files[0]) fd.append('rgpd', rgpdInput.files[0]);
+        fetch(API + '/profile', {
+          method: 'POST',
+          credentials: 'include',
+          body: fd,
+        })
+          .then(function (r) { return r.json().then(function (d) { return r.ok ? d : Promise.reject(d); }); })
+          .then(function (d) {
+            okEl.textContent = d.message || 'Perfil atualizado.';
+            okEl.style.display = 'block';
+            document.getElementById('profileCurrentPassword').value = '';
+            document.getElementById('profileNewPassword').value = '';
+            document.getElementById('profileNewPasswordConfirm').value = '';
+            document.getElementById('profileRgpd').value = '';
+          })
+          .catch(function (d) {
+            errEl.textContent = (d && d.message) || 'Erro ao atualizar perfil.';
+            errEl.style.display = 'block';
+          });
+      });
+
       function openEditLead(lead) {
         document.getElementById('editLeadId').value = lead.id;
         document.getElementById('editLeadNome').value = lead.nome || '';
@@ -466,6 +705,7 @@
         document.getElementById('editLeadEstadoConversa').value = lead.estado_conversa || 'aguardando_escolha';
         document.getElementById('editLeadEstadoDocs').value = lead.estado_docs || 'aguardando_docs';
         document.getElementById('editLeadGestoraId').value = lead.gestora_id != null ? lead.gestora_id : '';
+        document.getElementById('editLeadGestoraRow').style.display = user && user.role === 'admin' ? '' : 'none';
         document.getElementById('modalLead').classList.add('visible');
       }
 
@@ -481,6 +721,7 @@
           estado_docs: document.getElementById('editLeadEstadoDocs').value,
           gestora_id: document.getElementById('editLeadGestoraId').value.trim() ? parseInt(document.getElementById('editLeadGestoraId').value, 10) : null,
         };
+        if (user && user.role === 'gestora') delete payload.gestora_id;
         fetch(API + '/leads/' + id, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },

@@ -85,6 +85,57 @@ async function getGestoraById(id) {
   return rows[0] || null;
 }
 
+/** Para login: gestora por email (inclui password). */
+async function getGestoraByEmail(email) {
+  if (!email || typeof email !== 'string') return null;
+  const e = email.trim().toLowerCase();
+  const rows = await query(
+    'SELECT id, nome, email, whatsapp, ativo, password FROM ch_gestoras WHERE email = ?',
+    [e]
+  );
+  return rows[0] || null;
+}
+
+/** Lista leads atribuídos a uma gestora (dashboard gestora). */
+async function getLeadsByGestoraId(gestoraId) {
+  const rows = await query(
+    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, created_at, updated_at FROM ch_leads WHERE gestora_id = ? ORDER BY updated_at DESC',
+    [gestoraId]
+  );
+  return rows;
+}
+
+async function setGestoraPassword(gestoraId, hashedPassword) {
+  await query(
+    'UPDATE ch_gestoras SET password = ?, password_reset_token = NULL, password_reset_expires_at = NULL, updated_at = NOW() WHERE id = ?',
+    [hashedPassword || null, gestoraId]
+  );
+}
+
+async function setGestoraPasswordResetToken(gestoraId, token, expiresAt) {
+  await query(
+    'UPDATE ch_gestoras SET password_reset_token = ?, password_reset_expires_at = ? WHERE id = ?',
+    [token || null, expiresAt || null, gestoraId]
+  );
+}
+
+/** Por token de reset (só devolve se não expirado). */
+async function getGestoraByResetToken(token) {
+  if (!token || typeof token !== 'string') return null;
+  const rows = await query(
+    'SELECT id, nome, email FROM ch_gestoras WHERE password_reset_token = ? AND password_reset_expires_at > NOW()',
+    [token.trim()]
+  );
+  return rows[0] || null;
+}
+
+async function clearGestoraPasswordReset(gestoraId) {
+  await query(
+    'UPDATE ch_gestoras SET password_reset_token = NULL, password_reset_expires_at = NULL WHERE id = ?',
+    [gestoraId]
+  );
+}
+
 async function getActiveGestoras() {
   const rows = await query('SELECT id, nome, email, whatsapp FROM ch_gestoras WHERE ativo = 1 ORDER BY id ASC');
   return rows;
@@ -242,6 +293,12 @@ module.exports = {
   setEmailVerification,
   confirmEmailAndSetLead,
   getGestoraById,
+  getGestoraByEmail,
+  getLeadsByGestoraId,
+  setGestoraPassword,
+  setGestoraPasswordResetToken,
+  getGestoraByResetToken,
+  clearGestoraPasswordReset,
   getActiveGestoras,
   getNextGestoraForLead,
   updateLeadGestora,
