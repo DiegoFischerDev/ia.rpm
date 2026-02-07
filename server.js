@@ -287,7 +287,7 @@ app.get('/api/leads', async (req, res) => {
   }
 });
 
-// PDF RGPD: da gestora do lead se existir, senão modelo padrão
+// PDF RGPD: da gestora do lead (cada gestora sube o seu)
 app.get('/api/leads/:leadId/rgpd', async (req, res) => {
   const leadId = req.params.leadId;
   if (!/^\d+$/.test(leadId)) return res.status(400).send();
@@ -300,10 +300,7 @@ app.get('/api/leads/:leadId/rgpd', async (req, res) => {
       return;
     }
   }
-  const defaultPath = path.join(__dirname, 'public', 'RGPD.pdf');
-  res.sendFile(defaultPath, { headers: { 'Content-Disposition': 'inline; filename="RGPD.pdf"' } }, (err) => {
-    if (err) res.status(404).send();
-  });
+  res.status(404).json({ message: 'Documento RGPD ainda não disponível para este lead.' });
 });
 
 // Estado do lead: tem email? docs já enviados? (para o front saber que ecrã mostrar)
