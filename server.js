@@ -10,6 +10,7 @@ for (const p of envPaths) {
 
 const express = require('express');
 const session = require('express-session');
+const MySQLStore = require('express-mysql-session')(session);
 const fs = require('fs');
 const multer = require('multer');
 const { Resend } = require('resend');
@@ -54,15 +55,35 @@ logStartup('server.js carregou');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Store de sessões em MySQL para persistir entre vários processos Node (ex.: Hostinger)
+const sessionStore = (process.env.DB_HOST && process.env.DB_USER)
+  ? new MySQLStore({
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT || 3306),
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      createDatabaseTable: true,
+      schema: { tableName: 'dashboard_sessions' },
+    })
+  : undefined;
+
 app.use(
   session({
+    store: sessionStore,
     secret: process.env.SESSION_SECRET || 'ia-app-dashboard-secret-change-in-production',
     resave: false,
     saveUninitialized: false,
-    cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, maxAge: 24 * 60 * 60 * 1000 },
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+      sameSite: 'lax',
+    },
   })
 );
 
