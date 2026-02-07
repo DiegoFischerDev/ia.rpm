@@ -368,16 +368,23 @@
               </div>
             </div>
             <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;">
-            <label>Documento RGPD (PDF)</label>
+            <label>Seu documento RGPD (PDF)</label>
             <div id="profileRgpdEnviado" style="display:none;">
-              <p style="margin:0 0 0.75rem 0;"><img src="documento.png" alt="" style="max-height:64px;height:auto;vertical-align:middle;"></p>
-              <div class="actions" style="margin-bottom:1rem;">
-                <a href="#" id="profileRgpdVer" target="_blank" rel="noopener" class="btn btn-secondary">Ver</a>
-                <button type="button" id="profileRgpdSubstituir" class="btn btn-outline">Substituir</button>
+              <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;">
+                <img src="documento.png" alt="" style="max-height:64px;height:auto;">
+                <div class="actions" style="margin:0;">
+                  <a href="#" id="profileRgpdVer" target="_blank" rel="noopener" class="btn btn-outline">Ver</a>
+                  <button type="button" id="profileRgpdSubstituir" class="btn btn-outline">Substituir</button>
+                </div>
               </div>
             </div>
             <div id="profileRgpdNaoEnviado" style="display:none;">
-              <p class="text-muted" style="font-size:0.875rem;margin-bottom:0.5rem;">Ainda não enviou nenhum documento. Suba um PDF.</p>
+              <p class="profile-rgpd-alert" style="font-size:0.875rem;margin-bottom:0.5rem;color:var(--error);display:flex;align-items:center;gap:0.5rem;">
+                <span style="flex-shrink:0;" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </span>
+                Ainda não enviou nenhum documento. Suba um PDF.
+              </p>
               <input type="file" id="profileRgpd" accept=".pdf">
               <p id="profileRgpdPreview" style="display:none;margin:0.75rem 0 0 0;"><img src="documento.png" alt="" style="max-height:64px;height:auto;vertical-align:middle;"></p>
             </div>
@@ -389,7 +396,7 @@
             </div>
             <p id="profileError" class="error-msg" style="display:none;margin-top:0.5rem;"></p>
             <p id="profileSuccess" class="text-muted" style="display:none;margin-top:0.5rem;"></p>
-            <div style="margin-top:1.25rem;">
+            <div style="margin-top:1.25rem;display:flex;justify-content:flex-end;">
               <button type="submit" class="btn btn-primary">Guardar alterações</button>
             </div>
           </form>
