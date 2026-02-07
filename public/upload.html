@@ -254,12 +254,17 @@
 
     <div id="stepGate">
       <div id="stepNomeEmail" class="card" style="display:none;">
-        <h2>Confirme os seus dados</h2>
-        <p class="doc-hint">Introduza o seu nome e email. Enviaremos um código de confirmação por email.</p>
-        <label for="gate_nome">Nome completo *</label>
+        <h2>Dados pessoais</h2>
+        <label class="consent-checkbox">
+          <input type="checkbox" id="consent_rafa_gate" name="consent_rafa_gate" required>
+          Aceito partilhar o meu nome e email com a Rafa
+        </label>
+        <p class="doc-hint doc-privacy">Com a Rafa partilhamos apenas o seu nome e email. Os restantes dados (estado civil, vínculo laboral, etc.) são apenas para a gestora e para o seu processo (guardados de forma segura).</p>
+        <label for="gate_nome">O seu nome completo *</label>
         <input type="text" id="gate_nome" placeholder="Ex.: Maria Silva" autocomplete="name">
-        <label for="gate_email">Email *</label>
+        <label for="gate_email">O seu email *</label>
         <input type="email" id="gate_email" placeholder="email@exemplo.pt" autocomplete="email">
+        <p class="doc-hint">Enviaremos um código de confirmação por email.</p>
         <div id="gateError1" class="error-msg" style="display:none;"></div>
         <button type="button" class="btn btn-primary" id="btnAvançar">Avançar</button>
       </div>
@@ -298,20 +303,20 @@
     </div>
 
     <form id="form">
+      <input type="hidden" id="nome" name="nome">
+      <input type="hidden" id="email" name="email">
+      <input type="checkbox" id="consent_rafa" name="consent_rafa" value="1" style="position:absolute;opacity:0;pointer-events:none;" aria-hidden="true" tabindex="-1">
+
       <div class="card">
         <div class="card-title-row">
-          <h2>Dados pessoais</h2>
+          <h2>Documentos obrigatórios</h2>
           <label class="consent-checkbox">
-            <input type="checkbox" id="consent_rafa" name="consent_rafa" required>
-            Aceito partilhar o meu nome e email com a Rafa
+            <input type="checkbox" id="consent_intermediaria" name="consent_intermediaria" required>
+            Aceito compartilhar esses docs com a intermediária de crédito
           </label>
         </div>
-        <p class="doc-hint doc-privacy">Com a Rafa partilhamos apenas o seu nome e email. Os restantes dados abaixo são apenas para a gestora e para o seu processo (guardados de forma segura).</p>
-        <label for="nome">O seu nome completo *</label>
-        <input type="text" id="nome" name="nome" required placeholder="Ex.: Maria Silva" autocomplete="name">
-        <label for="email">O seu email *</label>
-        <input type="email" id="email" name="email" required placeholder="email@exemplo.pt" readonly title="Email associado a este link.">
-        <p class="doc-hint doc-privacy" style="margin-top:1rem;">Dados apenas para a gestora e para o seu processo:</p>
+        <p class="doc-hint doc-privacy">Os documentos ficam guardados apenas no seu dispositivo até fazer o envio para a gestora. A equipe do RPM não tem acesso a essas informações.</p>
+        <p class="doc-hint doc-privacy" style="margin-top:0.75rem;">Dados para a gestora e para o seu processo:</p>
         <label for="estado_civil">Estado civil e regime de casamento</label>
         <select id="estado_civil" name="estado_civil">
           <option value="">Selecione...</option>
@@ -343,17 +348,6 @@
             <option value="Não">Não</option>
           </select>
         </div>
-      </div>
-
-      <div class="card">
-        <div class="card-title-row">
-          <h2>Documentos obrigatórios</h2>
-          <label class="consent-checkbox">
-            <input type="checkbox" id="consent_intermediaria" name="consent_intermediaria" required>
-            Aceito compartilhar esses docs com a intermediária de crédito
-          </label>
-        </div>
-        <p class="doc-hint doc-privacy">Os documentos ficam guardados apenas no seu dispositivo até fazer o envio para a gestora. A equipe do RPM não tem acesso a essas informações.</p>
         <div id="docList"></div>
         <div class="checkbox-wrap" style="margin-top:1.25rem;">
           <label>
@@ -887,10 +881,7 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
               var fiadorWrap = document.getElementById('fiadorWrap');
               if (fiadorWrap) fiadorWrap.style.display = (vinculoVal === VINCULO_TEMPORARIO || vinculoVal === VINCULO_RECIBOS_VERDES) ? 'block' : 'none';
             var emailFormEl = document.getElementById('email');
-            if (emailFormEl) {
-              emailFormEl.value = email;
-              emailFormEl.readOnly = true;
-            }
+            if (emailFormEl) emailFormEl.value = email;
             nomeEl.addEventListener('blur', saveDados);
               numDepEl.addEventListener('blur', saveDados);
               if (anosEmpregoEl) anosEmpregoEl.addEventListener('blur', saveDados);
@@ -956,10 +947,13 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         .catch(() => { showStep('stepNomeEmail'); });
 
       document.getElementById('btnAvançar').addEventListener('click', function () {
+        var consentEl = document.getElementById('consent_rafa_gate');
         var nome = document.getElementById('gate_nome').value.trim();
         var email = document.getElementById('gate_email').value.trim();
         var errEl = document.getElementById('gateError1');
         errEl.style.display = 'none';
+        if (!consentEl || !consentEl.checked) { errEl.textContent = 'Aceite partilhar o seu nome e email com a Rafa para continuar.'; errEl.style.display = 'block'; return; }
+        if (!nome) { errEl.textContent = 'Indique o seu nome completo.'; errEl.style.display = 'block'; return; }
         if (!email) { errEl.textContent = 'Indique o seu email.'; errEl.style.display = 'block'; return; }
         this.disabled = true;
         fetch('/api/leads/' + leadId + '/request-verification', {
@@ -997,6 +991,10 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
           .then(function (r) {
             if (r.ok) {
               setVerifiedEmail(pendingEmailForConfirm);
+              document.getElementById('email').value = pendingEmailForConfirm;
+              document.getElementById('nome').value = document.getElementById('gate_nome').value.trim();
+              var cr = document.getElementById('consent_rafa');
+              if (cr) cr.checked = true;
               showStep('mainForm');
               setSemDocsUI(false);
               loadDocuments();
@@ -1026,6 +1024,9 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
             if (r.ok) {
               return r.json().then(function (d) {
                 setVerifiedEmail(email);
+                document.getElementById('email').value = email;
+                var cr = document.getElementById('consent_rafa');
+                if (cr) cr.checked = true;
                 if (d.docsEnviados) {
                   setDocsEnviadosDisplay(d);
                   showStep('stepDocsEnviados');
