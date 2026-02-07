@@ -216,6 +216,10 @@
     .footnote a:hover { text-decoration: underline; }
     .conditional { display: none; }
     .conditional.visible { display: block; }
+    .card-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; margin-bottom: 1.25rem; }
+    .card-title-row h2 { margin: 0; }
+    .card-title-row .consent-checkbox { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem; font-weight: 500; color: var(--text); }
+    .card-title-row .consent-checkbox input { width: auto; margin: 0; }
     .checkbox-wrap { margin: 1rem 0; }
     .checkbox-wrap label { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
     .checkbox-wrap input { width: auto; margin: 0; }
@@ -242,9 +246,10 @@
       <h1>Envio de documentos</h1>
       <p id="pageIntro">🏡✨ Estás a um passo de iniciar a tua jornada para sair do arrendamento e conquistar a casa própria! 🔑<br><br>
       ✅ Esta plataforma foi criada para te ajudar a organizar, de forma simples e prática, todos os documentos necessários. Assim que tiveres tudo pronto, podes submeter o formulário e enviar os teus documentos por e-mail diretamente para um dos nossos parceiros habilitados em gestão de crédito.<br><br>
-      ✅ O teu caso será analisado e será definida a melhor estratégia para ti. A gestora de crédito entrará em contacto contigo via WhatsApp para explicar quais serão os próximos passos.<br><br>
+      ✅ O teu caso será analisado e será definida a melhor estratégia para ti. A gestora de crédito entrará em contacto contigo via Email ou WhatsApp para explicar quais serão os próximos passos.<br><br>
       Sabemos que são muitos documentos, mas não desistas 💪 Assim que tiveres tudo em mãos, todo o resto do processo será muito mais simples e fluido.<br><br>
-      Boa sorte! ✨</p>
+      Boa sorte! ✨<br><br>
+      Rafa pelo mundo</p>
     </header>
 
     <div id="stepGate">
@@ -284,6 +289,9 @@
     </div>
 
     <div id="mainForm" style="display:none;">
+    <div id="semDocsDisclaimer" class="card" style="display:none;">
+      <p class="doc-hint" style="margin:0;">Poxa, infelizmente os bancos pedem todos estes documentos para avançar com o processo. Vamos manter contacto e, assim que tiveres tudo em ordem, continua por aqui. Boa sorte! ✨</p>
+    </div>
     <div id="progressWrap" class="card" style="display:none;">
       <p class="progress-text" id="progressText">0 de 10 documentos anexados</p>
       <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
@@ -291,10 +299,20 @@
 
     <form id="form">
       <div class="card">
-        <h2>Dados pessoais</h2>
+        <div class="card-title-row">
+          <h2>Dados pessoais</h2>
+          <label class="consent-checkbox">
+            <input type="checkbox" id="consent_rafa" name="consent_rafa" required>
+            Aceito partilhar o meu nome e email com a Rafa
+          </label>
+        </div>
+        <p class="doc-hint doc-privacy">Com a Rafa partilhamos apenas o seu nome e email. Os restantes dados abaixo são apenas para a gestora e para o seu processo (guardados de forma segura).</p>
         <label for="nome">O seu nome completo *</label>
         <input type="text" id="nome" name="nome" required placeholder="Ex.: Maria Silva" autocomplete="name">
-        <label for="estado_civil">Estado civil e regime de casamento (se aplicável)</label>
+        <label for="email">O seu email *</label>
+        <input type="email" id="email" name="email" required placeholder="email@exemplo.pt" readonly title="Email associado a este link.">
+        <p class="doc-hint doc-privacy" style="margin-top:1rem;">Dados apenas para a gestora e para o seu processo:</p>
+        <label for="estado_civil">Estado civil e regime de casamento</label>
         <select id="estado_civil" name="estado_civil">
           <option value="">Selecione...</option>
           <option value="Solteiro(a)">Solteiro(a)</option>
@@ -307,18 +325,37 @@
         </select>
         <label for="num_dependentes">N.º de dependentes</label>
         <input type="number" id="num_dependentes" name="num_dependentes" min="0" placeholder="0">
-        <label for="email">O seu email *</label>
-        <input type="email" id="email" name="email" required placeholder="email@exemplo.pt" readonly title="Email associado a este link.">
+        <label for="anos_emprego_atual">A quantos anos trabalha no emprego atual?</label>
+        <input type="text" id="anos_emprego_atual" name="anos_emprego_atual" placeholder="Ex.: 2 ou Menos de 1">
+        <label for="vinculo_laboral">Qual o seu vínculo laboral?</label>
+        <select id="vinculo_laboral" name="vinculo_laboral">
+          <option value="">Selecione...</option>
+          <option value="Contrato Efetivo">Contrato Efetivo</option>
+          <option value="Contrato temporário">Contrato temporário</option>
+          <option value="Recibos verdes">Recibos verdes</option>
+        </select>
+        <div id="fiadorWrap" class="conditional" style="display:none;">
+          <label for="disponibilidade_fiador">Teria disponibilidade de apresentar um fiador?</label>
+          <p class="doc-hint">Em algumas situações (por exemplo, contrato temporário ou atividade por conta própria), o banco pode exigir um fiador para aprovar o crédito. O fiador é alguém que se compromete perante o banco a pagar a dívida caso o titular do crédito não o faça. Indicar disponibilidade ajuda a gestora a orientar o seu processo.</p>
+          <select id="disponibilidade_fiador" name="disponibilidade_fiador">
+            <option value="">Selecione...</option>
+            <option value="Sim">Sim</option>
+            <option value="Não">Não</option>
+          </select>
+        </div>
       </div>
 
       <div class="card">
-        <h2>Documentos obrigatórios</h2>
+        <div class="card-title-row">
+          <h2>Documentos obrigatórios</h2>
+          <label class="consent-checkbox">
+            <input type="checkbox" id="consent_intermediaria" name="consent_intermediaria" required>
+            Aceito compartilhar esses docs com a intermediária de crédito
+          </label>
+        </div>
         <p class="doc-hint doc-privacy">Os documentos ficam guardados apenas no seu dispositivo até fazer o envio para a gestora. A equipe do RPM não tem acesso a essas informações.</p>
         <div id="docList"></div>
-      </div>
-
-      <div class="card">
-        <div class="checkbox-wrap">
+        <div class="checkbox-wrap" style="margin-top:1.25rem;">
           <label>
             <input type="checkbox" id="financiamento_100" name="financiamento_100" value="1">
             Solicito financiamento a 100% para jovens com menos de 35 anos
@@ -327,10 +364,7 @@
         <div id="docs_100" class="conditional">
           <div id="docList100"></div>
         </div>
-      </div>
-
-      <div class="card" id="cardRgpd">
-        <div id="docRgpd"></div>
+        <div id="docRgpd" style="margin-top:1.25rem;"></div>
       </div>
 
       <div class="card">
@@ -340,6 +374,7 @@
 
       <div id="formError" class="error-msg" style="display:none;"></div>
       <button type="submit" class="btn btn-primary" id="submitBtn" disabled><span class="btn-text">Enviar para a gestora</span></button>
+      <button type="button" class="btn btn-outline" id="btnSemDocs" style="margin-top:0.75rem; display:none;">Não tenho todos os docs</button>
     </form>
     </div>
   </div>
@@ -357,8 +392,15 @@
       const IDB_NAME = 'ia_app_lead_docs';
       const IDB_STORE = 'files';
       let pendingEmailForConfirm = '';
+      let leadIsSemDocs = false; // lead já está em sem_docs (ex.: voltou à página)
       function getVerifiedEmail() { return sessionStorage.getItem(STORAGE_KEY) || ''; }
       function setVerifiedEmail(email) { sessionStorage.setItem(STORAGE_KEY, email); }
+      function setSemDocsUI(showDisclaimer) {
+        var disc = document.getElementById('semDocsDisclaimer');
+        var btn = document.getElementById('btnSemDocs');
+        if (disc) disc.style.display = showDisclaimer ? 'block' : 'none';
+        if (btn) btn.style.display = showDisclaimer || leadIsSemDocs ? 'none' : 'block';
+      }
 
       function idbOpen() {
         return new Promise(function (resolve, reject) {
@@ -426,6 +468,28 @@
           });
         });
       }
+      var FORM_DADOS_KEY = 'formDados';
+      function idbSaveFormDados(leadId, obj) {
+        return idbOpen().then(function (db) {
+          return new Promise(function (resolve, reject) {
+            var tx = db.transaction(IDB_STORE, 'readwrite');
+            var store = tx.objectStore(IDB_STORE);
+            store.put({ key: leadId + '_' + FORM_DADOS_KEY, formDados: obj || {} });
+            tx.oncomplete = function () { resolve(); };
+            tx.onerror = function () { reject(tx.error); };
+          });
+        });
+      }
+      function idbGetFormDados(leadId) {
+        return idbOpen().then(function (db) {
+          return new Promise(function (resolve, reject) {
+            var tx = db.transaction(IDB_STORE, 'readonly');
+            var req = tx.objectStore(IDB_STORE).get(leadId + '_' + FORM_DADOS_KEY);
+            tx.oncomplete = function () { resolve(req.result && req.result.formDados ? req.result.formDados : null); };
+            tx.onerror = function () { reject(tx.error); };
+          });
+        });
+      }
 
       function showStep(stepId) {
         ['stepNomeEmail', 'stepCode', 'stepEnterEmail', 'stepDocsEnviados', 'mainForm'].forEach(function (id) {
@@ -466,15 +530,42 @@
         setGestoraWhatsappDisplay(data.gestoraWhatsapp, data.nome);
       }
 
-      const DOCS_BASE = [
-        { field: 'cartao_residencia_ou_passaporte', label: '1. Cartão de residência ou passaporte', description: 'Documento de identificação válido: cartão de residência (titular de autorização de residência) ou passaporte. Deve estar dentro do prazo de validade.' },
-        { type: 'recibos', label: '2. Últimos 3 recibos de vencimento', description: 'Comprovativo dos seus rendimentos. São os comprovativos que recebe do empregador com o valor líquido do salário. Pode obtê-los no portal do empregador, no recibo em PDF que recebe por email, ou pedindo à entidade patronal. Anexe os 3 últimos meses.', fields: ['recibo_vencimento_1', 'recibo_vencimento_2', 'recibo_vencimento_3'] },
-        { field: 'contrato_ou_declaracao_efetividade', label: '3. Contrato ou declaração de efetividade', description: 'Comprova o vínculo laboral e se está efetivo. Pode ser o contrato de trabalho assinado ou uma declaração da entidade patronal a indicar que está em regime de efetividade. A declaração deve constar no papel timbrado da empresa e ser recente.' },
-        { field: 'irs_declaracao', label: '4. Declaração de IRS (último ano)', description: 'Declaração de IRS referente ao último ano fiscal. Obtém-se no Portal das Finanças (finanças.gov.pt): Área reservada → Declarações → Consultar declarações entregues. Faça download do PDF da declaração entregue.' },
-        { field: 'irs_nota_liquidacao', label: '5. Nota de liquidação IRS', description: 'Documento que comprova o resultado da liquidação do IRS (reembolso ou valor a pagar). Também disponível no Portal das Finanças: após a entrega da declaração, a nota de liquidação fica disponível para download na mesma área.' },
-        { field: 'comprovativo_morada', label: '6. Comprovativo de morada', description: 'Documento que comprova a sua morada fiscal (ex.: extrato de morada ou comprovativo retirado do site das Finanças). No Portal das Finanças: Área reservada → Dados pessoais / Morada fiscal. Pode gerar um comprovativo em PDF.' },
-        { field: 'mapa_responsabilidades', label: '7. Mapa de responsabilidades de crédito', description: 'Documento oficial do Banco de Portugal que lista os seus créditos. Passo a passo: aceda ao site do Banco de Portugal (<a href="https://www.bportugal.pt/" target="_blank" rel="noopener" class="doc-link-inline">www.bportugal.pt</a>) → Particulares → Central de Responsabilidades de Crédito → aceite as condições → selecione a data (mês/ano) → autentique-se com Cartão de Cidadão ou Portal das Finanças. O download é feito automaticamente.' },
-      ];
+      const VINCULO_EFETIVO = 'Contrato Efetivo';
+      const VINCULO_TEMPORARIO = 'Contrato temporário';
+      const VINCULO_RECIBOS_VERDES = 'Recibos verdes';
+
+      function getDocsBase(vinculo) {
+        const cartao = { field: 'cartao_residencia_ou_passaporte', label: '1. Cartão de residência ou passaporte', description: 'Documento de identificação válido: cartão de residência (titular de autorização de residência) ou passaporte. Deve estar dentro do prazo de validade.' };
+        const common = [
+          { field: 'irs_declaracao', label: '4. Declaração de IRS (último ano)', description: 'Declaração de IRS referente ao último ano fiscal. Obtém-se no Portal das Finanças (finanças.gov.pt): Área reservada → Declarações → Consultar declarações entregues. Faça download do PDF da declaração entregue.' },
+          { field: 'irs_nota_liquidacao', label: '5. Nota de liquidação IRS', description: 'Documento que comprova o resultado da liquidação do IRS (reembolso ou valor a pagar). Também disponível no Portal das Finanças: após a entrega da declaração, a nota de liquidação fica disponível para download na mesma área.' },
+          { field: 'comprovativo_morada', label: '6. Comprovativo de morada', description: 'Documento que comprova a sua morada fiscal (ex.: extrato de morada ou comprovativo retirado do site das Finanças). No Portal das Finanças: Área reservada → Dados pessoais / Morada fiscal. Pode gerar um comprovativo em PDF.' },
+          { field: 'mapa_responsabilidades', label: '7. Mapa de responsabilidades de crédito', description: 'Documento oficial do Banco de Portugal que lista os seus créditos. Passo a passo: aceda ao site do Banco de Portugal (<a href="https://www.bportugal.pt/" target="_blank" rel="noopener" class="doc-link-inline">www.bportugal.pt</a>) → Particulares → Central de Responsabilidades de Crédito → aceite as condições → selecione a data (mês/ano) → autentique-se com Cartão de Cidadão ou Portal das Finanças. O download é feito automaticamente.' },
+        ];
+        const v = (vinculo || '').trim();
+        if (v === VINCULO_TEMPORARIO) {
+          return [
+            cartao,
+            { type: 'recibos', label: '2. Últimos 3 recibos de vencimento', description: 'Comprovativo dos seus rendimentos. São os comprovativos que recebe do empregador com o valor líquido do salário. Anexe os 3 últimos meses.', fields: ['recibo_vencimento_1', 'recibo_vencimento_2', 'recibo_vencimento_3'] },
+            { field: 'contrato_temporario', label: '3. Contrato', description: 'Contrato de trabalho que comprova o vínculo laboral. Deve ser o contrato assinado (termo de responsabilidade ou contrato de trabalho a termo). A declaração deve ser recente.' },
+            ...common,
+          ];
+        }
+        if (v === VINCULO_RECIBOS_VERDES) {
+          return [
+            cartao,
+            { field: 'extrato_recibos_12_meses', label: '2. Extrato dos últimos 12 meses de recibos verdes', description: 'Comprovativo dos rendimentos como trabalhador independente. No <a href="https://www.portaldasfinancas.gov.pt" target="_blank" rel="noopener" class="doc-link-inline">Portal das Finanças</a>, após login (NIF + password ou Chave Móvel Digital), aceda a «Faturas e Recibos» / «Recibos Verdes Eletrónicos» → «Consultar Recibos». Use os filtros de datas (início e fim) para os últimos 12 meses, depois descarregue ou imprima a lista/PDF e anexe aqui. O Portal não gera um extrato automático com média mensal; pode anexar a lista filtrada ou um documento onde tenha os valores.' },
+            { field: 'declaracao_abertura_atividade', label: '3. Declaração de abertura de atividade', description: 'Documento que comprova que está inscrito como trabalhador independente (recibos verdes). Pode ser o comprovativo de inscrição na Segurança Social ou a declaração de início de atividade das Finanças. Se não tiver, pode obtê-lo no portal da Segurança Social Direta ou no Portal das Finanças.' },
+            ...common,
+          ];
+        }
+        return [
+          cartao,
+          { type: 'recibos', label: '2. Últimos 3 recibos de vencimento', description: 'Comprovativo dos seus rendimentos. São os comprovativos que recebe do empregador com o valor líquido do salário. Pode obtê-los no portal do empregador, no recibo em PDF que recebe por email, ou pedindo à entidade patronal. Anexe os 3 últimos meses.', fields: ['recibo_vencimento_1', 'recibo_vencimento_2', 'recibo_vencimento_3'] },
+          { field: 'contrato_ou_declaracao_efetividade', label: '3. Contrato ou declaração de efetividade', description: 'Comprova o vínculo laboral e se está efetivo. Pode ser o contrato de trabalho assinado ou uma declaração da entidade patronal a indicar que está em regime de efetividade. A declaração deve ser recente.' },
+          ...common,
+        ];
+      }
       const DOCS_100 = [
         { field: 'declaracao_nao_divida_financas', label: 'Declaração de não dívida (Finanças)', stepByStep: 'Obtida no Portal das Finanças. Passo a passo: 1) Aceda a finanças.gov.pt e entre na Área reservada; 2) Procure o serviço "Certidão de situação contributiva" ou "Declaração de dívidas fiscais / não dívida"; 3) Selecione o tipo de certidão (situação tributária); 4) Gere o documento em PDF e faça download.' },
         { field: 'declaracao_nao_divida_seguranca_social', label: 'Declaração de não dívida (Segurança Social)', stepByStep: 'Obtida no site da Segurança Social. Passo a passo: 1) Aceda a seg-social.pt e entre na área "Segurança Social Direta"; 2) Procure "Certidão de situação contributiva" ou "Declaração de não dívida"; 3) Selecione o período e o tipo de certidão; 4) Gere e faça download do PDF.' },
@@ -488,17 +579,24 @@
       };
 
       let docsState = {};
-      const requiredBase = [];
-      DOCS_BASE.forEach((d) => {
-        if (d.field) requiredBase.push(d.field);
-        if (d.fields) d.fields.forEach((f) => requiredBase.push(f));
-      });
-      requiredBase.push('rgpd_assinado');
       const required100 = DOCS_100.map((d) => d.field);
 
+      function getRequiredBaseFields() {
+        const vinculo = (document.getElementById('vinculo_laboral') && document.getElementById('vinculo_laboral').value) || '';
+        const base = getDocsBase(vinculo);
+        const fields = [];
+        base.forEach((d) => {
+          if (d.field) fields.push(d.field);
+          if (d.fields) d.fields.forEach((f) => fields.push(f));
+        });
+        fields.push('rgpd_assinado');
+        return fields;
+      }
+
       function getRequired() {
+        const base = getRequiredBaseFields();
         const is100 = document.getElementById('financiamento_100').checked;
-        return is100 ? [...requiredBase, ...required100] : requiredBase;
+        return is100 ? [...base, ...required100] : base;
       }
 
       function countUploaded() {
@@ -548,7 +646,8 @@
       }
 
       function renderRecibosBlock(container) {
-        const item = DOCS_BASE.find((d) => d.type === 'recibos');
+        const vinculo = (document.getElementById('vinculo_laboral') && document.getElementById('vinculo_laboral').value) || '';
+        const item = getDocsBase(vinculo).find((d) => d.type === 'recibos');
         if (!item) return;
         var anyReciboUploaded = item.fields.some(function (f) { return docsState[f]; });
         const wrap = document.createElement('div');
@@ -648,7 +747,8 @@
               docsState[fieldName] = false;
               var zone = blockEl.querySelector('.doc-upload-zone');
               removeBlockDescriptiveContent(blockEl);
-              var item = DOCS_BASE.find(function (d) { return d.field === fieldName; }) || DOCS_100.find(function (d) { return d.field === fieldName; }) || (DOC_RGPD.field === fieldName ? DOC_RGPD : null);
+              var vinculoVal = document.getElementById('vinculo_laboral') ? document.getElementById('vinculo_laboral').value : '';
+var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldName; }) || DOCS_100.find(function (d) { return d.field === fieldName; }) || (DOC_RGPD.field === fieldName ? DOC_RGPD : null);
               if (item && blockEl.querySelector('.doc-upload-zone')) {
                 var wrap = document.createElement('div');
                 wrap.className = 'doc-hint-wrap';
@@ -697,6 +797,8 @@
       }
 
       function renderAll() {
+        const vinculo = (document.getElementById('vinculo_laboral') && document.getElementById('vinculo_laboral').value) || '';
+        const DOCS_BASE = getDocsBase(vinculo);
         const listEl = document.getElementById('docList');
         listEl.innerHTML = '';
         DOCS_BASE.forEach((item) => {
@@ -720,6 +822,16 @@
           updateProgress();
         });
         document.getElementById('docs_100').classList.toggle('visible', document.getElementById('financiamento_100').checked);
+        var vinculoEl = document.getElementById('vinculo_laboral');
+        if (vinculoEl && !vinculoEl.dataset.vinculoUiBound) {
+          vinculoEl.dataset.vinculoUiBound = '1';
+          vinculoEl.addEventListener('change', function () {
+            var v = this.value;
+            var fiadorWrap = document.getElementById('fiadorWrap');
+            if (fiadorWrap) fiadorWrap.style.display = (v === VINCULO_TEMPORARIO || v === VINCULO_RECIBOS_VERDES) ? 'block' : 'none';
+            renderAll();
+          });
+        }
         updateProgress();
       }
 
@@ -727,15 +839,25 @@
         const nome = document.getElementById('nome').value.trim();
         const estado_civil = document.getElementById('estado_civil').value;
         const num_dependentes = document.getElementById('num_dependentes').value;
+        const anos_emprego_atual = document.getElementById('anos_emprego_atual').value.trim();
+        const vinculo_laboral = (document.getElementById('vinculo_laboral') && document.getElementById('vinculo_laboral').value) || '';
+        const disponibilidade_fiador = (document.getElementById('disponibilidade_fiador') && document.getElementById('disponibilidade_fiador').value) || '';
         fetch('/api/leads/' + leadId, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: getVerifiedEmail(), nome: nome || '', estado_civil: estado_civil || '', num_dependentes: num_dependentes === '' ? '' : String(num_dependentes) }),
-        }).catch(() => {});
+          body: JSON.stringify({ email: getVerifiedEmail(), nome: nome || '' }),
+        }).catch(function () {});
+        idbSaveFormDados(leadId, {
+          estado_civil: estado_civil || '',
+          num_dependentes: num_dependentes === '' ? '' : String(num_dependentes),
+          anos_emprego_atual: anos_emprego_atual || '',
+          vinculo_laboral: vinculo_laboral || '',
+          disponibilidade_fiador: disponibilidade_fiador || '',
+        }).catch(function () {});
       }
 
-      const docListKeys = [...requiredBase, ...required100];
-      function isDocKey(k) { return docListKeys.includes(k); }
+      function getDocListKeys() { return [...getRequiredBaseFields(), ...required100]; }
+      function isDocKey(k) { return getDocListKeys().includes(k); }
 
       function loadDocuments() {
         const email = getVerifiedEmail();
@@ -743,16 +865,27 @@
         fetch('/api/leads/' + leadId + '/documents?email=' + encodeURIComponent(email))
           .then(function (r) { if (!r.ok) return r.json().then(function (d) { throw new Error(d.message || 'Erro'); }); return r.json(); })
           .then(function (data) {
-            const nome = data.nome, estado_civil = data.estado_civil, num_dependentes = data.num_dependentes;
-            return idbGetAllKeys(leadId).then(function (keys) {
+            const nome = data.nome;
+            return Promise.all([idbGetAllKeys(leadId), idbGetFormDados(leadId)]).then(function (arr) {
+              var keys = arr[0];
+              var formDados = arr[1] || {};
               docsState = {};
-              keys.forEach(function (k) { docsState[k] = true; });
+              keys.filter(function (k) { return k !== FORM_DADOS_KEY; }).forEach(function (k) { docsState[k] = true; });
               const nomeEl = document.getElementById('nome');
               if (nomeEl) nomeEl.value = (nome != null ? nome : '') || '';
               const estadoEl = document.getElementById('estado_civil');
-              if (estadoEl && (estado_civil || '') !== undefined) estadoEl.value = estado_civil || '';
+              if (estadoEl) estadoEl.value = (formDados.estado_civil != null ? formDados.estado_civil : '') || '';
               const numDepEl = document.getElementById('num_dependentes');
-              if (numDepEl && num_dependentes !== undefined) numDepEl.value = num_dependentes === '' || num_dependentes == null ? '' : String(num_dependentes);
+              if (numDepEl) numDepEl.value = (formDados.num_dependentes !== undefined && formDados.num_dependentes !== null ? String(formDados.num_dependentes) : '');
+              const anosEmpregoEl = document.getElementById('anos_emprego_atual');
+              if (anosEmpregoEl) anosEmpregoEl.value = (formDados.anos_emprego_atual != null ? String(formDados.anos_emprego_atual) : '');
+              const vinculoEl = document.getElementById('vinculo_laboral');
+              var vinculoVal = (formDados.vinculo_laboral != null ? formDados.vinculo_laboral : '') || '';
+              if (vinculoEl) vinculoEl.value = vinculoVal;
+              const dispFiadorEl = document.getElementById('disponibilidade_fiador');
+              if (dispFiadorEl) dispFiadorEl.value = (formDados.disponibilidade_fiador != null ? formDados.disponibilidade_fiador : '') || '';
+              var fiadorWrap = document.getElementById('fiadorWrap');
+              if (fiadorWrap) fiadorWrap.style.display = (vinculoVal === VINCULO_TEMPORARIO || vinculoVal === VINCULO_RECIBOS_VERDES) ? 'block' : 'none';
             var emailFormEl = document.getElementById('email');
             if (emailFormEl) {
               emailFormEl.value = email;
@@ -760,6 +893,9 @@
             }
             nomeEl.addEventListener('blur', saveDados);
               numDepEl.addEventListener('blur', saveDados);
+              if (anosEmpregoEl) anosEmpregoEl.addEventListener('blur', saveDados);
+              if (vinculoEl) vinculoEl.addEventListener('change', saveDados);
+              if (dispFiadorEl) dispFiadorEl.addEventListener('change', saveDados);
               estadoEl.addEventListener('change', saveDados);
               renderAll();
             });
@@ -774,7 +910,34 @@
         .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
         .then((data) => {
           if (data.docsEnviados) {
+            var savedEmail = getVerifiedEmail();
+            if (savedEmail) {
+              fetch('/api/leads/' + leadId + '/access', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: savedEmail }),
+              })
+                .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+                .then(function (d) {
+                  setDocsEnviadosDisplay(d);
+                  showStep('stepDocsEnviados');
+                })
+                .catch(function () { showStep('stepEnterEmail'); });
+              return;
+            }
             showStep('stepEnterEmail');
+            return;
+          }
+          if (data.semDocs) {
+            leadIsSemDocs = true;
+            var savedEmail = getVerifiedEmail();
+            if (!savedEmail) {
+              showStep('stepEnterEmail');
+              return;
+            }
+            showStep('mainForm');
+            setSemDocsUI(false);
+            loadDocuments();
             return;
           }
           if (!data.hasEmail) {
@@ -787,6 +950,7 @@
             return;
           }
           showStep('mainForm');
+          setSemDocsUI(false);
           loadDocuments();
         })
         .catch(() => { showStep('stepNomeEmail'); });
@@ -834,6 +998,7 @@
             if (r.ok) {
               setVerifiedEmail(pendingEmailForConfirm);
               showStep('mainForm');
+              setSemDocsUI(false);
               loadDocuments();
               return;
             }
@@ -866,7 +1031,9 @@
                   showStep('stepDocsEnviados');
                   return;
                 }
+                if (d.semDocs) leadIsSemDocs = true;
                 showStep('mainForm');
+                setSemDocsUI(false);
                 loadDocuments();
               });
             }
@@ -877,6 +1044,30 @@
             errEl.style.display = 'block';
           })
           .finally(function () { document.getElementById('btnContinuar').disabled = false; });
+      });
+
+      document.getElementById('btnSemDocs').addEventListener('click', function () {
+        var email = getVerifiedEmail();
+        if (!email) return;
+        var btn = this;
+        btn.disabled = true;
+        fetch('/api/leads/' + leadId + '/sem-docs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email }),
+        })
+          .then(function (r) {
+            if (r.ok) {
+              setSemDocsUI(true);
+              return;
+            }
+            return r.json().then(function (d) { throw new Error(d.message || 'Erro'); });
+          })
+          .catch(function (err) {
+            document.getElementById('formError').textContent = err.message || 'Erro. Tente novamente.';
+            document.getElementById('formError').style.display = 'block';
+          })
+          .finally(function () { btn.disabled = false; });
       });
 
       document.getElementById('form').addEventListener('submit', function (e) {
@@ -903,6 +1094,9 @@
         fd.append('email', getVerifiedEmail() || document.getElementById('email').value.trim());
         fd.append('estado_civil', document.getElementById('estado_civil').value);
         fd.append('num_dependentes', document.getElementById('num_dependentes').value);
+        fd.append('anos_emprego_atual', document.getElementById('anos_emprego_atual').value.trim());
+        fd.append('vinculo_laboral', (document.getElementById('vinculo_laboral') && document.getElementById('vinculo_laboral').value) || '');
+        fd.append('disponibilidade_fiador', (document.getElementById('disponibilidade_fiador') && document.getElementById('disponibilidade_fiador').value) || '');
         fd.append('mensagem_gestora', document.getElementById('mensagem_gestora').value.trim());
         fd.append('financiamento_100', document.getElementById('financiamento_100').checked ? '1' : '0');
         Promise.all(req.map(function (fieldName) { return idbGet(leadId, fieldName); }))
@@ -918,7 +1112,7 @@
               btn.classList.add('sent');
               if (btnText) btnText.textContent = 'Enviado ✓';
               return idbClearLead(leadId).then(function () {
-                setTimeout(function () { window.location.href = '/confirmacao/' + leadId; }, 700);
+                setTimeout(function () { window.location.href = '/upload/' + leadId; }, 700);
               });
             }
             return r.json().then(function (d) { throw new Error(d.message || 'Erro ao enviar'); });

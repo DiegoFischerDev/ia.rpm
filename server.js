@@ -21,6 +21,8 @@ const {
   getGestoraById,
   getNextGestoraForLead,
   updateLeadGestora,
+  updateLeadEstado,
+  getLeadsForRafa,
 } = require('./db');
 const {
   saveDocument,
@@ -68,6 +70,9 @@ const DOC_LABELS = {
   recibo_vencimento_2: 'Recibo de vencimento 2',
   recibo_vencimento_3: 'Recibo de vencimento 3',
   contrato_ou_declaracao_efetividade: 'Contrato ou declaração de efetividade',
+  contrato_temporario: 'Contrato',
+  extrato_recibos_12_meses: 'Extrato dos últimos 12 meses de recibos verdes',
+  declaracao_abertura_atividade: 'Declaração de abertura de atividade',
   irs_declaracao: 'Declaração de IRS',
   irs_nota_liquidacao: 'Nota de liquidação IRS',
   comprovativo_morada: 'Comprovativo de morada',
@@ -77,6 +82,18 @@ const DOC_LABELS = {
   declaracao_nao_divida_seguranca_social: 'Declaração de não dívida (Segurança Social)',
   declaracao_predial: 'Declaração Predial negativa',
 };
+
+function getRequiredDocFieldsByVinculo(vinculo) {
+  const common = ['cartao_residencia_ou_passaporte', 'irs_declaracao', 'irs_nota_liquidacao', 'comprovativo_morada', 'mapa_responsabilidades', 'rgpd_assinado'];
+  const v = (vinculo || '').trim();
+  if (v === 'Contrato temporário') {
+    return ['recibo_vencimento_1', 'recibo_vencimento_2', 'recibo_vencimento_3', 'contrato_temporario', ...common];
+  }
+  if (v === 'Recibos verdes') {
+    return ['extrato_recibos_12_meses', 'declaracao_abertura_atividade', ...common];
+  }
+  return ['recibo_vencimento_1', 'recibo_vencimento_2', 'recibo_vencimento_3', 'contrato_ou_declaracao_efetividade', ...common];
+}
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY;
@@ -105,7 +122,7 @@ async function validateLeadUploadPage(leadId) {
     return { error: 500, message: 'Erro ao verificar dados.' };
   }
   if (!lead) return { error: 404, message: 'Link não encontrado.' };
-  if (lead.estado !== 'aguardando_docs' && lead.estado !== 'docs_enviados') {
+  if (lead.estado !== 'aguardando_docs' && lead.estado !== 'docs_enviados' && lead.estado !== 'sem_docs') {
     return { error: 403, message: 'Este link já não está disponível.' };
   }
   return { lead };
@@ -129,11 +146,6 @@ app.get('/upload/:leadId', async (req, res) => {
     logStartup(`GET /upload/${leadId} error: ${err.message}`);
     res.status(500).send('<p>Erro ao verificar dados.</p>');
   }
-});
-
-// Confirmação
-app.get('/confirmacao/:leadId', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'confirmacao.html'));
 });
 
 async function validateLeadAguardandoDocs(leadId) {
@@ -186,6 +198,21 @@ async function getGestoraContactForLead(lead) {
   };
 }
 
+// Lista para Rafa: apenas nome, email e whatsapp (sem dados sensíveis como estado civil, vínculo, etc.)
+app.get('/api/leads', async (req, res) => {
+  const estado = (req.query && req.query.estado) || '';
+  if (estado !== 'falar_com_rafa') {
+    return res.status(400).json({ message: 'Parâmetro estado inválido.' });
+  }
+  try {
+    const leads = await getLeadsForRafa(estado);
+    res.json(leads);
+  } catch (err) {
+    logStartup(`getLeadsForRafa error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao listar leads.' });
+  }
+});
+
 // Estado do lead: tem email? docs já enviados? (para o front saber que ecrã mostrar)
 // Quando docsEnviados, não devolvemos contactos da gestora; o lead tem de confirmar email via POST /access
 app.get('/api/leads/:leadId/status', async (req, res) => {
@@ -193,12 +220,14 @@ app.get('/api/leads/:leadId/status', async (req, res) => {
   if (v.error) return res.status(v.error).json({ message: v.message });
   const lead = v.lead;
   const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1);
+  const semDocs = lead.estado === 'sem_docs';
   const payload = {
     hasEmail: !!(lead.email && lead.email.trim()),
     nome: '', // só devolvido após confirmação de email (POST /access)
     docsEnviados,
+    semDocs,
   };
-  if (!docsEnviados) {
+  if (!docsEnviados && !semDocs) {
     const contact = await getGestoraContactForLead(lead);
     payload.gestoraEmail = contact.gestoraEmail;
     payload.gestoraWhatsapp = contact.gestoraWhatsapp;
@@ -207,6 +236,25 @@ app.get('/api/leads/:leadId/status', async (req, res) => {
     payload.gestoraWhatsapp = '';
   }
   res.json(payload);
+});
+
+// Marcar lead como "não tenho todos os docs" (estado sem_docs) — requer email do lead
+app.post('/api/leads/:leadId/sem-docs', async (req, res) => {
+  const leadId = req.params.leadId;
+  const email = normalizeEmail(req.body && req.body.email);
+  if (!email) return res.status(400).json({ message: 'Indique o seu email.' });
+  const v = await validateLeadAguardandoDocs(leadId);
+  if (v.error) return res.status(v.error).json({ message: v.message });
+  const lead = v.lead;
+  const stored = normalizeEmail(lead.email);
+  if (stored !== email) return res.status(403).json({ message: 'Email incorreto.' });
+  try {
+    await updateLeadEstado(leadId, 'sem_docs');
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`updateLeadEstado sem_docs error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao atualizar.' });
+  }
 });
 
 // Pedir código de confirmação (nome + email) — só quando o lead ainda não tem email
@@ -273,10 +321,12 @@ app.post('/api/leads/:leadId/access', async (req, res) => {
   const stored = normalizeEmail(lead.email);
   if (provided !== stored) return res.status(403).json({ message: 'Email incorreto.' });
   const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1);
+  const semDocs = lead.estado === 'sem_docs';
   const contact = await getGestoraContactForLead(lead);
   res.json({
     ok: true,
     docsEnviados,
+    semDocs,
     gestoraNome: contact.gestoraNome,
     gestoraEmail: contact.gestoraEmail,
     gestoraWhatsapp: contact.gestoraWhatsapp,
@@ -300,8 +350,6 @@ app.get('/api/leads/:leadId/documents', async (req, res) => {
   DOC_FIELDS.forEach((f) => { list[f] = { uploaded: false }; });
   res.json({
     nome: lead.nome || '',
-    estado_civil: lead.estado_civil || '',
-    num_dependentes: lead.num_dependentes != null ? String(lead.num_dependentes) : '',
     ...list,
   });
 });
@@ -313,11 +361,7 @@ app.patch('/api/leads/:leadId', async (req, res) => {
   const access = await requireEmailAccess(leadId, body.email);
   if (access.error) return res.status(access.error).json({ message: access.message });
   try {
-    await updateLeadDados(leadId, {
-      nome: body.nome,
-      estado_civil: body.estado_civil,
-      num_dependentes: body.num_dependentes,
-    });
+    await updateLeadDados(leadId, { nome: body.nome });
     res.json({ ok: true });
   } catch (err) {
     logStartup(`PATCH lead error: ${err.message}`);
@@ -331,7 +375,8 @@ app.post('/api/leads/:leadId/documents', uploadMemory.single('file'), async (req
   const fieldName = (req.body && req.body.fieldName) || (req.query && req.query.fieldName);
   const access = await requireEmailAccess(leadId, req.body && req.body.email);
   if (access.error) return res.status(access.error).json({ message: access.message });
-  if (!fieldName || !DOC_FIELDS.includes(fieldName)) {
+  const allDocFields = Object.keys(STANDARD_NAMES);
+  if (!fieldName || !allDocFields.includes(fieldName)) {
     return res.status(400).json({ message: 'Campo de documento inválido.' });
   }
   if (!req.file || !req.file.buffer || !req.file.buffer.length) {
@@ -362,19 +407,11 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
   }
 
   try {
-    await updateLeadDados(leadId, {
-      nome: body.nome,
-      estado_civil: body.estado_civil,
-      num_dependentes: body.num_dependentes,
-    });
+    await updateLeadDados(leadId, { nome: body.nome });
   } catch (_) {}
 
-  const requiredBase = DOC_FIELDS.filter(
-    (f) =>
-      f !== 'declaracao_nao_divida_financas' &&
-      f !== 'declaracao_nao_divida_seguranca_social' &&
-      f !== 'declaracao_predial'
-  );
+  const vinculo = (body.vinculo_laboral || '').trim();
+  const requiredBase = getRequiredDocFieldsByVinculo(vinculo);
   const financiamento100 = body.financiamento_100 === '1' || body.financiamento_100 === 'true';
   const required = financiamento100
     ? [
@@ -385,9 +422,10 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
       ]
     : requiredBase;
 
+  const allDocFields = Object.keys(STANDARD_NAMES);
   const byField = {};
   for (const f of files) {
-    if (f.fieldname && DOC_FIELDS.includes(f.fieldname) && f.buffer && f.buffer.length) {
+    if (f.fieldname && allDocFields.includes(f.fieldname) && f.buffer && f.buffer.length) {
       byField[f.fieldname] = f;
     }
   }
@@ -442,20 +480,25 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
 
   const estadoCivil = (body.estado_civil || '').trim();
   const numDependentes = (body.num_dependentes ?? '').toString().trim();
+  const anosEmprego = (body.anos_emprego_atual ?? '').toString().trim();
+  const vinculoLab = (body.vinculo_laboral || '').trim();
+  const dispFiador = (body.disponibilidade_fiador || '').trim();
   const mensagem = (body.mensagem_gestora || '').trim();
 
   const textBody = [
-    `Documentos enviados pelo lead: ${lead.nome || 'N/A'} (ID: ${leadId})`,
-    `Email do lead: ${emailLead}`,
-    `Estado civil e regime de casamento (se aplicável): ${estadoCivil || '—'}`,
+    `Nome: ${lead.nome || 'N/A'}`,
+    `Email: ${emailLead}`,
+    `Estado civil: ${estadoCivil || '—'}`,
     `N.º de dependentes: ${numDependentes || '—'}`,
+    `A quantos anos trabalha no emprego atual: ${anosEmprego || '—'}`,
+    `Vínculo laboral: ${vinculoLab || '—'}`,
+    dispFiador ? `Disponibilidade para apresentar fiador: ${dispFiador}` : '',
     financiamento100 ? 'Pedido no âmbito do financiamento a 100%.' : '',
-    mensagem ? `Mensagem: ${mensagem}` : '',
   ]
     .filter(Boolean)
     .join('\n');
 
-  const textWithNote = textBody + '\n\n---\nResponda diretamente ao email do lead (em CC) para manter a troca apenas entre si e o cliente.';
+  const textWithNote = textBody + '\n\n---\n' + (mensagem ? mensagem : '(O lead não deixou mensagem)');
 
   try {
     const { error } = await resend.emails.send({

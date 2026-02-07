@@ -36,14 +36,13 @@ async function updateLeadDocsEnviados(id) {
 
 async function updateLeadDados(id, dados) {
   if (!dados || typeof dados !== 'object') return;
-  const allowed = ['nome', 'estado_civil', 'num_dependentes'];
+  const allowed = ['nome'];
   const set = [];
   const values = [];
   for (const key of allowed) {
     if (!(key in dados)) continue;
     let val = dados[key];
-    if (key === 'num_dependentes') val = val !== undefined && val !== null ? String(val).trim() : null;
-    else if (typeof val === 'string') val = val.trim() || null;
+    if (typeof val === 'string') val = val.trim() || null;
     else val = null;
     set.push(`${key} = ?`);
     values.push(val);
@@ -112,6 +111,23 @@ async function updateLeadGestora(leadId, gestoraId) {
   );
 }
 
+async function updateLeadEstado(leadId, estado) {
+  await query(
+    'UPDATE ch_leads SET estado = ?, updated_at = NOW() WHERE id = ?',
+    [estado || null, leadId]
+  );
+}
+
+/** Lista para Rafa: apenas id, nome, email e whatsapp (sem dados sensíveis). */
+async function getLeadsForRafa(estado) {
+  if (!estado || typeof estado !== 'string') return [];
+  const rows = await query(
+    'SELECT id, nome, email, whatsapp_number, estado_anterior, updated_at FROM ch_leads WHERE estado = ? ORDER BY updated_at DESC',
+    [estado.trim()]
+  );
+  return rows;
+}
+
 module.exports = {
   getPool,
   query,
@@ -124,4 +140,6 @@ module.exports = {
   getActiveGestoras,
   getNextGestoraForLead,
   updateLeadGestora,
+  updateLeadEstado,
+  getLeadsForRafa,
 };

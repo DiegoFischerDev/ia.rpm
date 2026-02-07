@@ -30,8 +30,6 @@ CREATE TABLE ch_leads (
   estado_anterior VARCHAR(32),
   docs_enviados TINYINT(1) NOT NULL DEFAULT 0,
   docs_enviados_em DATETIME NULL,
-  estado_civil VARCHAR(128) NULL,
-  num_dependentes VARCHAR(16) NULL,
   email_verification_code VARCHAR(10) NULL,
   email_verification_sent_at DATETIME NULL,
   pending_nome VARCHAR(255) NULL,
