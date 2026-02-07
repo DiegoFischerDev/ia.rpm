@@ -403,8 +403,10 @@
           })
           .catch(() => {
             tryShowResetPassword();
-            document.getElementById('loginScreen').classList.add('visible');
-            document.getElementById('loginScreen').style.display = 'block';
+            if (!window.resetPasswordToken) {
+              document.getElementById('loginScreen').classList.add('visible');
+              document.getElementById('loginScreen').style.display = 'block';
+            }
             document.getElementById('dashboardApp').classList.remove('visible');
             document.getElementById('dashboardApp').style.display = 'none';
           });
