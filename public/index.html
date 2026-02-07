@@ -44,10 +44,49 @@
       display: flex;
       flex-direction: column;
     }
-    #btnLogout { margin-top: auto; }
     .main { margin-left: 260px; }
     .sidebar-logo { display: block; padding: 0 1.25rem 1.25rem; text-align: center; }
     .sidebar-logo img { max-width: 100%; height: auto; max-height: 148px; object-fit: contain; }
+    .sidebar-footer {
+      margin-top: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      border-top: 1px solid rgba(255,255,255,.2);
+    }
+    .sidebar-footer-icon {
+      flex-shrink: 0;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,.15);
+      border-radius: 50%;
+      color: rgba(255,255,255,.9);
+    }
+    .sidebar-footer-icon svg { width: 20px; height: 20px; }
+    .sidebar-footer-name {
+      flex: 1;
+      font-size: 0.875rem;
+      color: rgba(255,255,255,.9);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .sidebar-footer-sair {
+      background: none;
+      border: none;
+      color: rgba(255,255,255,.85);
+      font-size: 0.875rem;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+      flex-shrink: 0;
+    }
+    .sidebar-footer-sair:hover { color: #fff; }
     .sidebar-nav-item {
       display: flex;
       align-items: center;
@@ -216,7 +255,13 @@
       </a>
       <a href="#gestoras" id="navGestoras" class="sidebar-nav-item">Gestoras</a>
       <a href="#perfil" id="navPerfil" class="sidebar-nav-item" style="display:none;">Perfil</a>
-      <button type="button" id="btnLogout" class="sidebar-nav-item" style="width:100%;">Sair</button>
+      <div class="sidebar-footer">
+        <span class="sidebar-footer-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+        </span>
+        <span id="sidebarUserName" class="sidebar-footer-name" aria-live="polite"></span>
+        <button type="button" id="btnLogout" class="sidebar-footer-sair">Sair</button>
+      </div>
     </nav>
     <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
     <main class="main">
@@ -302,10 +347,11 @@
           <form id="profileForm">
             <label>Nome</label>
             <input type="text" id="profileNome" readonly disabled style="background:var(--bg);color:var(--text-muted);">
-            <label>Email (pessoal – não pode alterar)</label>
+            <label>Email</label>
             <input type="text" id="profileEmail" readonly disabled style="background:var(--bg);color:var(--text-muted);">
-            <label>Email para leads (para onde enviamos os documentos dos seus leads)</label>
+            <label>Email para leads</label>
             <input type="email" id="profileEmailParaLeads" placeholder="leads@exemplo.pt" autocomplete="email">
+            <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Para onde enviamos os documentos dos seus leads.</p>
             <label>WhatsApp (com indicativo, ex: 351912345678)</label>
             <input type="text" id="profileWhatsapp" placeholder="351912345678">
             <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Os seus leads terão acesso a este número. Deixe em branco se não quiser ser contactada por WhatsApp.</p>
@@ -324,9 +370,8 @@
             </div>
             <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;">
             <label>Documento RGPD (PDF)</label>
-            <p class="text-muted" style="font-size:0.8125rem;margin-bottom:0.5rem;">Os leads atribuídos a si descarregam este PDF.</p>
             <div id="profileRgpdEnviado" style="display:none;">
-              <p class="text-muted" style="font-size:0.875rem;margin-bottom:0.75rem;">Documento enviado.</p>
+              <p style="margin:0 0 0.75rem 0;"><img src="documento.png" alt="" style="max-height:64px;height:auto;vertical-align:middle;"></p>
               <div class="actions" style="margin-bottom:1rem;">
                 <a href="#" id="profileRgpdVer" target="_blank" rel="noopener" class="btn btn-secondary">Ver</a>
                 <button type="button" id="profileRgpdSubstituir" class="btn btn-outline">Substituir</button>
@@ -449,6 +494,8 @@
         checkAuth()
           .then((data) => {
             user = data.user;
+            var nameEl = document.getElementById('sidebarUserName');
+            if (nameEl) nameEl.textContent = (user.nome && user.nome.trim()) ? user.nome.trim() : (user.email || '');
             document.getElementById('loginScreen').classList.remove('visible');
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('resetPasswordScreen').style.display = 'none';
