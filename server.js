@@ -38,6 +38,7 @@ const {
   updateLeadAdmin,
   deleteLead,
   getAllGestoras,
+  getGestorasWithLeadCounts,
   createGestora,
   updateGestora,
   deleteGestora,
@@ -257,7 +258,7 @@ async function getGestoraContactForLead(lead) {
     if (g) {
       return {
         gestoraNome: g.nome || '',
-        gestoraEmail: g.email || '',
+        gestoraEmail: (g.email_para_leads && g.email_para_leads.trim()) ? g.email_para_leads.trim() : (g.email || ''),
         gestoraWhatsapp: (g.whatsapp || '').replace(/\D/g, ''),
       };
     }
@@ -538,12 +539,12 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
   let toEmail = process.env.GESTORA_EMAIL || '';
   if (lead.gestora_id) {
     const g = await getGestoraById(lead.gestora_id);
-    if (g && g.email) toEmail = g.email;
+    if (g) toEmail = (g.email_para_leads && g.email_para_leads.trim()) ? g.email_para_leads.trim() : (g.email || '');
   } else {
     const next = await getNextGestoraForLead();
     if (next) {
       await updateLeadGestora(leadId, next.id);
-      toEmail = next.email || '';
+      toEmail = (next.email_para_leads && next.email_para_leads.trim()) ? next.email_para_leads.trim() : (next.email || '');
     }
   }
   if (!toEmail) {
@@ -797,10 +798,10 @@ app.delete('/api/dashboard/leads/:id', requireDashboardAuth, requireAdminAuth, a
 
 app.get('/api/dashboard/gestoras', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   try {
-    const rows = await getAllGestoras();
+    const rows = await getGestorasWithLeadCounts();
     res.json(rows);
   } catch (err) {
-    logStartup(`getAllGestoras error: ${err.message}`);
+    logStartup(`getGestorasWithLeadCounts error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar gestoras.' });
   }
 });
@@ -846,7 +847,7 @@ app.get('/api/dashboard/profile', requireDashboardAuth, async (req, res) => {
   try {
     const g = await getGestoraById(user.id);
     if (!g) return res.status(404).json({ message: 'Gestora não encontrada.' });
-    res.json({ nome: g.nome, email: g.email, whatsapp: g.whatsapp || '' });
+    res.json({ nome: g.nome, email: g.email, email_para_leads: g.email_para_leads || g.email || '', whatsapp: g.whatsapp || '' });
   } catch (err) {
     logStartup(`getProfile error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao carregar perfil.' });
@@ -867,7 +868,7 @@ app.post('/api/dashboard/profile', requireDashboardAuth, profileUpload, async (r
   const gestoraId = user.id;
   const body = req.body || {};
   const whatsapp = (body.whatsapp !== undefined && body.whatsapp !== null ? String(body.whatsapp) : '').trim();
-  const email = (body.email !== undefined && body.email !== null ? String(body.email) : '').trim().toLowerCase();
+  const emailParaLeads = (body.email_para_leads !== undefined && body.email_para_leads !== null ? String(body.email_para_leads) : '').trim().toLowerCase();
   const currentPassword = (body.currentPassword != null ? String(body.currentPassword) : '').trim();
   const newPassword = (body.newPassword != null ? String(body.newPassword) : '').trim();
   const rgpdFile = req.files && req.files.rgpd && req.files.rgpd[0] ? req.files.rgpd[0] : null;
@@ -875,7 +876,7 @@ app.post('/api/dashboard/profile', requireDashboardAuth, profileUpload, async (r
   try {
     const updates = {};
     if (whatsapp !== '') updates.whatsapp = whatsapp.replace(/\D/g, '');
-    if (email !== '') updates.email = email;
+    if (emailParaLeads !== undefined) updates.email_para_leads = emailParaLeads === '' ? null : emailParaLeads;
     if (Object.keys(updates).length) await updateGestora(gestoraId, updates);
 
     if (newPassword) {

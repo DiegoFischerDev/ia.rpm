@@ -234,9 +234,17 @@
               <tr>
                 <th>ID</th>
                 <th>Nome</th>
-                <th>Email</th>
+                <th>Email (pessoal)</th>
+                <th>Email para leads</th>
                 <th>WhatsApp</th>
                 <th>Ativo</th>
+                <th>Total</th>
+                <th>Aguard. docs</th>
+                <th>Docs enviados</th>
+                <th>Créd. aprov.</th>
+                <th>Agend. escrit.</th>
+                <th>Escrit. realiz.</th>
+                <th>Inviável</th>
                 <th></th>
               </tr>
             </thead>
@@ -251,8 +259,10 @@
           <form id="profileForm">
             <label>Nome</label>
             <input type="text" id="profileNome" readonly disabled style="background:var(--bg);color:var(--text-muted);">
-            <label>Email</label>
-            <input type="email" id="profileEmail" autocomplete="email">
+            <label>Email (pessoal – não pode alterar)</label>
+            <input type="text" id="profileEmail" readonly disabled style="background:var(--bg);color:var(--text-muted);">
+            <label>Email para leads (para onde enviamos os documentos dos seus leads)</label>
+            <input type="email" id="profileEmailParaLeads" placeholder="leads@exemplo.pt" autocomplete="email">
             <label>WhatsApp (com indicativo, ex: 351912345678)</label>
             <input type="text" id="profileWhatsapp" placeholder="351912345678">
             <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;">
@@ -295,6 +305,10 @@
         <option value="aguardando_docs">aguardando_docs</option>
         <option value="sem_docs">sem_docs</option>
         <option value="docs_enviados">docs_enviados</option>
+        <option value="inviavel">inviavel</option>
+        <option value="credito_aprovado">credito_aprovado</option>
+        <option value="agendado_escritura">agendado_escritura</option>
+        <option value="escritura_realizada">escritura_realizada</option>
       </select>
       <div id="editLeadGestoraRow">
         <label>Gestora ID</label>
@@ -313,8 +327,10 @@
       <input type="hidden" id="editGestoraId">
       <label>Nome</label>
       <input type="text" id="editGestoraNome" required>
-      <label>Email</label>
-      <input type="email" id="editGestoraEmail" required>
+      <label>Email (pessoal – login)</label>
+      <input type="email" id="editGestoraEmail" required placeholder="email@exemplo.pt">
+      <label>Email para leads (opcional – para onde enviamos os docs; se vazio, usa o email pessoal)</label>
+      <input type="email" id="editGestoraEmailParaLeads" placeholder="leads@exemplo.pt">
       <label>WhatsApp (com indicativo, ex: 351912345678)</label>
       <input type="text" id="editGestoraWhatsapp" required placeholder="351912345678">
       <label><input type="checkbox" id="editGestoraAtivo" checked> Ativa</label>
@@ -529,13 +545,13 @@
 
       function loadLeads() {
         const tbody = document.getElementById('leadsBody');
-        tbody.innerHTML = '<tr><td colspan="10">A carregar…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="11">A carregar…</td></tr>';
         fetch(API + '/leads', { credentials: 'include' })
           .then((r) => r.json().then((data) => (r.ok ? data : Promise.reject(data))))
           .then((rows) => {
             tbody.innerHTML = '';
             if (!rows.length) {
-              tbody.innerHTML = '<tr><td colspan="10">Nenhum lead.</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="11">Nenhum lead.</td></tr>';
               return;
             }
             rows.forEach((r) => {
@@ -578,7 +594,7 @@
           })
           .catch((err) => {
             const msg = (err && (err.detail || err.message)) || 'Erro ao carregar.';
-            tbody.innerHTML = '<tr><td colspan="10" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
           });
       }
 
@@ -637,6 +653,7 @@
           .then((data) => {
             document.getElementById('profileNome').value = data.nome || '';
             document.getElementById('profileEmail').value = data.email || '';
+            document.getElementById('profileEmailParaLeads').value = data.email_para_leads || '';
             document.getElementById('profileWhatsapp').value = data.whatsapp || '';
             document.getElementById('profileCurrentPassword').value = '';
             document.getElementById('profileNewPassword').value = '';
@@ -673,7 +690,7 @@
         }
         var fd = new FormData();
         fd.append('whatsapp', document.getElementById('profileWhatsapp').value.trim());
-        fd.append('email', document.getElementById('profileEmail').value.trim().toLowerCase());
+        fd.append('email_para_leads', document.getElementById('profileEmailParaLeads').value.trim().toLowerCase());
         fd.append('currentPassword', document.getElementById('profileCurrentPassword').value);
         fd.append('newPassword', newP);
         var rgpdInput = document.getElementById('profileRgpd');
@@ -748,35 +765,34 @@
 
       function loadGestoras() {
         const tbody = document.getElementById('gestorasBody');
-        tbody.innerHTML = '<tr><td colspan="6">A carregar…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13">A carregar…</td></tr>';
         fetch(API + '/gestoras', { credentials: 'include' })
           .then((r) => (r.ok ? r.json() : Promise.reject()))
           .then((rows) => {
             tbody.innerHTML = '';
             if (!rows.length) {
-              tbody.innerHTML = '<tr><td colspan="6">Nenhuma gestora.</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="13">Nenhuma gestora.</td></tr>';
               return;
             }
             rows.forEach((r) => {
               const tr = document.createElement('tr');
               tr.innerHTML =
-                '<td>' +
-                r.id +
-                '</td><td>' +
-                escapeHtml(r.nome || '') +
-                '</td><td>' +
-                escapeHtml(r.email || '') +
-                '</td><td>' +
-                escapeHtml(r.whatsapp || '') +
-                '</td><td>' +
+                '<td>' + r.id + '</td><td>' +
+                escapeHtml(r.nome || '') + '</td><td>' +
+                escapeHtml(r.email || '') + '</td><td>' +
+                escapeHtml(r.email_para_leads || r.email || '—') + '</td><td>' +
+                escapeHtml(r.whatsapp || '') + '</td><td>' +
                 (r.ativo ? 'Sim' : 'Não') +
-                '</td><td class="actions">' +
-                '<button type="button" class="btn btn-secondary btn-sm btn-edit-gestora" data-id="' +
-                r.id +
-                '">Editar</button>' +
-                '<button type="button" class="btn btn-danger btn-sm btn-delete-gestora" data-id="' +
-                r.id +
-                '">Apagar</button>' +
+                '</td><td>' + (r.total_leads != null ? r.total_leads : '0') + '</td>' +
+                '<td>' + (r.aguardando_docs != null ? r.aguardando_docs : '0') + '</td>' +
+                '<td>' + (r.docs_enviados != null ? r.docs_enviados : '0') + '</td>' +
+                '<td>' + (r.credito_aprovado != null ? r.credito_aprovado : '0') + '</td>' +
+                '<td>' + (r.agendado_escritura != null ? r.agendado_escritura : '0') + '</td>' +
+                '<td>' + (r.escritura_realizada != null ? r.escritura_realizada : '0') + '</td>' +
+                '<td>' + (r.inviavel != null ? r.inviavel : '0') + '</td>' +
+                '<td class="actions">' +
+                '<button type="button" class="btn btn-secondary btn-sm btn-edit-gestora" data-id="' + r.id + '">Editar</button>' +
+                '<button type="button" class="btn btn-danger btn-sm btn-delete-gestora" data-id="' + r.id + '">Apagar</button>' +
                 '</td>';
               tbody.appendChild(tr);
             });
@@ -792,7 +808,7 @@
             );
           })
           .catch(() => {
-            tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="12">Erro ao carregar.</td></tr>';
           });
       }
 
@@ -801,6 +817,7 @@
         document.getElementById('editGestoraId').value = '';
         document.getElementById('editGestoraNome').value = '';
         document.getElementById('editGestoraEmail').value = '';
+        document.getElementById('editGestoraEmailParaLeads').value = '';
         document.getElementById('editGestoraWhatsapp').value = '';
         document.getElementById('editGestoraAtivo').checked = true;
         document.getElementById('modalGestora').classList.add('visible');
@@ -811,6 +828,7 @@
         document.getElementById('editGestoraId').value = g.id;
         document.getElementById('editGestoraNome').value = g.nome || '';
         document.getElementById('editGestoraEmail').value = g.email || '';
+        document.getElementById('editGestoraEmailParaLeads').value = g.email_para_leads || g.email || '';
         document.getElementById('editGestoraWhatsapp').value = g.whatsapp || '';
         document.getElementById('editGestoraAtivo').checked = !!g.ativo;
         document.getElementById('modalGestora').classList.add('visible');
@@ -824,6 +842,7 @@
         const payload = {
           nome: document.getElementById('editGestoraNome').value.trim(),
           email: document.getElementById('editGestoraEmail').value.trim(),
+          email_para_leads: document.getElementById('editGestoraEmailParaLeads').value.trim() || undefined,
           whatsapp: document.getElementById('editGestoraWhatsapp').value.replace(/\D/g, ''),
           ativo: document.getElementById('editGestoraAtivo').checked,
         };

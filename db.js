@@ -81,7 +81,7 @@ async function confirmEmailAndSetLead(id) {
 }
 
 async function getGestoraById(id) {
-  const rows = await query('SELECT id, nome, email, whatsapp, ativo FROM ch_gestoras WHERE id = ?', [id]);
+  const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, ativo FROM ch_gestoras WHERE id = ?', [id]);
   return rows[0] || null;
 }
 
@@ -144,11 +144,11 @@ async function getActiveGestoras() {
 /** Devolve a gestora ativa com menos leads (distribuição igual entre gestoras). */
 async function getNextGestoraForLead() {
   const rows = await query(
-    `SELECT g.id, g.nome, g.email, g.whatsapp
+    `SELECT g.id, g.nome, g.email, g.email_para_leads, g.whatsapp
      FROM ch_gestoras g
      LEFT JOIN ch_leads l ON l.gestora_id = g.id
      WHERE g.ativo = 1
-     GROUP BY g.id, g.nome, g.email, g.whatsapp
+     GROUP BY g.id, g.nome, g.email, g.email_para_leads, g.whatsapp
      ORDER BY COUNT(l.id) ASC
      LIMIT 1`
   );
@@ -242,33 +242,66 @@ async function deleteLead(id) {
 
 /** Dashboard: lista todas as gestoras. */
 async function getAllGestoras() {
-  const rows = await query('SELECT id, nome, email, whatsapp, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id ASC');
+  const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id ASC');
   return rows;
+}
+
+/** Dashboard admin: gestoras com contagens de leads por estado_docs. */
+async function getGestorasWithLeadCounts() {
+  const rows = await query(
+    `SELECT g.id, g.nome, g.email, g.email_para_leads, g.whatsapp, g.ativo, g.created_at, g.updated_at,
+       COUNT(l.id) AS total_leads,
+       SUM(CASE WHEN l.estado_docs = 'aguardando_docs' THEN 1 ELSE 0 END) AS aguardando_docs,
+       SUM(CASE WHEN l.estado_docs = 'docs_enviados' THEN 1 ELSE 0 END) AS docs_enviados,
+       SUM(CASE WHEN l.estado_docs = 'credito_aprovado' THEN 1 ELSE 0 END) AS credito_aprovado,
+       SUM(CASE WHEN l.estado_docs = 'agendado_escritura' THEN 1 ELSE 0 END) AS agendado_escritura,
+       SUM(CASE WHEN l.estado_docs = 'escritura_realizada' THEN 1 ELSE 0 END) AS escritura_realizada,
+       SUM(CASE WHEN l.estado_docs = 'inviavel' THEN 1 ELSE 0 END) AS inviavel
+     FROM ch_gestoras g
+     LEFT JOIN ch_leads l ON l.gestora_id = g.id
+     GROUP BY g.id, g.nome, g.email, g.email_para_leads, g.whatsapp, g.ativo, g.created_at, g.updated_at
+     ORDER BY g.id ASC`
+  );
+  return rows.map((r) => ({
+    ...r,
+    total_leads: Number(r.total_leads) || 0,
+    aguardando_docs: Number(r.aguardando_docs) || 0,
+    docs_enviados: Number(r.docs_enviados) || 0,
+    credito_aprovado: Number(r.credito_aprovado) || 0,
+    agendado_escritura: Number(r.agendado_escritura) || 0,
+    escritura_realizada: Number(r.escritura_realizada) || 0,
+    inviavel: Number(r.inviavel) || 0,
+  }));
 }
 
 /** Dashboard: criar gestora. */
 async function createGestora(dados) {
-  const { nome, email, whatsapp, ativo } = dados || {};
+  const { nome, email, whatsapp, ativo, email_para_leads } = dados || {};
   if (!nome || !email || !whatsapp) throw new Error('Nome, email e whatsapp são obrigatórios.');
+  const emailVal = String(email).trim().toLowerCase();
+  const emailLeads = (email_para_leads != null && String(email_para_leads).trim() !== '')
+    ? String(email_para_leads).trim().toLowerCase()
+    : emailVal;
   await query(
-    'INSERT INTO ch_gestoras (nome, email, whatsapp, ativo) VALUES (?, ?, ?, ?)',
-    [String(nome).trim(), String(email).trim().toLowerCase(), String(whatsapp).replace(/\D/g, ''), ativo ? 1 : 0]
+    'INSERT INTO ch_gestoras (nome, email, email_para_leads, whatsapp, ativo) VALUES (?, ?, ?, ?, ?)',
+    [String(nome).trim(), emailVal, emailLeads, String(whatsapp).replace(/\D/g, ''), ativo ? 1 : 0]
   );
-  const rows = await query('SELECT id, nome, email, whatsapp, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id DESC LIMIT 1');
+  const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id DESC LIMIT 1');
   return rows[0] || null;
 }
 
 /** Dashboard: atualizar gestora. */
 async function updateGestora(id, dados) {
   if (!dados || typeof dados !== 'object') return;
-  const allowed = ['nome', 'email', 'whatsapp', 'ativo'];
+  const allowed = ['nome', 'email', 'email_para_leads', 'whatsapp', 'ativo'];
   const set = [];
   const values = [];
   for (const key of allowed) {
     if (!(key in dados)) continue;
     let val = dados[key];
     if (key === 'ativo') val = val ? 1 : 0;
-    else if (typeof val === 'string') val = key === 'email' ? val.trim().toLowerCase() : (key === 'whatsapp' ? val.replace(/\D/g, '') : val.trim());
+    else if (key === 'email_para_leads' && (val === '' || val === null)) val = null;
+    else if (typeof val === 'string') val = (key === 'email' || key === 'email_para_leads') ? val.trim().toLowerCase() : (key === 'whatsapp' ? val.replace(/\D/g, '') : val.trim());
     set.push(`${key} = ?`);
     values.push(val);
   }
@@ -309,6 +342,7 @@ module.exports = {
   updateLeadAdmin,
   deleteLead,
   getAllGestoras,
+  getGestorasWithLeadCounts,
   createGestora,
   updateGestora,
   deleteGestora,

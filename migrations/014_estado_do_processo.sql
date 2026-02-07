@@ -1,0 +1,7 @@
+-- =============================================================================
+-- Estado do processo: NÃO USAR.
+-- Usamos apenas a coluna estado_docs para todos os estados (aguardando_docs,
+-- sem_docs, docs_enviados, inviavel, credito_aprovado, agendado_escritura,
+-- escritura_realizada). Esta migração não adiciona nenhuma coluna.
+-- =============================================================================
+-- (nada a executar)
