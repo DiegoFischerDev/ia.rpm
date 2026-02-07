@@ -238,9 +238,89 @@
       border-radius: 2px;
       transition: width .3s ease;
     }
+
+    /* Modal de visualização de documento (evita ficar preso no mobile) */
+    #docViewerOverlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: #1e293b;
+      flex-direction: column;
+      padding: 0;
+      padding-top: env(safe-area-inset-top, 0);
+    }
+    #docViewerOverlay.visible {
+      display: flex;
+    }
+    #docViewerBar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.75rem 1rem;
+      background: rgba(0,0,0,.4);
+      color: #fff;
+      min-height: 48px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #docViewerBar .doc-viewer-title {
+      font-size: 0.875rem;
+      font-weight: 500;
+      opacity: .9;
+    }
+    #docViewerClose {
+      flex: 0 0 auto;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 44px;
+      min-height: 44px;
+      margin: -0.5rem -0.5rem -0.5rem 0.5rem;
+      padding: 0.5rem;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.9375rem;
+      font-weight: 600;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #docViewerClose:hover, #docViewerClose:focus { background: var(--accent-hover); }
+    #docViewerContent {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5rem;
+      overflow: auto;
+    }
+    #docViewerContent iframe,
+    #docViewerContent embed {
+      width: 100%;
+      height: 100%;
+      min-height: 60vh;
+      border: none;
+      background: #fff;
+    }
+    #docViewerContent img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
   </style>
 </head>
 <body>
+  <div id="docViewerOverlay" class="doc-viewer-overlay" aria-hidden="true">
+    <div id="docViewerBar">
+      <span class="doc-viewer-title" id="docViewerTitle">Documento</span>
+      <button type="button" id="docViewerClose" aria-label="Fechar">Fechar</button>
+    </div>
+    <div id="docViewerContent"></div>
+  </div>
+
   <div class="container">
     <header class="page-header">
       <h1>Envio de documentos</h1>
@@ -402,14 +482,23 @@
           r.onupgradeneeded = function () { r.result.createObjectStore(IDB_STORE, { keyPath: 'key' }); };
         });
       }
+      // Safari iOS não consegue guardar File/Blob no IndexedDB; guardamos ArrayBuffer + metadados.
       function idbSave(leadId, fieldName, file) {
-        return idbOpen().then(function (db) {
-          return new Promise(function (resolve, reject) {
-            var tx = db.transaction(IDB_STORE, 'readwrite');
-            var store = tx.objectStore(IDB_STORE);
-            store.put({ key: leadId + '_' + fieldName, file: file });
-            tx.oncomplete = function () { resolve(); };
-            tx.onerror = function () { reject(tx.error); };
+        var bufPromise = file.arrayBuffer ? file.arrayBuffer() : (file instanceof Blob ? new Response(file).arrayBuffer() : Promise.reject(new Error('Não suportado')));
+        return bufPromise.then(function (buffer) {
+          return idbOpen().then(function (db) {
+            return new Promise(function (resolve, reject) {
+              var tx = db.transaction(IDB_STORE, 'readwrite');
+              var store = tx.objectStore(IDB_STORE);
+              store.put({
+                key: leadId + '_' + fieldName,
+                buffer: buffer,
+                fileName: file.name || 'documento',
+                mimeType: file.type || 'application/octet-stream'
+              });
+              tx.oncomplete = function () { resolve(); };
+              tx.onerror = function () { reject(tx.error); };
+            });
           });
         });
       }
@@ -418,7 +507,17 @@
           return new Promise(function (resolve, reject) {
             var tx = db.transaction(IDB_STORE, 'readonly');
             var req = tx.objectStore(IDB_STORE).get(leadId + '_' + fieldName);
-            tx.oncomplete = function () { resolve(req.result ? req.result.file : null); };
+            tx.oncomplete = function () {
+              var row = req.result;
+              if (!row) { resolve(null); return; }
+              if (row.file) { resolve(row.file); return; }
+              if (row.buffer != null) {
+                var f = new File([row.buffer], row.fileName || 'documento', { type: row.mimeType || 'application/octet-stream' });
+                resolve(f);
+                return;
+              }
+              resolve(null);
+            };
             tx.onerror = function () { reject(tx.error); };
           });
         });
@@ -701,14 +800,55 @@
         }
       }
 
+      var docViewerCurrentUrl = null;
+      function closeDocViewer() {
+        var overlay = document.getElementById('docViewerOverlay');
+        var content = document.getElementById('docViewerContent');
+        if (docViewerCurrentUrl) {
+          URL.revokeObjectURL(docViewerCurrentUrl);
+          docViewerCurrentUrl = null;
+        }
+        content.innerHTML = '';
+        overlay.classList.remove('visible');
+        overlay.setAttribute('aria-hidden', 'true');
+        document.body.style.overflow = '';
+      }
       function viewFile(leadId, fieldName) {
         idbGet(leadId, fieldName).then(function (file) {
           if (!file) return;
           var url = URL.createObjectURL(file);
-          window.open(url, '_blank', 'noopener');
-          setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+          docViewerCurrentUrl = url;
+          var overlay = document.getElementById('docViewerOverlay');
+          var bar = document.getElementById('docViewerBar');
+          var titleEl = document.getElementById('docViewerTitle');
+          var content = document.getElementById('docViewerContent');
+          var isPdf = (file.type || '').toLowerCase() === 'application/pdf';
+          titleEl.textContent = file.name || 'Documento';
+          content.innerHTML = '';
+          if (isPdf) {
+            var iframe = document.createElement('iframe');
+            iframe.src = url;
+            iframe.title = file.name || 'PDF';
+            content.appendChild(iframe);
+          } else {
+            var img = document.createElement('img');
+            img.src = url;
+            img.alt = file.name || 'Imagem';
+            content.appendChild(img);
+          }
+          overlay.classList.add('visible');
+          overlay.setAttribute('aria-hidden', 'false');
+          document.body.style.overflow = 'hidden';
         }).catch(function () {});
       }
+      (function initDocViewer() {
+        var closeBtn = document.getElementById('docViewerClose');
+        var overlay = document.getElementById('docViewerOverlay');
+        if (closeBtn) closeBtn.addEventListener('click', closeDocViewer);
+        overlay.addEventListener('click', function (e) {
+          if (e.target === overlay) closeDocViewer();
+        });
+      })();
 
       function uploadedZoneHtml(fieldName) {
         return '<span class="doc-status">Anexado</span><div class="doc-actions">' +
