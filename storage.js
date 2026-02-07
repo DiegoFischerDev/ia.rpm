@@ -16,8 +16,9 @@ const STANDARD_NAMES = {
   comprovativo_morada: '08-comprovativo-morada',
   mapa_responsabilidades: '09-mapa-responsabilidades',
   rgpd_assinado: '10-rgpd-assinado',
-  declaracao_nao_divida: '11-declaracao-nao-divida',
-  declaracao_predial: '12-declaracao-predial',
+  declaracao_nao_divida_financas: '11-declaracao-nao-divida-financas',
+  declaracao_nao_divida_seguranca_social: '12-declaracao-nao-divida-seguranca-social',
+  declaracao_predial: '13-declaracao-predial',
 };
 
 function getLeadDir(leadId) {

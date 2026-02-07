@@ -23,6 +23,37 @@
   <div class="container">
     <h1>Documentos recebidos</h1>
     <p>Os seus documentos foram enviados com sucesso. A gestora irá analisá-los e contactá-lo(a) por email.</p>
+    <p id="gestoraEmailLine" style="display:none; margin-top: 1rem;">Email de contacto da gestora: <a href="#" id="gestoraEmailLink" style="color: #2d5016;"></a></p>
+    <p id="gestoraWhatsappLine" style="display:none; margin-top: 0.5rem;">Contactar a gestora por <a href="#" id="gestoraWhatsappLink" style="color: #2d5016;" target="_blank" rel="noopener">WhatsApp</a></p>
   </div>
+  <script>
+    (function () {
+      var pathParts = window.location.pathname.split('/').filter(Boolean);
+      var leadId = pathParts[pathParts.length - 1];
+      if (!leadId || !/^\d+$/.test(leadId)) return;
+      var msgTemplate = 'Ola, meu nome é {nome}, acabei de enviar meus documentos por email para você. Pode confirmar o recebimento por favor?';
+      fetch('/api/leads/' + leadId + '/status')
+        .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+        .then(function (data) {
+          var email = data.gestoraEmail;
+          var emailLine = document.getElementById('gestoraEmailLine');
+          var emailLink = document.getElementById('gestoraEmailLink');
+          if (emailLine && emailLink && email) {
+            emailLink.textContent = email;
+            emailLink.href = 'mailto:' + email;
+            emailLine.style.display = 'block';
+          }
+          var whatsapp = (data.gestoraWhatsapp || '').replace(/\D/g, '');
+          var whatsappLine = document.getElementById('gestoraWhatsappLine');
+          var whatsappLink = document.getElementById('gestoraWhatsappLink');
+          if (whatsappLine && whatsappLink && whatsapp) {
+            var msg = msgTemplate.replace('{nome}', data.nome || '');
+            whatsappLink.href = 'https://wa.me/' + whatsapp + '?text=' + encodeURIComponent(msg);
+            whatsappLine.style.display = 'block';
+          }
+        })
+        .catch(function () {});
+    })();
+  </script>
 </body>
 </html>

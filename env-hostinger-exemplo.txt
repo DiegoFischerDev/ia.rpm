@@ -16,6 +16,9 @@ DB_NAME=u150959679_evo_leads
 # Email da gestora (destinatária dos documentos)
 GESTORA_EMAIL=email.da.gestora@exemplo.pt
 
+# WhatsApp da gestora (número com indicativo, sem +; ex.: 351912345678) – usado no link da página de confirmação
+GESTORA_WHATSAPP=351912345678
+
 # Resend (https://resend.com) – envio transacional; Reply-To = lead (troca só entre lead e gestora)
 # 1) Criar conta em resend.com
 # 2) Adicionar e verificar o domínio (ex.: ia.rafaapelomundo.com) em Domains

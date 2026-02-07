@@ -1,73 +1,102 @@
-# Como testar o ia-app
+# Como testar o ia-app (fluxo completo)
 
-## 1. Pré-requisitos
+## Pré-requisitos
 
 - **Node.js** (v18+)
-- **MySQL** com a tabela `gestora_de_credito` (mesmo schema do evo)
-- **.env** na raiz do projeto ou em `ia-app/` com:
+- **MySQL** com as tabelas `ch_gestoras` e `ch_leads` (ver `ia-app/migrations/005_recreate_ch_tables.sql`)
+- **.env** na pasta pai de `public_html` (Hostinger) ou em `ia-app/` (local) com:
   - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`
   - `RESEND_API_KEY`, `MAIL_FROM`, `GESTORA_EMAIL`
+- **Resend**: domínio de `MAIL_FROM` (ex.: ia.rafaapelomundo.com) verificado na Resend
 
-## 2. Criar um lead de teste na base de dados
+---
 
-A página de upload só aparece se existir um lead com `estado = 'aguardando_docs'`.
+## Fluxo completo (teste ponta a ponta)
 
-No **phpMyAdmin** (ou outro cliente MySQL), executa:
+### 1. WhatsApp → criar lead e obter link (evo)
+
+1. Envia no WhatsApp (número ligado à Evolution) a mensagem gatilho:
+   - *"Ola, gostaria de ajuda para conseguir meu credito habitação em portugal"*
+2. O evo cria o lead e responde: responde com **1** (dúvidas) ou **2** (enviar documentos).
+3. Responde **2**.
+4. O evo coloca o lead em `aguardando_docs` e envia uma mensagem com o **link de upload**, ex.:
+   - `https://ia.rafaapelomundo.com/upload/123` (substitui pelo teu domínio e o id do lead).
+
+**Alternativa sem WhatsApp:** cria o lead à mão na BD e usa o link direto:
 
 ```sql
-INSERT INTO gestora_de_credito (whatsapp_number, nome, origem_instancia, estado, docs_enviados, created_at, updated_at)
+INSERT INTO ch_leads (whatsapp_number, nome, origem_instancia, estado, docs_enviados, created_at, updated_at)
 VALUES ('351912345678', 'Teste', 'DiegoWoo', 'aguardando_docs', 0, NOW(), NOW());
+-- Anota o id (ex.: 1) e usa https://ia.rafaapelomundo.com/upload/1
 ```
 
-Anota o **id** do registo inserido (ou faz `SELECT LAST_INSERT_ID();` ou consulta a tabela). Ex.: se o id for **1**, o link de upload será `/upload/1`.
+---
 
-## 3. Arrancar o servidor
+### 2. Primeiro acesso ao link (confirmação de email)
 
-Na pasta do projeto (raiz ou `ia-app`), com o .env disponível:
+1. Abre o link no browser (ex.: `https://ia.rafaapelomundo.com/upload/1`).
+2. Deves ver o ecrã **Nome + Email** e o botão **Avançar**.
+3. Preenche nome e um **email real** (para receber o código) e clica **Avançar**.
+4. Verifica o email: deve chegar um **código de 6 algarismos** (envio via Resend). O código vale 15 minutos.
+5. Introduz o código e clica **Confirmar**.
+6. Se estiver correto, entras no **formulário completo** (dados pessoais + documentos).
+
+---
+
+### 3. Formulário e documentos
+
+1. **Dados pessoais:** nome (já preenchido), estado civil, n.º dependentes, email (readonly). Mensagem para a gestora é opcional e fica no fim.
+2. **Documentos obrigatórios:** anexa um ficheiro em cada item (PDF ou imagem). Os 3 recibos têm 3 campos (Recibo 1, 2, 3). O RGPD está no fim; podes descarregar o PDF da página.
+3. **Opcional – Financiamento 100%:** se marcar o checkbox, aparecem mais 3 documentos (Decl. não dívida Finanças, Seg. Social, Decl. Predial). Preenche também esses se quiseres testar o envio completo.
+4. Usa os botões **Ver**, **Trocar** e **Remover** para confirmar que funcionam.
+5. Clica **Enviar para a gestora**.
+
+---
+
+### 4. Envio e resultado
+
+1. O botão deve passar a **"A enviar..."** e depois **"Enviado ✓"** (com animação verde), e redirecionar para a página de **confirmação**.
+2. **Email:** o endereço em `GESTORA_EMAIL` deve receber o email com todos os anexos (nomes padronizados). O email do lead deve estar em CC (e Reply-To).
+3. **Base de dados:** o lead deve ficar com `estado = 'docs_enviados'`, `docs_enviados = 1` e `docs_enviados_em` preenchido.
+
+---
+
+### 5. Testar reentrada no link (sem novo código)
+
+1. Abre de novo o **mesmo** link de upload (ex.: `/upload/1`).
+2. Deves ver apenas o campo **Email** e o botão **Continuar**.
+3. Introduz o **mesmo email** que confirmaste antes e clica **Continuar**.
+4. Deves entrar direto no formulário (sem pedir código outra vez). O campo email do formulário fica readonly.
+5. Se usares outro email, deve dar erro (trava de segurança).
+
+---
+
+## Testes rápidos (só ia-app em local)
+
+1. **Health:** `GET http://localhost:3000/api/health` → `{"ok":true}`.
+2. **Upload sem lead:** `GET http://localhost:3000/upload/99999` (id inexistente) → mensagem de link inválido/não encontrado.
+3. **Lead noutro estado:** altera na BD um lead para `estado = 'docs_enviados'` e abre `/upload/:id` → deve indicar que o link não está disponível (conforme lógica do servidor).
+
+---
+
+## Erros comuns
+
+| Mensagem / Comportamento | Causa provável | Solução |
+|--------------------------|----------------|---------|
+| "Envio de email não está configurado" | Resend não configurado ou domínio não verificado | Verifica `RESEND_API_KEY`, `MAIL_FROM` e verificação do domínio na Resend. |
+| Código de email não chega | Resend ou MAIL_FROM incorretos; verifica spam | Confirma Resend, domínio verificado e pasta de spam. |
+| "Link não encontrado" | Id na URL não existe na tabela | Confirma o id: `SELECT id, estado FROM ch_leads;` |
+| "Este link já não está disponível" | Lead não está em `aguardando_docs` | `UPDATE ch_leads SET estado = 'aguardando_docs', docs_enviados = 0, docs_enviados_em = NULL, email = NULL, email_verification_code = NULL WHERE id = X;` |
+| "É necessário anexar todos os documentos..." | Faltam ficheiros obrigatórios | Anexa todos os itens da lista (e os 3 extras se tiver 100% marcado). |
+| Erro de ligação à base | MySQL inacessível ou .env errado | Confirma `DB_*` no .env e que o MySQL está a correr. |
+
+---
+
+## Arrancar o ia-app em local
 
 ```bash
 cd ia-app
 npm start
 ```
 
-Deve aparecer algo como: `Servidor ouvindo na porta 3000`.
-
-## 4. Testar no browser
-
-1. **Health check**  
-   Abre: [http://localhost:3000/api/health](http://localhost:3000/api/health)  
-   Deve devolver JSON com `"ok": true`.
-
-2. **Página de upload**  
-   Abre: [http://localhost:3000/upload/1](http://localhost:3000/upload/1)  
-   (Substitui `1` pelo id do lead que inseriste.)  
-   - Se o lead existir e estiver em `aguardando_docs`, aparece o formulário.  
-   - Se der "Link não encontrado", o id não existe na tabela.  
-   - Se der "Este link já não está disponível", o lead não está em `aguardando_docs`.
-
-3. **Preencher e enviar**  
-   - Preenche os campos (estado civil, n.º dependentes, email).  
-   - Anexa ficheiros em todos os campos obrigatórios (podem ser PDFs ou imagens de teste; podes usar o mesmo ficheiro em vários campos).  
-   - Se não quiseres testar "Financiamento 100%", deixa o checkbox desmarcado.  
-   - Clica em **Enviar documentos**.
-
-4. **Resultado**  
-   - Sucesso: redireciona para `/confirmacao/1` (ou o id usado).  
-   - A gestora (email em `GESTORA_EMAIL`) e o email que colocaste no formulário devem receber o email com os anexos.  
-   - Na base de dados, o lead fica com `estado = 'docs_enviados'` e `docs_enviados = 1`.
-
-## 5. Erros comuns
-
-- **"Envio de email não está configurado"**  
-  Falta `RESEND_API_KEY` ou `MAIL_FROM` no .env, ou o domínio de `MAIL_FROM` não está verificado na Resend.
-
-- **"Link não encontrado"**  
-  O id na URL não existe em `gestora_de_credito`. Confirma o id com `SELECT id, nome, estado FROM gestora_de_credito;`.
-
-- **"Este link já não está disponível"**  
-  O lead não está em `aguardando_docs`. Para testar de novo, atualiza:  
-  `UPDATE gestora_de_credito SET estado = 'aguardando_docs', docs_enviados = 0, docs_enviados_em = NULL WHERE id = 1;`  
-  (ajusta o id.)
-
-- **Erro de ligação à base**  
-  Confirma `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` e que o MySQL está a correr. O .env deve estar na raiz do projeto ou em `ia-app/` (o servidor carrega de ambos).
+Servidor em `http://localhost:3000`. Para testar na Hostinger, usa o domínio do ia-app (ex.: ia.rafaapelomundo.com) com o mesmo .env na pasta pai de `public_html`.

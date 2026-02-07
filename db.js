@@ -23,13 +23,13 @@ async function query(sql, params) {
 }
 
 async function getLeadById(id) {
-  const rows = await query('SELECT * FROM gestora_de_credito WHERE id = ?', [id]);
+  const rows = await query('SELECT * FROM ch_leads WHERE id = ?', [id]);
   return rows[0] || null;
 }
 
 async function updateLeadDocsEnviados(id) {
   await query(
-    `UPDATE gestora_de_credito SET estado = ?, docs_enviados = 1, docs_enviados_em = NOW(), updated_at = NOW() WHERE id = ?`,
+    `UPDATE ch_leads SET estado = ?, docs_enviados = 1, docs_enviados_em = NOW(), updated_at = NOW() WHERE id = ?`,
     ['docs_enviados', id]
   );
 }
@@ -52,21 +52,21 @@ async function updateLeadDados(id, dados) {
   set.push('updated_at = NOW()');
   values.push(id);
   await query(
-    `UPDATE gestora_de_credito SET ${set.join(', ')} WHERE id = ?`,
+    `UPDATE ch_leads SET ${set.join(', ')} WHERE id = ?`,
     values
   );
 }
 
 async function setEmailVerification(id, pendingNome, pendingEmail, code) {
   await query(
-    `UPDATE gestora_de_credito SET pending_nome = ?, pending_email = ?, email_verification_code = ?, email_verification_sent_at = NOW(), updated_at = NOW() WHERE id = ?`,
+    `UPDATE ch_leads SET pending_nome = ?, pending_email = ?, email_verification_code = ?, email_verification_sent_at = NOW(), updated_at = NOW() WHERE id = ?`,
     [pendingNome || null, pendingEmail || null, code || null, id]
   );
 }
 
 async function confirmEmailAndSetLead(id) {
   const rows = await query(
-    'SELECT pending_nome, pending_email, email_verification_code, email_verification_sent_at FROM gestora_de_credito WHERE id = ?',
+    'SELECT pending_nome, pending_email, email_verification_code, email_verification_sent_at FROM ch_leads WHERE id = ?',
     [id]
   );
   const r = rows[0];
@@ -75,10 +75,41 @@ async function confirmEmailAndSetLead(id) {
   const expiryMs = 15 * 60 * 1000; // 15 min
   if (Date.now() - sentAt > expiryMs) return false;
   await query(
-    `UPDATE gestora_de_credito SET nome = ?, email = ?, pending_nome = NULL, pending_email = NULL, email_verification_code = NULL, email_verification_sent_at = NULL, updated_at = NOW() WHERE id = ?`,
+    `UPDATE ch_leads SET nome = ?, email = ?, pending_nome = NULL, pending_email = NULL, email_verification_code = NULL, email_verification_sent_at = NULL, updated_at = NOW() WHERE id = ?`,
     [r.pending_nome || null, r.pending_email, id]
   );
   return true;
+}
+
+async function getGestoraById(id) {
+  const rows = await query('SELECT id, nome, email, whatsapp, ativo FROM ch_gestoras WHERE id = ?', [id]);
+  return rows[0] || null;
+}
+
+async function getActiveGestoras() {
+  const rows = await query('SELECT id, nome, email, whatsapp FROM ch_gestoras WHERE ativo = 1 ORDER BY id ASC');
+  return rows;
+}
+
+/** Devolve a gestora ativa com menos leads (distribuição igual entre gestoras). */
+async function getNextGestoraForLead() {
+  const rows = await query(
+    `SELECT g.id, g.nome, g.email, g.whatsapp
+     FROM ch_gestoras g
+     LEFT JOIN ch_leads l ON l.gestora_id = g.id
+     WHERE g.ativo = 1
+     GROUP BY g.id, g.nome, g.email, g.whatsapp
+     ORDER BY COUNT(l.id) ASC
+     LIMIT 1`
+  );
+  return rows[0] || null;
+}
+
+async function updateLeadGestora(leadId, gestoraId) {
+  await query(
+    'UPDATE ch_leads SET gestora_id = ?, updated_at = NOW() WHERE id = ?',
+    [gestoraId || null, leadId]
+  );
 }
 
 module.exports = {
@@ -89,4 +120,8 @@ module.exports = {
   updateLeadDados,
   setEmailVerification,
   confirmEmailAndSetLead,
+  getGestoraById,
+  getActiveGestoras,
+  getNextGestoraForLead,
+  updateLeadGestora,
 };

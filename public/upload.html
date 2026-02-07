@@ -33,8 +33,9 @@
       padding: 1.5rem 1rem 3rem;
       line-height: 1.6;
       min-height: 100vh;
+      overflow-x: hidden;
     }
-    .container { max-width: 560px; margin: 0 auto; }
+    .container { max-width: 560px; margin: 0 auto; padding: 0 0.25rem; }
     .page-header {
       margin-bottom: 2rem;
       text-align: center;
@@ -50,6 +51,25 @@
       color: var(--text-muted);
       font-size: 0.9375rem;
       margin: 0;
+      text-align: left;
+    }
+    #pageIntro { margin-top: 0.75rem; line-height: 1.65; }
+    .doc-privacy { margin-bottom: 1rem; padding: 0.5rem 0; }
+    .doc-step { font-size: 0.8125rem; color: var(--text-muted); margin: 0.25rem 0 0.5rem 0; line-height: 1.5; }
+    .doc-step ol { margin: 0.25rem 0 0 1rem; padding: 0; }
+    .doc-link-inline { color: var(--accent); text-decoration: none; }
+    .doc-link-inline:hover { text-decoration: underline; }
+    .recibos-row {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    .recibos-row .doc-block { margin-bottom: 0; min-width: 0; overflow: hidden; }
+    .recibos-row .doc-upload-zone { min-width: 0; }
+    .recibos-row .doc-upload-zone input[type="file"] { min-width: 0; flex: 1 1 100%; }
+    @media (min-width: 520px) {
+      .recibos-row { grid-template-columns: repeat(3, 1fr); }
     }
     .card {
       background: var(--surface);
@@ -156,12 +176,35 @@
     }
     .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-primary.sending { cursor: wait; }
+    .btn-primary.sending .btn-text { opacity: 0.85; animation: pulse 1s ease-in-out infinite; }
+    .btn-primary.sent { background: var(--success); pointer-events: none; animation: sentPop 0.4s ease; }
+    @keyframes pulse { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
+    @keyframes sentPop { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
     .btn-outline {
       background: transparent;
       color: var(--accent);
       border: 1px solid var(--accent);
     }
     .btn-outline:hover { background: rgba(13, 148, 136, .08); }
+    .doc-actions { display: inline-flex; align-items: center; gap: 0.25rem; margin-left: 0.5rem; }
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: color .15s, background .15s, border-color .15s;
+    }
+    .btn-icon:hover { color: var(--accent); border-color: var(--accent); background: rgba(13, 148, 136, .06); }
+    .btn-icon svg { width: 16px; height: 16px; display: block; }
+    .btn-icon[data-action="remove"]:hover { color: var(--error); border-color: var(--error); background: rgba(220, 38, 38, .06); }
     .footnote {
       font-size: 0.75rem;
       color: var(--text-muted);
@@ -197,7 +240,11 @@
   <div class="container">
     <header class="page-header">
       <h1>Envio de documentos</h1>
-      <p id="pageSubtitle">Os documentos ficam guardados apenas no seu dispositivo até fazer o envio para a gestora. A equipe do RPM não tem acesso a essas informações.</p>
+      <p id="pageIntro">🏡✨ Estás a um passo de iniciar a tua jornada para sair do arrendamento e conquistar a casa própria! 🔑<br><br>
+      ✅ Esta plataforma foi criada para te ajudar a organizar, de forma simples e prática, todos os documentos necessários. Assim que tiveres tudo pronto, podes submeter o formulário e enviar os teus documentos por e-mail diretamente para um dos nossos parceiros habilitados em gestão de crédito.<br><br>
+      ✅ O teu caso será analisado e será definida a melhor estratégia para ti. A gestora de crédito entrará em contacto contigo via WhatsApp para explicar quais serão os próximos passos.<br><br>
+      Sabemos que são muitos documentos, mas não desistas 💪 Assim que tiveres tudo em mãos, todo o resto do processo será muito mais simples e fluido.<br><br>
+      Boa sorte! ✨</p>
     </header>
 
     <div id="stepGate">
@@ -227,6 +274,12 @@
         <div id="gateError3" class="error-msg" style="display:none;"></div>
         <button type="button" class="btn btn-primary" id="btnContinuar">Continuar</button>
       </div>
+      <div id="stepDocsEnviados" class="card" style="display:none;">
+        <h2>Documentos recebidos</h2>
+        <p class="doc-hint">Os seus documentos foram enviados com sucesso. A gestora irá analisá-los e contactá-lo(a) por email.</p>
+        <p class="doc-hint" id="gestoraEmailWrap" style="display:none;">Email de contacto da gestora: <a href="#" id="gestoraEmailRef" class="doc-link-inline"></a></p>
+        <p class="doc-hint" id="gestoraWhatsappWrap" style="display:none;">Contactar a gestora por <a href="#" id="gestoraWhatsappRef" class="doc-link-inline" target="_blank" rel="noopener">WhatsApp</a></p>
+      </div>
     </div>
 
     <div id="mainForm" style="display:none;">
@@ -253,15 +306,13 @@
         </select>
         <label for="num_dependentes">N.º de dependentes</label>
         <input type="number" id="num_dependentes" name="num_dependentes" min="0" placeholder="0">
-        <label for="email">O seu email (para receber cópia) *</label>
-        <input type="email" id="email" name="email" required placeholder="email@exemplo.pt" readonly title="Apenas este email pode enviar documentos por este link.">
-        <p class="doc-hint" id="emailTravaHint" style="display:none;">Apenas este email pode preencher e enviar documentos por este link.</p>
-        <label for="mensagem_gestora">Mensagem para a gestora (opcional)</label>
-        <textarea id="mensagem_gestora" name="mensagem_gestora" rows="3" placeholder="Alguma informação adicional..."></textarea>
+        <label for="email">O seu email *</label>
+        <input type="email" id="email" name="email" required placeholder="email@exemplo.pt" readonly title="Email associado a este link.">
       </div>
 
       <div class="card">
         <h2>Documentos obrigatórios</h2>
+        <p class="doc-hint doc-privacy">Os documentos ficam guardados apenas no seu dispositivo até fazer o envio para a gestora. A equipe do RPM não tem acesso a essas informações.</p>
         <div id="docList"></div>
       </div>
 
@@ -269,7 +320,7 @@
         <div class="checkbox-wrap">
           <label>
             <input type="checkbox" id="financiamento_100" name="financiamento_100" value="1">
-            Solicito financiamento no âmbito dos 100% (documentos adicionais obrigatórios)
+            Solicito financiamento a 100% para jovens com menos de 35 anos
           </label>
         </div>
         <div id="docs_100" class="conditional">
@@ -277,8 +328,17 @@
         </div>
       </div>
 
+      <div class="card" id="cardRgpd">
+        <div id="docRgpd"></div>
+      </div>
+
+      <div class="card">
+        <label for="mensagem_gestora">Mensagem para a gestora (opcional)</label>
+        <textarea id="mensagem_gestora" name="mensagem_gestora" rows="3" placeholder="Alguma informação adicional..."></textarea>
+      </div>
+
       <div id="formError" class="error-msg" style="display:none;"></div>
-      <button type="submit" class="btn btn-primary" id="submitBtn" disabled>Enviar para a gestora</button>
+      <button type="submit" class="btn btn-primary" id="submitBtn" disabled><span class="btn-text">Enviar para a gestora</span></button>
     </form>
     </div>
   </div>
@@ -355,33 +415,75 @@
           });
         });
       }
+      function idbDelete(leadId, fieldName) {
+        return idbOpen().then(function (db) {
+          return new Promise(function (resolve, reject) {
+            var tx = db.transaction(IDB_STORE, 'readwrite');
+            tx.objectStore(IDB_STORE).delete(leadId + '_' + fieldName);
+            tx.oncomplete = function () { resolve(); };
+            tx.onerror = function () { reject(tx.error); };
+          });
+        });
+      }
 
       function showStep(stepId) {
-        ['stepNomeEmail', 'stepCode', 'stepEnterEmail', 'mainForm'].forEach(function (id) {
+        ['stepNomeEmail', 'stepCode', 'stepEnterEmail', 'stepDocsEnviados', 'mainForm'].forEach(function (id) {
           var el = document.getElementById(id);
           if (el) el.style.display = id === stepId ? 'block' : 'none';
         });
       }
+      var WHATSAPP_MSG = 'Ola, meu nome é {nome}, acabei de enviar meus documentos por email para você. Pode confirmar o recebimento por favor?';
+      function setGestoraEmailDisplay(email) {
+        var wrap = document.getElementById('gestoraEmailWrap');
+        var ref = document.getElementById('gestoraEmailRef');
+        if (wrap && ref && email) {
+          ref.textContent = email;
+          ref.href = 'mailto:' + email;
+          wrap.style.display = 'block';
+        } else if (wrap) wrap.style.display = 'none';
+      }
+      function setGestoraWhatsappDisplay(whatsappNumber, nome) {
+        var wrap = document.getElementById('gestoraWhatsappWrap');
+        var ref = document.getElementById('gestoraWhatsappRef');
+        if (wrap && ref && whatsappNumber) {
+          var msg = WHATSAPP_MSG.replace('{nome}', (nome || '')).trim();
+          ref.href = 'https://wa.me/' + whatsappNumber + '?text=' + encodeURIComponent(msg);
+          wrap.style.display = 'block';
+        } else if (wrap) wrap.style.display = 'none';
+      }
+      function setDocsEnviadosDisplay(data) {
+        setGestoraEmailDisplay(data.gestoraEmail);
+        setGestoraWhatsappDisplay(data.gestoraWhatsapp, data.nome);
+      }
 
       const DOCS_BASE = [
-        { field: 'cartao_residencia_ou_passaporte', label: '1. Cartão de residência ou passaporte', hint: '' },
-        { field: 'recibo_vencimento_1', label: '2. Recibo de vencimento (1º)', hint: 'Últimos 3 recibos + contrato ou declaração de efetividade.' },
-        { field: 'recibo_vencimento_2', label: 'Recibo de vencimento (2º)', hint: '' },
-        { field: 'recibo_vencimento_3', label: 'Recibo de vencimento (3º)', hint: '' },
-        { field: 'contrato_ou_declaracao_efetividade', label: 'Contrato ou declaração de efetividade', hint: '' },
-        { field: 'irs_declaracao', label: '3. Declaração de IRS (último ano)', hint: '' },
-        { field: 'irs_nota_liquidacao', label: 'Nota de liquidação IRS', hint: '' },
-        { field: 'comprovativo_morada', label: '4. Comprovativo de morada', hint: 'Retirado do site das Finanças.' },
-        { field: 'mapa_responsabilidades', label: '5. Mapa de responsabilidades de crédito', hint: '', footnote: '* Aceda ao site do Banco de Portugal → Particulares → Central de Responsabilidades de Crédito → aceite as condições → data (mês/ano) → autentique-se (CC ou Portal das Finanças). Download automático.' },
-        { field: 'rgpd_assinado', label: '6. Documento RGPD assinado', hint: 'Imprimir/assinar ou chave móvel digital.', footnote: '** Assinatura com chave móvel: https://bit.ly/assinarcmd — siga os passos, faça download e anexe aqui.' },
+        { field: 'cartao_residencia_ou_passaporte', label: '1. Cartão de residência ou passaporte', description: 'Documento de identificação válido: cartão de residência (titular de autorização de residência) ou passaporte. Deve estar dentro do prazo de validade.' },
+        { type: 'recibos', label: '2. Últimos 3 recibos de vencimento', description: 'Comprovativo dos seus rendimentos. São os comprovativos que recebe do empregador com o valor líquido do salário. Pode obtê-los no portal do empregador, no recibo em PDF que recebe por email, ou pedindo à entidade patronal. Anexe os 3 últimos meses.', fields: ['recibo_vencimento_1', 'recibo_vencimento_2', 'recibo_vencimento_3'] },
+        { field: 'contrato_ou_declaracao_efetividade', label: '3. Contrato ou declaração de efetividade', description: 'Comprova o vínculo laboral e se está efetivo. Pode ser o contrato de trabalho assinado ou uma declaração da entidade patronal a indicar que está em regime de efetividade. A declaração deve constar no papel timbrado da empresa e ser recente.' },
+        { field: 'irs_declaracao', label: '4. Declaração de IRS (último ano)', description: 'Declaração de IRS referente ao último ano fiscal. Obtém-se no Portal das Finanças (finanças.gov.pt): Área reservada → Declarações → Consultar declarações entregues. Faça download do PDF da declaração entregue.' },
+        { field: 'irs_nota_liquidacao', label: '5. Nota de liquidação IRS', description: 'Documento que comprova o resultado da liquidação do IRS (reembolso ou valor a pagar). Também disponível no Portal das Finanças: após a entrega da declaração, a nota de liquidação fica disponível para download na mesma área.' },
+        { field: 'comprovativo_morada', label: '6. Comprovativo de morada', description: 'Documento que comprova a sua morada fiscal (ex.: extrato de morada ou comprovativo retirado do site das Finanças). No Portal das Finanças: Área reservada → Dados pessoais / Morada fiscal. Pode gerar um comprovativo em PDF.' },
+        { field: 'mapa_responsabilidades', label: '7. Mapa de responsabilidades de crédito', description: 'Documento oficial do Banco de Portugal que lista os seus créditos. Passo a passo: aceda ao site do Banco de Portugal (<a href="https://www.bportugal.pt/" target="_blank" rel="noopener" class="doc-link-inline">www.bportugal.pt</a>) → Particulares → Central de Responsabilidades de Crédito → aceite as condições → selecione a data (mês/ano) → autentique-se com Cartão de Cidadão ou Portal das Finanças. O download é feito automaticamente.' },
       ];
       const DOCS_100 = [
-        { field: 'declaracao_nao_divida', label: 'Declaração de não dívida (Finanças e Segurança Social)', hint: 'Pode obter online nos sites oficiais.' },
-        { field: 'declaracao_predial', label: 'Declaração Predial negativa', hint: 'Retira-se no site das Finanças.' },
+        { field: 'declaracao_nao_divida_financas', label: 'Declaração de não dívida (Finanças)', stepByStep: 'Obtida no Portal das Finanças. Passo a passo: 1) Aceda a finanças.gov.pt e entre na Área reservada; 2) Procure o serviço "Certidão de situação contributiva" ou "Declaração de dívidas fiscais / não dívida"; 3) Selecione o tipo de certidão (situação tributária); 4) Gere o documento em PDF e faça download.' },
+        { field: 'declaracao_nao_divida_seguranca_social', label: 'Declaração de não dívida (Segurança Social)', stepByStep: 'Obtida no site da Segurança Social. Passo a passo: 1) Aceda a seg-social.pt e entre na área "Segurança Social Direta"; 2) Procure "Certidão de situação contributiva" ou "Declaração de não dívida"; 3) Selecione o período e o tipo de certidão; 4) Gere e faça download do PDF.' },
+        { field: 'declaracao_predial', label: 'Declaração Predial negativa', stepByStep: 'Comprova que não tem imóveis em seu nome (ou a situação predial). Passo a passo: 1) Aceda ao Portal das Finanças (finanças.gov.pt); 2) Área reservada → Serviços → Registo e notários (ou "Certidões"); 3) Solicite a "Certidão permanente de conteúdo de registo predial" ou "Declaração de não titularidade" conforme disponível; 4) Siga as instruções para obter o documento em PDF.' },
       ];
+      const DOC_RGPD = {
+        field: 'rgpd_assinado',
+        label: '8. Documento RGPD assinado',
+        description: 'Documento de consentimento e proteção de dados. Deve ser assinado antes do envio.',
+        footnote: 'Pode assinar de duas formas: (1) Imprimir o PDF em anexo, assinar à mão e digitalizar ou fotografar; ou (2) Assinar electronicamente com Chave Móvel Digital em <a href="https://bit.ly/assinarcmd" target="_blank" rel="noopener" class="doc-link-inline">bit.ly/assinarcmd</a> — siga os passos no site, faça download do documento assinado e anexe-o aqui.',
+      };
 
       let docsState = {};
-      const requiredBase = DOCS_BASE.map((d) => d.field);
+      const requiredBase = [];
+      DOCS_BASE.forEach((d) => {
+        if (d.field) requiredBase.push(d.field);
+        if (d.fields) d.fields.forEach((f) => requiredBase.push(f));
+      });
+      requiredBase.push('rgpd_assinado');
       const required100 = DOCS_100.map((d) => d.field);
 
       function getRequired() {
@@ -404,32 +506,77 @@
         wrap.style.display = 'block';
         text.textContent = n + ' de ' + total + ' documentos anexados';
         fill.style.width = total ? (100 * n / total) + '%' : '0%';
-        document.getElementById('submitBtn').disabled = n !== total;
+        document.getElementById('submitBtn').disabled = false;
       }
 
-      function renderDocBlock(item, container, showReplace) {
-        const uploaded = !!docsState[item.field];
+      function renderDocBlock(item, container, opts) {
+        opts = opts || {};
+        const field = item.field;
+        const uploaded = !!docsState[field];
+        const desc = opts.description || item.description || item.hint || '';
+        const stepByStep = opts.stepByStep || item.stepByStep || '';
         const div = document.createElement('div');
         div.className = 'doc-block';
-        div.dataset.field = item.field;
+        div.dataset.field = field;
         div.innerHTML =
           '<div class="doc-title">' + escapeHtml(item.label) + '</div>' +
-          (item.hint ? '<div class="doc-hint">' + escapeHtml(item.hint) + '</div>' : '') +
+          (!uploaded && desc ? '<div class="doc-hint">' + (opts.allowHtml ? desc : escapeHtml(desc)) + '</div>' : '') +
+          (!uploaded && stepByStep ? '<div class="doc-step">' + (opts.allowHtml ? stepByStep : escapeHtml(stepByStep)) + '</div>' : '') +
           '<div class="doc-upload-zone">' +
-          (uploaded
-            ? '<span class="doc-status">Anexado</span><button type="button" class="btn btn-outline" data-action="replace">Trocar</button><input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + escapeHtml(item.field) + '" style="display:none;">'
-            : '<input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + escapeHtml(item.field) + '">') +
+          (uploaded ? uploadedZoneHtml(field) : '<input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + escapeHtml(field) + '">') +
           '</div>' +
-          (item.footnote ? '<p class="footnote">' + item.footnote.replace(/https:\/\/bit\.ly\/assinarcmd/, '<a href="https://bit.ly/assinarcmd" target="_blank" rel="noopener">https://bit.ly/assinarcmd</a>') + '</p>' : '');
+          (!uploaded && item.footnote ? '<p class="footnote">' + (opts.allowHtml ? item.footnote : escapeHtml(item.footnote)) + '</p>' : '');
         container.appendChild(div);
 
+        const zone = div.querySelector('.doc-upload-zone');
         const fileInput = div.querySelector('input[type="file"]');
-        const replaceBtn = div.querySelector('[data-action="replace"]');
-        if (replaceBtn) {
-          replaceBtn.addEventListener('click', () => { fileInput.style.display = 'block'; replaceBtn.style.display = 'none'; fileInput.click(); });
-          fileInput.addEventListener('change', () => uploadOne(leadId, item.field, fileInput, div));
+        if (docsState[field]) {
+          attachUploadedZoneHandlers(zone, leadId, field, div);
         } else {
-          fileInput.addEventListener('change', () => uploadOne(leadId, item.field, fileInput, div));
+          fileInput.addEventListener('change', () => uploadOne(leadId, field, fileInput, div));
+        }
+      }
+
+      function renderRecibosBlock(container) {
+        const item = DOCS_BASE.find((d) => d.type === 'recibos');
+        if (!item) return;
+        var anyReciboUploaded = item.fields.some(function (f) { return docsState[f]; });
+        const wrap = document.createElement('div');
+        wrap.className = 'doc-block';
+        wrap.innerHTML =
+          '<div class="doc-title">' + escapeHtml(item.label) + '</div>' +
+          (!anyReciboUploaded && item.description ? '<div class="doc-hint doc-recibos-desc">' + escapeHtml(item.description) + '</div>' : '') +
+          '<div class="recibos-row" id="recibosRow"></div>';
+        container.appendChild(wrap);
+        const row = wrap.querySelector('#recibosRow');
+        const labels = ['Recibo 1', 'Recibo 2', 'Recibo 3'];
+        item.fields.forEach((fieldName, i) => {
+          renderDocBlock({ field: fieldName, label: labels[i] }, row, { allowHtml: false });
+        });
+      }
+
+      function renderRgpdBlock(container) {
+        const d = DOC_RGPD;
+        const uploaded = !!docsState[d.field];
+        const div = document.createElement('div');
+        div.className = 'doc-block';
+        div.dataset.field = d.field;
+        div.innerHTML =
+          '<div class="doc-title">' + escapeHtml(d.label) + '</div>' +
+          (!uploaded && d.description ? '<div class="doc-hint">' + escapeHtml(d.description) + '</div>' : '') +
+          (!uploaded ? '<p class="doc-hint">Descarregue o documento: <a href="/RGPD.pdf" target="_blank" rel="noopener" class="doc-link-inline">RGPD.pdf</a></p>' : '') +
+          '<div class="doc-upload-zone">' +
+          (uploaded ? uploadedZoneHtml(d.field) : '<input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + escapeHtml(d.field) + '">') +
+          '</div>' +
+          (!uploaded && d.footnote ? '<p class="footnote">' + d.footnote + '</p>' : '');
+        container.appendChild(div);
+
+        const zone = div.querySelector('.doc-upload-zone');
+        const fileInput = div.querySelector('input[type="file"]');
+        if (docsState[d.field]) {
+          attachUploadedZoneHandlers(zone, leadId, d.field, div);
+        } else {
+          fileInput.addEventListener('change', () => uploadOne(leadId, d.field, fileInput, div));
         }
       }
 
@@ -439,6 +586,79 @@
         return div.innerHTML;
       }
 
+      var ICON_VIEW = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"/></svg>';
+      var ICON_PENCIL = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z"/></svg>';
+      var ICON_TRASH = '<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>';
+
+      function removeBlockDescriptiveContent(blockEl) {
+        if (!blockEl) return;
+        blockEl.querySelectorAll('.doc-hint-wrap').forEach(function (el) { el.remove(); });
+        var i = blockEl.children.length;
+        while (i--) {
+          var c = blockEl.children[i];
+          if (c.classList.contains('doc-hint') || c.classList.contains('doc-step') || (c.tagName === 'P' && c.classList.contains('footnote'))) c.remove();
+        }
+      }
+
+      function viewFile(leadId, fieldName) {
+        idbGet(leadId, fieldName).then(function (file) {
+          if (!file) return;
+          var url = URL.createObjectURL(file);
+          window.open(url, '_blank', 'noopener');
+          setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+        }).catch(function () {});
+      }
+
+      function uploadedZoneHtml(fieldName) {
+        return '<span class="doc-status">Anexado</span><div class="doc-actions">' +
+          '<button type="button" class="btn btn-icon" data-action="view" title="Ver">' + ICON_VIEW + '</button>' +
+          '<button type="button" class="btn btn-icon" data-action="replace" title="Trocar">' + ICON_PENCIL + '</button>' +
+          '<button type="button" class="btn btn-icon" data-action="remove" title="Remover">' + ICON_TRASH + '</button>' +
+          '</div><input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + escapeHtml(fieldName) + '" style="display:none;">';
+      }
+
+      function attachUploadedZoneHandlers(zone, leadId, fieldName, blockEl) {
+        var viewBtn = zone.querySelector('[data-action="view"]');
+        var replaceBtn = zone.querySelector('[data-action="replace"]');
+        var removeBtn = zone.querySelector('[data-action="remove"]');
+        var fileInput = zone.querySelector('input[type="file"]');
+        if (viewBtn) viewBtn.addEventListener('click', function () { viewFile(leadId, fieldName); });
+        if (replaceBtn) {
+          replaceBtn.addEventListener('click', function () {
+            fileInput.style.display = 'block';
+            replaceBtn.style.display = 'none';
+            if (viewBtn) viewBtn.style.display = 'none';
+            if (removeBtn) removeBtn.style.display = 'none';
+            fileInput.click();
+          });
+        }
+        if (removeBtn) {
+          removeBtn.addEventListener('click', function () {
+            idbDelete(leadId, fieldName).then(function () {
+              docsState[fieldName] = false;
+              var zone = blockEl.querySelector('.doc-upload-zone');
+              removeBlockDescriptiveContent(blockEl);
+              var item = DOCS_BASE.find(function (d) { return d.field === fieldName; }) || DOCS_100.find(function (d) { return d.field === fieldName; }) || (DOC_RGPD.field === fieldName ? DOC_RGPD : null);
+              if (item && blockEl.querySelector('.doc-upload-zone')) {
+                var wrap = document.createElement('div');
+                wrap.className = 'doc-hint-wrap';
+                var html = '';
+                if (item.description) html += '<div class="doc-hint">' + (item.description.indexOf('<a ') !== -1 ? item.description : escapeHtml(item.description)) + '</div>';
+                if (item.stepByStep) html += '<div class="doc-step">' + (item.stepByStep.indexOf('<') !== -1 ? item.stepByStep : escapeHtml(item.stepByStep)) + '</div>';
+                if (item === DOC_RGPD) html += '<p class="doc-hint">Descarregue o documento: <a href="/RGPD.pdf" target="_blank" rel="noopener" class="doc-link-inline">RGPD.pdf</a></p>';
+                if (item.footnote) html += '<p class="footnote">' + (item.footnote.indexOf('<a ') !== -1 ? item.footnote : escapeHtml(item.footnote)) + '</p>';
+                wrap.innerHTML = html;
+                blockEl.insertBefore(wrap, zone);
+              }
+              zone.innerHTML = '<input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + escapeHtml(fieldName) + '">';
+              zone.querySelector('input[type="file"]').addEventListener('change', function () { uploadOne(leadId, fieldName, zone.querySelector('input[type="file"]'), blockEl); });
+              updateProgress();
+            }).catch(function () {});
+          });
+        }
+        fileInput.addEventListener('change', function () { uploadOne(leadId, fieldName, fileInput, blockEl); });
+      }
+
       function uploadOne(leadId, fieldName, fileInput, blockEl) {
         const file = fileInput.files && fileInput.files[0];
         if (!file) return;
@@ -446,15 +666,17 @@
         idbSave(leadId, fieldName, file)
           .then(function () {
             docsState[fieldName] = true;
+            removeBlockDescriptiveContent(blockEl);
+            if (fieldName === 'recibo_vencimento_1' || fieldName === 'recibo_vencimento_2' || fieldName === 'recibo_vencimento_3') {
+              var recibosBlock = blockEl.closest('.doc-block');
+              if (recibosBlock && recibosBlock.querySelector('.recibos-row')) {
+                var desc = recibosBlock.querySelector('.doc-recibos-desc');
+                if (desc) desc.remove();
+              }
+            }
             const zone = blockEl.querySelector('.doc-upload-zone');
-            zone.innerHTML = '<span class="doc-status">Anexado</span><button type="button" class="btn btn-outline" data-action="replace">Trocar</button><input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + fieldName + '" style="display:none;">';
-            zone.querySelector('[data-action="replace"]').addEventListener('click', function () {
-              const input = zone.querySelector('input[type="file"]');
-              input.style.display = 'block';
-              zone.querySelector('[data-action="replace"]').style.display = 'none';
-              input.click();
-            });
-            zone.querySelector('input[type="file"]').addEventListener('change', function () { uploadOne(leadId, fieldName, zone.querySelector('input[type="file"]'), blockEl); });
+            zone.innerHTML = uploadedZoneHtml(fieldName);
+            attachUploadedZoneHandlers(zone, leadId, fieldName, blockEl);
             updateProgress();
           })
           .catch(function () {
@@ -467,11 +689,21 @@
       function renderAll() {
         const listEl = document.getElementById('docList');
         listEl.innerHTML = '';
-        DOCS_BASE.forEach((item) => renderDocBlock(item, listEl));
+        DOCS_BASE.forEach((item) => {
+          if (item.type === 'recibos') {
+            renderRecibosBlock(listEl);
+          } else if (item.field) {
+            renderDocBlock(item, listEl, { allowHtml: !!item.description && item.description.indexOf('<a ') !== -1 });
+          }
+        });
 
         const list100 = document.getElementById('docList100');
         list100.innerHTML = '';
-        DOCS_100.forEach((item) => renderDocBlock(item, list100));
+        DOCS_100.forEach((item) => renderDocBlock(item, list100, { allowHtml: true }));
+
+        const rgpdEl = document.getElementById('docRgpd');
+        rgpdEl.innerHTML = '';
+        renderRgpdBlock(rgpdEl);
 
         document.getElementById('financiamento_100').addEventListener('change', () => {
           document.getElementById('docs_100').classList.toggle('visible', document.getElementById('financiamento_100').checked);
@@ -515,8 +747,6 @@
             if (emailFormEl) {
               emailFormEl.value = email;
               emailFormEl.readOnly = true;
-              var hint = document.getElementById('emailTravaHint');
-              if (hint) hint.style.display = 'block';
             }
             nomeEl.addEventListener('blur', saveDados);
               numDepEl.addEventListener('blur', saveDados);
@@ -533,6 +763,11 @@
       fetch('/api/leads/' + leadId + '/status')
         .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
         .then((data) => {
+          if (data.docsEnviados) {
+            setDocsEnviadosDisplay(data);
+            showStep('stepDocsEnviados');
+            return;
+          }
           if (!data.hasEmail) {
             showStep('stepNomeEmail');
             if (data.nome) document.getElementById('gate_nome').value = data.nome;
@@ -616,10 +851,16 @@
         })
           .then(function (r) {
             if (r.ok) {
-              setVerifiedEmail(email);
-              showStep('mainForm');
-              loadDocuments();
-              return;
+              return r.json().then(function (d) {
+                setVerifiedEmail(email);
+                if (d.docsEnviados) {
+                  setDocsEnviadosDisplay(d);
+                  showStep('stepDocsEnviados');
+                  return;
+                }
+                showStep('mainForm');
+                loadDocuments();
+              });
             }
             return r.json().then(function (d) { throw new Error(d.message || 'Erro'); });
           })
@@ -637,13 +878,18 @@
         const req = getRequired();
         const missing = req.filter(function (f) { return !docsState[f]; });
         if (missing.length) {
-          errEl.textContent = 'Faltam ' + missing.length + ' documento(s). Anexe todos os obrigatórios.';
+          errEl.textContent = 'É necessário anexar todos os documentos obrigatórios antes de enviar para a gestora. Faltam ' + missing.length + ' documento(s).';
           errEl.style.display = 'block';
+          errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
           return;
         }
         saveDados();
         const btn = document.getElementById('submitBtn');
+        var btnText = btn.querySelector('.btn-text');
         btn.disabled = true;
+        btn.classList.add('sending');
+        btn.classList.remove('sent');
+        if (btnText) btnText.textContent = 'A enviar...';
         var fd = new FormData();
         fd.append('nome', document.getElementById('nome').value.trim());
         fd.append('email', getVerifiedEmail() || document.getElementById('email').value.trim());
@@ -660,13 +906,20 @@
           })
           .then(function (r) {
             if (r.ok) {
-              return idbClearLead(leadId).then(function () { window.location.href = '/confirmacao/' + leadId; });
+              btn.classList.remove('sending');
+              btn.classList.add('sent');
+              if (btnText) btnText.textContent = 'Enviado ✓';
+              return idbClearLead(leadId).then(function () {
+                setTimeout(function () { window.location.href = '/confirmacao/' + leadId; }, 700);
+              });
             }
             return r.json().then(function (d) { throw new Error(d.message || 'Erro ao enviar'); });
           })
           .catch(function (err) {
+            btn.classList.remove('sending');
             errEl.textContent = err.message || 'Erro ao enviar. Tente novamente.';
             errEl.style.display = 'block';
+            if (btnText) btnText.textContent = 'Enviar para a gestora';
             btn.disabled = false;
           });
       });

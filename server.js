@@ -12,7 +12,16 @@ const express = require('express');
 const fs = require('fs');
 const multer = require('multer');
 const { Resend } = require('resend');
-const { getLeadById, updateLeadDocsEnviados, updateLeadDados, setEmailVerification, confirmEmailAndSetLead } = require('./db');
+const {
+  getLeadById,
+  updateLeadDocsEnviados,
+  updateLeadDados,
+  setEmailVerification,
+  confirmEmailAndSetLead,
+  getGestoraById,
+  getNextGestoraForLead,
+  updateLeadGestora,
+} = require('./db');
 const {
   saveDocument,
   listDocuments,
@@ -64,7 +73,8 @@ const DOC_LABELS = {
   comprovativo_morada: 'Comprovativo de morada',
   mapa_responsabilidades: 'Mapa de responsabilidades de crédito',
   rgpd_assinado: 'Documento RGPD assinado',
-  declaracao_nao_divida: 'Declaração de não dívida (Finanças e Segurança Social)',
+  declaracao_nao_divida_financas: 'Declaração de não dívida (Finanças)',
+  declaracao_nao_divida_seguranca_social: 'Declaração de não dívida (Segurança Social)',
   declaracao_predial: 'Declaração Predial negativa',
 };
 
@@ -84,21 +94,35 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Upload: só mostrar se o lead existir e estiver em aguardando_docs
+// Lead pode aceder à página de upload se existir e estiver em aguardando_docs OU docs_enviados (para mostrar "já enviou")
+async function validateLeadUploadPage(leadId) {
+  if (!/^\d+$/.test(leadId)) return { error: 400, message: 'ID de lead inválido.' };
+  let lead;
+  try {
+    lead = await getLeadById(leadId);
+  } catch (err) {
+    logStartup(`validateLeadUploadPage error: ${err.message}`);
+    return { error: 500, message: 'Erro ao verificar dados.' };
+  }
+  if (!lead) return { error: 404, message: 'Link não encontrado.' };
+  if (lead.estado !== 'aguardando_docs' && lead.estado !== 'docs_enviados') {
+    return { error: 403, message: 'Este link já não está disponível.' };
+  }
+  return { lead };
+}
+
+// Upload: mostrar página se o lead existir e estiver em aguardando_docs ou docs_enviados
 app.get('/upload/:leadId', async (req, res) => {
   const leadId = req.params.leadId;
   if (!/^\d+$/.test(leadId)) {
     return res.status(400).sendFile(path.join(__dirname, 'public', 'upload.html'));
   }
   try {
-    const lead = await getLeadById(leadId);
-    if (!lead) {
-      res.status(404).send('<p>Link não encontrado.</p>');
-      return;
-    }
-    if (lead.estado !== 'aguardando_docs') {
-      res.status(403).send('<p>Este link já não está disponível para envio de documentos.</p>');
-      return;
+    const v = await validateLeadUploadPage(leadId);
+    if (v.error) {
+      if (v.error === 404) return res.status(404).send('<p>Link não encontrado.</p>');
+      if (v.error === 403) return res.status(403).send('<p>Este link já não está disponível.</p>');
+      return res.status(v.error).json({ message: v.message });
     }
     res.sendFile(path.join(__dirname, 'public', 'upload.html'));
   } catch (err) {
@@ -144,14 +168,34 @@ async function requireEmailAccess(leadId, emailProvided) {
   return { lead };
 }
 
-// Estado do lead: tem email confirmado? (para o front saber que ecrã mostrar)
+async function getGestoraContactForLead(lead) {
+  if (lead && lead.gestora_id) {
+    const g = await getGestoraById(lead.gestora_id);
+    if (g) {
+      return {
+        gestoraEmail: g.email || '',
+        gestoraWhatsapp: (g.whatsapp || '').replace(/\D/g, ''),
+      };
+    }
+  }
+  return {
+    gestoraEmail: process.env.GESTORA_EMAIL || '',
+    gestoraWhatsapp: (process.env.GESTORA_WHATSAPP || '').replace(/\D/g, ''),
+  };
+}
+
+// Estado do lead: tem email? docs já enviados? (para o front saber que ecrã mostrar)
 app.get('/api/leads/:leadId/status', async (req, res) => {
-  const v = await validateLeadAguardandoDocs(req.params.leadId);
+  const v = await validateLeadUploadPage(req.params.leadId);
   if (v.error) return res.status(v.error).json({ message: v.message });
   const lead = v.lead;
+  const contact = await getGestoraContactForLead(lead);
   res.json({
     hasEmail: !!(lead.email && lead.email.trim()),
     nome: lead.nome || '',
+    docsEnviados: !!(lead.docs_enviados && Number(lead.docs_enviados) === 1),
+    gestoraEmail: contact.gestoraEmail,
+    gestoraWhatsapp: contact.gestoraWhatsapp,
   });
 });
 
@@ -210,9 +254,23 @@ app.post('/api/leads/:leadId/confirm-email', async (req, res) => {
 app.post('/api/leads/:leadId/access', async (req, res) => {
   const email = normalizeEmail(req.body && req.body.email);
   if (!email) return res.status(400).json({ message: 'Indique o seu email.' });
-  const v = await requireEmailAccess(req.params.leadId, email);
+  const v = await validateLeadUploadPage(req.params.leadId);
   if (v.error) return res.status(v.error).json({ message: v.message });
-  res.json({ ok: true });
+  const lead = v.lead;
+  const hasEmail = !!(lead.email && lead.email.trim());
+  if (!hasEmail) return res.status(403).json({ message: 'Confirme primeiro o seu email.' });
+  const provided = normalizeEmail(email);
+  const stored = normalizeEmail(lead.email);
+  if (provided !== stored) return res.status(403).json({ message: 'Email incorreto.' });
+  const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1);
+  const contact = await getGestoraContactForLead(lead);
+  res.json({
+    ok: true,
+    docsEnviados,
+    gestoraEmail: contact.gestoraEmail,
+    gestoraWhatsapp: contact.gestoraWhatsapp,
+    nome: lead.nome || '',
+  });
 });
 
 // Listar documentos — requer email confirmado (e, se já tiver, que coincida com o enviado)
@@ -301,13 +359,20 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
   } catch (_) {}
 
   const requiredBase = DOC_FIELDS.filter(
-    (f) => f !== 'declaracao_nao_divida' && f !== 'declaracao_predial'
+    (f) =>
+      f !== 'declaracao_nao_divida_financas' &&
+      f !== 'declaracao_nao_divida_seguranca_social' &&
+      f !== 'declaracao_predial'
   );
   const financiamento100 = body.financiamento_100 === '1' || body.financiamento_100 === 'true';
-  const required =
-    financiamento100
-      ? [...requiredBase, 'declaracao_nao_divida', 'declaracao_predial']
-      : requiredBase;
+  const required = financiamento100
+    ? [
+        ...requiredBase,
+        'declaracao_nao_divida_financas',
+        'declaracao_nao_divida_seguranca_social',
+        'declaracao_predial',
+      ]
+    : requiredBase;
 
   const byField = {};
   for (const f of files) {
@@ -330,9 +395,19 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
     return { filename: base + ext, content: file.buffer };
   });
 
-  const gestoraEmail = process.env.GESTORA_EMAIL;
-  if (!gestoraEmail) {
-    logStartup('GESTORA_EMAIL não configurado');
+  let toEmail = process.env.GESTORA_EMAIL || '';
+  if (lead.gestora_id) {
+    const g = await getGestoraById(lead.gestora_id);
+    if (g && g.email) toEmail = g.email;
+  } else {
+    const next = await getNextGestoraForLead();
+    if (next) {
+      await updateLeadGestora(leadId, next.id);
+      toEmail = next.email || '';
+    }
+  }
+  if (!toEmail) {
+    logStartup('Nenhuma gestora ativa nem GESTORA_EMAIL configurado');
     return res.status(503).json({
       message: 'Envio de email não está configurado. Tente mais tarde.',
     });
@@ -374,7 +449,7 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
   try {
     const { error } = await resend.emails.send({
       from: mailFrom.includes('<') ? mailFrom : `Crédito Habitação <${mailFrom}>`,
-      to: [gestoraEmail],
+      to: [toEmail],
       cc: [emailLead],
       replyTo: emailLead,
       subject: `[Crédito Habitação] Documentos – ${lead.nome || leadId}`,
