@@ -173,7 +173,8 @@ async function validateLeadUploadPage(leadId) {
     return { error: 500, message: 'Erro ao verificar dados.' };
   }
   if (!lead) return { error: 404, message: 'Link não encontrado.' };
-  const docsOk = lead.estado_docs === 'aguardando_docs' || lead.estado_docs === 'docs_enviados' || lead.estado_docs === 'sem_docs';
+  const estadosComAcessoUpload = ['aguardando_docs', 'docs_enviados', 'sem_docs', 'inviavel', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
+  const docsOk = estadosComAcessoUpload.includes(lead.estado_docs);
   if (!docsOk) {
     return { error: 403, message: 'Este link já não está disponível.' };
   }
@@ -309,7 +310,8 @@ app.get('/api/leads/:leadId/status', async (req, res) => {
   const v = await validateLeadUploadPage(req.params.leadId);
   if (v.error) return res.status(v.error).json({ message: v.message });
   const lead = v.lead;
-  const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1) || lead.estado_docs === 'docs_enviados';
+  const estadosVerMensagemEnviados = ['docs_enviados', 'inviavel', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
+  const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1) || estadosVerMensagemEnviados.includes(lead.estado_docs);
   const semDocs = lead.estado_docs === 'sem_docs';
   const payload = {
     hasEmail: !!(lead.email && lead.email.trim()),
@@ -427,7 +429,8 @@ app.post('/api/leads/:leadId/access', async (req, res) => {
   const provided = normalizeEmail(email);
   const stored = normalizeEmail(lead.email);
   if (provided !== stored) return res.status(403).json({ message: 'Email incorreto.' });
-  const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1);
+  const estadosVerMensagemEnviados = ['docs_enviados', 'inviavel', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
+  const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1) || estadosVerMensagemEnviados.includes(lead.estado_docs);
   const semDocs = lead.estado_docs === 'sem_docs';
   const contact = await getGestoraContactForLead(lead);
   res.json({
