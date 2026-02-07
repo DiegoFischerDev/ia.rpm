@@ -9,6 +9,7 @@ for (const p of envPaths) {
 }
 
 const express = require('express');
+const session = require('express-session');
 const fs = require('fs');
 const multer = require('multer');
 const { Resend } = require('resend');
@@ -23,6 +24,13 @@ const {
   updateLeadGestora,
   updateLeadEstado,
   getLeadsForRafa,
+  getAllLeads,
+  updateLeadAdmin,
+  deleteLead,
+  getAllGestoras,
+  createGestora,
+  updateGestora,
+  deleteGestora,
 } = require('./db');
 const {
   saveDocument,
@@ -48,6 +56,15 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'ia-app-dashboard-secret-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, maxAge: 24 * 60 * 60 * 1000 },
+  })
+);
 
 const uploadMemory = multer({
   storage: multer.memoryStorage(),
@@ -558,6 +575,127 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
   }
 
   res.status(200).json({ ok: true });
+});
+
+// ========== Dashboard (admin) ==========
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
+
+function requireDashboardAuth(req, res, next) {
+  if (req.session && req.session.dashboardUser) return next();
+  if (req.path.startsWith('/api/')) return res.status(401).json({ message: 'Não autenticado.' });
+  res.redirect('/dashboard');
+}
+
+// Página do dashboard (SPA)
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard', 'index.html'));
+});
+app.get('/dashboard/*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'dashboard', 'index.html'));
+});
+
+// Login admin
+app.post('/api/dashboard/login', (req, res) => {
+  const email = (req.body.email || '').trim().toLowerCase();
+  const password = String(req.body.password || '');
+  if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
+    return res.status(503).json({ message: 'Dashboard não configurado (ADMIN_EMAIL/ADMIN_PASSWORD).' });
+  }
+  if (email !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ message: 'Email ou palavra-passe incorretos.' });
+  }
+  req.session.dashboardUser = { role: 'admin', email };
+  res.json({ ok: true, user: req.session.dashboardUser });
+});
+
+app.post('/api/dashboard/logout', (req, res) => {
+  req.session.destroy(() => {});
+  res.json({ ok: true });
+});
+
+app.get('/api/dashboard/me', (req, res) => {
+  if (!req.session || !req.session.dashboardUser) return res.status(401).json({ message: 'Não autenticado.' });
+  res.json({ user: req.session.dashboardUser });
+});
+
+// API protegida (admin)
+app.get('/api/dashboard/leads', requireDashboardAuth, async (req, res) => {
+  try {
+    const rows = await getAllLeads();
+    res.json(rows);
+  } catch (err) {
+    logStartup(`getAllLeads error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao listar leads.' });
+  }
+});
+
+app.patch('/api/dashboard/leads/:id', requireDashboardAuth, async (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  try {
+    await updateLeadAdmin(id, req.body);
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`updateLeadAdmin error: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao atualizar.' });
+  }
+});
+
+app.delete('/api/dashboard/leads/:id', requireDashboardAuth, async (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  try {
+    await deleteLead(id);
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`deleteLead error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao apagar.' });
+  }
+});
+
+app.get('/api/dashboard/gestoras', requireDashboardAuth, async (req, res) => {
+  try {
+    const rows = await getAllGestoras();
+    res.json(rows);
+  } catch (err) {
+    logStartup(`getAllGestoras error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao listar gestoras.' });
+  }
+});
+
+app.post('/api/dashboard/gestoras', requireDashboardAuth, async (req, res) => {
+  try {
+    const row = await createGestora(req.body);
+    res.status(201).json(row);
+  } catch (err) {
+    logStartup(`createGestora error: ${err.message}`);
+    res.status(400).json({ message: err.message || 'Erro ao criar.' });
+  }
+});
+
+app.patch('/api/dashboard/gestoras/:id', requireDashboardAuth, async (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  try {
+    await updateGestora(id, req.body);
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`updateGestora error: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao atualizar.' });
+  }
+});
+
+app.delete('/api/dashboard/gestoras/:id', requireDashboardAuth, async (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  try {
+    await deleteGestora(id);
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`deleteGestora error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao apagar.' });
+  }
 });
 
 // Limpeza de ficheiros com mais de 30 dias (ao arrancar e de 24 em 24 h)

@@ -128,6 +128,84 @@ async function getLeadsForRafa(estado) {
   return rows;
 }
 
+/** Dashboard: lista todos os leads. */
+async function getAllLeads() {
+  const rows = await query(
+    'SELECT id, whatsapp_number, nome, email, estado, estado_anterior, docs_enviados, docs_enviados_em, gestora_id, created_at, updated_at FROM ch_leads ORDER BY updated_at DESC'
+  );
+  return rows;
+}
+
+/** Dashboard: atualizar lead (admin). */
+async function updateLeadAdmin(id, dados) {
+  if (!dados || typeof dados !== 'object') return;
+  const allowed = ['nome', 'email', 'estado', 'gestora_id'];
+  const set = [];
+  const values = [];
+  for (const key of allowed) {
+    if (!(key in dados)) continue;
+    let val = dados[key];
+    if (typeof val === 'string') val = val.trim() || null;
+    else if (key === 'gestora_id' && (val === '' || val === null)) val = null;
+    else if (key === 'gestora_id') val = parseInt(val, 10) || null;
+    set.push(`${key} = ?`);
+    values.push(val);
+  }
+  if (set.length === 0) return;
+  set.push('updated_at = NOW()');
+  values.push(id);
+  await query(`UPDATE ch_leads SET ${set.join(', ')} WHERE id = ?`, values);
+}
+
+/** Dashboard: apagar lead. */
+async function deleteLead(id) {
+  await query('DELETE FROM ch_leads WHERE id = ?', [id]);
+}
+
+/** Dashboard: lista todas as gestoras. */
+async function getAllGestoras() {
+  const rows = await query('SELECT id, nome, email, whatsapp, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id ASC');
+  return rows;
+}
+
+/** Dashboard: criar gestora. */
+async function createGestora(dados) {
+  const { nome, email, whatsapp, ativo } = dados || {};
+  if (!nome || !email || !whatsapp) throw new Error('Nome, email e whatsapp são obrigatórios.');
+  await query(
+    'INSERT INTO ch_gestoras (nome, email, whatsapp, ativo) VALUES (?, ?, ?, ?)',
+    [String(nome).trim(), String(email).trim().toLowerCase(), String(whatsapp).replace(/\D/g, ''), ativo ? 1 : 0]
+  );
+  const rows = await query('SELECT id, nome, email, whatsapp, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id DESC LIMIT 1');
+  return rows[0] || null;
+}
+
+/** Dashboard: atualizar gestora. */
+async function updateGestora(id, dados) {
+  if (!dados || typeof dados !== 'object') return;
+  const allowed = ['nome', 'email', 'whatsapp', 'ativo'];
+  const set = [];
+  const values = [];
+  for (const key of allowed) {
+    if (!(key in dados)) continue;
+    let val = dados[key];
+    if (key === 'ativo') val = val ? 1 : 0;
+    else if (typeof val === 'string') val = key === 'email' ? val.trim().toLowerCase() : (key === 'whatsapp' ? val.replace(/\D/g, '') : val.trim());
+    set.push(`${key} = ?`);
+    values.push(val);
+  }
+  if (set.length === 0) return;
+  set.push('updated_at = NOW()');
+  values.push(id);
+  await query(`UPDATE ch_gestoras SET ${set.join(', ')} WHERE id = ?`, values);
+}
+
+/** Dashboard: apagar gestora. */
+async function deleteGestora(id) {
+  await query('UPDATE ch_leads SET gestora_id = NULL WHERE gestora_id = ?', [id]);
+  await query('DELETE FROM ch_gestoras WHERE id = ?', [id]);
+}
+
 module.exports = {
   getPool,
   query,
@@ -142,4 +220,11 @@ module.exports = {
   updateLeadGestora,
   updateLeadEstado,
   getLeadsForRafa,
+  getAllLeads,
+  updateLeadAdmin,
+  deleteLead,
+  getAllGestoras,
+  createGestora,
+  updateGestora,
+  deleteGestora,
 };
