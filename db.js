@@ -317,6 +317,25 @@ async function deleteGestora(id) {
   await query('DELETE FROM ch_gestoras WHERE id = ?', [id]);
 }
 
+/** RGPD da gestora: guardado na coluna rgpd_pdf de ch_gestoras (persiste entre deploys) */
+async function saveGestoraRgpd(gestoraId, buffer) {
+  if (!buffer || !Buffer.isBuffer(buffer)) return;
+  await query('UPDATE ch_gestoras SET rgpd_pdf = ?, updated_at = NOW() WHERE id = ?', [buffer, gestoraId]);
+}
+
+async function readGestoraRgpd(gestoraId) {
+  const rows = await query('SELECT rgpd_pdf FROM ch_gestoras WHERE id = ?', [gestoraId]);
+  const r = rows[0];
+  if (!r || r.rgpd_pdf == null) return null;
+  const content = r.rgpd_pdf;
+  return Buffer.isBuffer(content) ? content : Buffer.from(content);
+}
+
+async function hasGestoraRgpd(gestoraId) {
+  const rows = await query('SELECT 1 FROM ch_gestoras WHERE id = ? AND rgpd_pdf IS NOT NULL', [gestoraId]);
+  return rows.length > 0;
+}
+
 module.exports = {
   getPool,
   query,
@@ -346,4 +365,7 @@ module.exports = {
   createGestora,
   updateGestora,
   deleteGestora,
+  saveGestoraRgpd,
+  readGestoraRgpd,
+  hasGestoraRgpd,
 };

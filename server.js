@@ -42,6 +42,9 @@ const {
   createGestora,
   updateGestora,
   deleteGestora,
+  saveGestoraRgpd,
+  readGestoraRgpd,
+  hasGestoraRgpd,
 } = require('./db');
 const {
   saveDocument,
@@ -50,9 +53,6 @@ const {
   deleteLeadStorage,
   cleanupOldStorage,
   STANDARD_NAMES,
-  saveGestoraRgpd,
-  readGestoraRgpd,
-  hasGestoraRgpd,
 } = require('./storage');
 
 function logStartup(msg) {
