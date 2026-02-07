@@ -100,3 +100,41 @@ npm start
 ```
 
 Servidor em `http://localhost:3000`. Para testar na Hostinger, usa o domínio do ia-app (ex.: ia.rafaapelomundo.com) com o mesmo .env na pasta pai de `public_html`.
+
+---
+
+## Testar em produção (ia.rafaapelomundo.com)
+
+### 1. Health check
+
+- Abre: **https://ia.rafaapelomundo.com/api/health**
+- Deves ver: `{"ok":true,"time":"..."}`
+
+### 2. Página inicial
+
+- Abre: **https://ia.rafaapelomundo.com/**
+- Deve carregar a página inicial do ia-app.
+
+### 3. Fluxo de upload (lead)
+
+- Cria um lead em `aguardando_docs` na BD (ou via WhatsApp/evo) e anota o `id`.
+- Abre: **https://ia.rafaapelomundo.com/upload/ID** (substitui ID pelo número).
+- Segue os passos da secção «Fluxo completo» acima (nome/email → código → formulário → envio).
+
+### 4. Dashboard (admin)
+
+- Abre: **https://ia.rafaapelomundo.com/** (a página inicial é o dashboard).
+- **Login:** usa o email e palavra-passe definidos em `ADMIN_EMAIL` e `ADMIN_PASSWORD` no .env da Hostinger.
+- Após login deves ver o menu lateral (**Leads** | **Gestoras** | **Sair**).
+- **Leads:** tabela com todos os leads; testa **Editar** (alterar nome, estado, gestora) e **Apagar** (com confirmação).
+- **Gestoras:** testa **Nova gestora** (nome, email, WhatsApp, ativo), **Editar** e **Apagar**.
+- **Sair:** termina a sessão e volta ao ecrã de login.
+- O URL **/dashboard** redireciona para **/**.
+
+### 5. Resumo rápido em produção
+
+| O quê | URL |
+|-------|-----|
+| Health | https://ia.rafaapelomundo.com/api/health |
+| Página inicial / Dashboard (login) | https://ia.rafaapelomundo.com/ |
+| Upload (substituir ID) | https://ia.rafaapelomundo.com/upload/ID |

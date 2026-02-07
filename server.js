@@ -584,16 +584,12 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 function requireDashboardAuth(req, res, next) {
   if (req.session && req.session.dashboardUser) return next();
   if (req.path.startsWith('/api/')) return res.status(401).json({ message: 'Não autenticado.' });
-  res.redirect('/dashboard');
+  res.redirect('/');
 }
 
-// Página do dashboard (SPA)
-app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard', 'index.html'));
-});
-app.get('/dashboard/*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'dashboard', 'index.html'));
-});
+// Redirecionar /dashboard para a página principal (dashboard está em /)
+app.get('/dashboard', (req, res) => res.redirect(301, '/'));
+app.get('/dashboard/*', (req, res) => res.redirect(301, '/'));
 
 // Login admin
 app.post('/api/dashboard/login', (req, res) => {

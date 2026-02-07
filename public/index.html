@@ -1,91 +1,486 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
-  <head>
-    <meta charset="UTF-8" />
-    <title>Teste Node + Hostinger</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <style>
-      body {
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
-          sans-serif;
-        margin: 0;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: #0f172a;
-        color: #e5e7eb;
-      }
-      .card {
-        background: #020617;
-        border-radius: 14px;
-        padding: 24px 28px;
-        box-shadow: 0 18px 50px rgba(15, 23, 42, 0.6);
-        max-width: 420px;
-        width: 100%;
-      }
-      h1 {
-        margin: 0 0 8px 0;
-        font-size: 1.6rem;
-      }
-      p {
-        margin: 0 0 16px 0;
-        font-size: 0.95rem;
-        color: #9ca3af;
-      }
-      button {
-        padding: 10px 16px;
-        border-radius: 999px;
-        border: none;
-        background: #4f46e5;
-        color: #e5e7eb;
-        font-weight: 500;
-        cursor: pointer;
-      }
-      button:hover {
-        background: #6366f1;
-      }
-      pre {
-        margin-top: 16px;
-        padding: 12px;
-        border-radius: 8px;
-        background: #020617;
-        border: 1px solid #1f2937;
-        font-size: 0.8rem;
-        max-height: 200px;
-        overflow: auto;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="card">
-      <h1>App mínima – ia.rafaapelomundo.com</h1>
-      <p>
-        Esta é uma aplicação Node.js + Express bem simples, feita só para
-        confirmar que o deploy na Hostinger está funcionando.
-      </p>
-      <button id="test-btn">Testar API /api/echo</button>
-      <pre id="output">Clique no botão para testar.</pre>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard – Crédito Habitação</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --surface: #ffffff;
+      --sidebar: #0f172a;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --accent: #0d9488;
+      --accent-hover: #0f766e;
+      --error: #dc2626;
+      --border: #e2e8f0;
+      --radius: 8px;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'DM Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    .app { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 220px;
+      background: var(--sidebar);
+      color: #fff;
+      padding: 1.5rem 0;
+      flex-shrink: 0;
+    }
+    .sidebar a, .sidebar button {
+      display: block;
+      width: 100%;
+      padding: 0.75rem 1.25rem;
+      color: rgba(255,255,255,.85);
+      text-decoration: none;
+      border: none;
+      background: none;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .sidebar a:hover, .sidebar button:hover { background: rgba(255,255,255,.08); color: #fff; }
+    .sidebar a.active { background: var(--accent); color: #fff; }
+    .main { flex: 1; padding: 1.5rem 2rem; overflow: auto; }
+    .screen { display: none; }
+    .screen.visible { display: block !important; }
+    .main .screen { display: none; }
+    .main .screen.visible { display: block !important; }
+    .login-wrap { max-width: 360px; margin: 4rem auto; padding: 2rem; background: var(--surface); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,.06); }
+    .login-wrap h1 { margin: 0 0 1.5rem; font-size: 1.25rem; }
+    label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.375rem; }
+    input[type="email"], input[type="password"], input[type="text"], input[type="number"], select {
+      width: 100%; padding: 0.5rem 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); font: inherit; margin-bottom: 1rem;
+    }
+    .btn { display: inline-flex; align-items: center; justify-content: center; padding: 0.5rem 1rem; border-radius: var(--radius); font: inherit; font-weight: 500; cursor: pointer; border: none; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { background: var(--border); color: var(--text); }
+    .btn-danger { background: var(--error); color: #fff; }
+    .btn-sm { padding: 0.35rem 0.65rem; font-size: 0.8125rem; }
+    .error-msg { color: var(--error); font-size: 0.875rem; margin-top: 0.5rem; }
+    .page-title { margin: 0 0 1.25rem; font-size: 1.25rem; font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: var(--radius); overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+    th, td { padding: 0.6rem 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+    th { background: var(--bg); font-weight: 600; font-size: 0.8125rem; color: var(--text-muted); }
+    tr:last-child td { border-bottom: none; }
+    .actions { display: flex; gap: 0.5rem; }
+    .toolbar { margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: none; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
+    .modal-overlay.visible { display: flex; }
+    .modal { background: var(--surface); border-radius: 12px; padding: 1.5rem; max-width: 420px; width: 100%; max-height: 90vh; overflow: auto; }
+    .modal h3 { margin: 0 0 1rem; font-size: 1rem; }
+    .modal-actions { margin-top: 1.25rem; display: flex; gap: 0.5rem; justify-content: flex-end; }
+    .table-wrap { overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <div id="loginScreen" class="login-wrap screen">
+    <h1>Dashboard – Login</h1>
+    <form id="loginForm">
+      <label for="loginEmail">Email</label>
+      <input type="email" id="loginEmail" required autocomplete="email">
+      <label for="loginPassword">Palavra-passe</label>
+      <input type="password" id="loginPassword" required autocomplete="current-password">
+      <p id="loginError" class="error-msg" style="display:none;"></p>
+      <button type="submit" class="btn btn-primary" style="width:100%;">Entrar</button>
+    </form>
+  </div>
+
+  <div id="dashboardApp" class="app screen">
+    <nav class="sidebar">
+      <a href="#leads" id="navLeads" class="active">Leads</a>
+      <a href="#gestoras" id="navGestoras">Gestoras</a>
+      <button type="button" id="btnLogout">Sair</button>
+    </nav>
+    <main class="main">
+      <div id="screenLeads" class="screen visible">
+        <h2 class="page-title">Leads</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>WhatsApp</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>Estado</th>
+                <th>Docs enviados</th>
+                <th>Gestora ID</th>
+                <th>Atualizado</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="leadsBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="screenGestoras" class="screen">
+        <div class="toolbar">
+          <h2 class="page-title" style="margin:0;">Gestoras de crédito</h2>
+          <button type="button" class="btn btn-primary" id="btnNovaGestora">Nova gestora</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Email</th>
+                <th>WhatsApp</th>
+                <th>Ativo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="gestorasBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="modalLead" class="modal-overlay">
+    <div class="modal">
+      <h3>Editar lead</h3>
+      <input type="hidden" id="editLeadId">
+      <label>Nome</label>
+      <input type="text" id="editLeadNome">
+      <label>Email</label>
+      <input type="email" id="editLeadEmail">
+      <label>Estado</label>
+      <select id="editLeadEstado">
+        <option value="aguardando_escolha">aguardando_escolha</option>
+        <option value="em_conversa">em_conversa</option>
+        <option value="aguardando_docs">aguardando_docs</option>
+        <option value="sem_docs">sem_docs</option>
+        <option value="docs_enviados">docs_enviados</option>
+        <option value="falar_com_rafa">falar_com_rafa</option>
+      </select>
+      <label>Gestora ID</label>
+      <input type="number" id="editLeadGestoraId" min="0" placeholder="vazio">
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="modalLeadCancel">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="modalLeadSave">Guardar</button>
+      </div>
     </div>
+  </div>
 
-    <script>
-      const btn = document.getElementById('test-btn');
-      const out = document.getElementById('output');
+  <div id="modalGestora" class="modal-overlay">
+    <div class="modal">
+      <h3 id="modalGestoraTitle">Nova gestora</h3>
+      <input type="hidden" id="editGestoraId">
+      <label>Nome</label>
+      <input type="text" id="editGestoraNome" required>
+      <label>Email</label>
+      <input type="email" id="editGestoraEmail" required>
+      <label>WhatsApp (com indicativo, ex: 351912345678)</label>
+      <input type="text" id="editGestoraWhatsapp" required placeholder="351912345678">
+      <label><input type="checkbox" id="editGestoraAtivo" checked> Ativa</label>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="modalGestoraCancel">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="modalGestoraSave">Guardar</button>
+      </div>
+    </div>
+  </div>
 
-      btn.addEventListener('click', async () => {
-        out.textContent = 'Chamando /api/echo...';
-        try {
-          const res = await fetch('/api/echo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: 'Olá da página inicial!' }),
+  <script>
+    (function () {
+      const API = '/api/dashboard';
+      let user = null;
+
+      function showScreen(id) {
+        document.querySelectorAll('.main .screen').forEach((s) => s.classList.remove('visible'));
+        document.querySelectorAll('.sidebar a').forEach((a) => a.classList.remove('active'));
+        const s = document.getElementById('screen' + id.charAt(0).toUpperCase() + id.slice(1));
+        const a = document.getElementById('nav' + id.charAt(0).toUpperCase() + id.slice(1));
+        if (s) s.classList.add('visible');
+        if (a) a.classList.add('active');
+        if (id === 'leads') loadLeads();
+        if (id === 'gestoras') loadGestoras();
+      }
+
+      function checkAuth() {
+        return fetch(API + '/me', { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : Promise.reject()));
+      }
+
+      function init() {
+        checkAuth()
+          .then((data) => {
+            user = data.user;
+            document.getElementById('loginScreen').classList.remove('visible');
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('dashboardApp').classList.add('visible');
+            document.getElementById('dashboardApp').style.display = 'flex';
+            const hash = (window.location.hash || '#leads').slice(1) || 'leads';
+            showScreen(hash === 'gestoras' ? 'gestoras' : 'leads');
+          })
+          .catch(() => {
+            document.getElementById('loginScreen').classList.add('visible');
+            document.getElementById('loginScreen').style.display = 'block';
+            document.getElementById('dashboardApp').classList.remove('visible');
+            document.getElementById('dashboardApp').style.display = 'none';
           });
-          const data = await res.json();
-          out.textContent = JSON.stringify(data, null, 2);
-        } catch (err) {
-          out.textContent = 'Erro: ' + err.message;
-        }
+      }
+
+      document.getElementById('loginForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        const err = document.getElementById('loginError');
+        err.style.display = 'none';
+        fetch(API + '/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: document.getElementById('loginEmail').value.trim(),
+            password: document.getElementById('loginPassword').value,
+          }),
+        })
+          .then((r) => {
+            if (r.ok) return r.json();
+            return r.json().then((d) => Promise.reject(new Error(d.message || 'Erro no login')));
+          })
+          .then(() => init())
+          .catch((msg) => {
+            err.textContent = msg.message || String(msg);
+            err.style.display = 'block';
+          });
       });
-    </script>
-  </body>
-  </html>
+
+      document.getElementById('btnLogout').addEventListener('click', function () {
+        fetch(API + '/logout', { method: 'POST', credentials: 'include' }).then(() => {
+          window.location.href = '/';
+        });
+      });
+
+      window.addEventListener('hashchange', function () {
+        if (!user) return;
+        const hash = (window.location.hash || '#leads').slice(1) || 'leads';
+        showScreen(hash === 'gestoras' ? 'gestoras' : 'leads');
+      });
+
+      function loadLeads() {
+        const tbody = document.getElementById('leadsBody');
+        tbody.innerHTML = '<tr><td colspan="9">A carregar…</td></tr>';
+        fetch(API + '/leads', { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : Promise.reject()))
+          .then((rows) => {
+            tbody.innerHTML = '';
+            if (!rows.length) {
+              tbody.innerHTML = '<tr><td colspan="9">Nenhum lead.</td></tr>';
+              return;
+            }
+            rows.forEach((r) => {
+              const tr = document.createElement('tr');
+              tr.innerHTML =
+                '<td>' +
+                r.id +
+                '</td><td>' +
+                escapeHtml(r.whatsapp_number || '') +
+                '</td><td>' +
+                escapeHtml(r.nome || '') +
+                '</td><td>' +
+                escapeHtml(r.email || '') +
+                '</td><td>' +
+                escapeHtml(r.estado || '') +
+                '</td><td>' +
+                (r.docs_enviados ? 'Sim' : 'Não') +
+                '</td><td>' +
+                (r.gestora_id != null ? r.gestora_id : '—') +
+                '</td><td>' +
+                escapeHtml(formatDate(r.updated_at)) +
+                '</td><td class="actions">' +
+                '<button type="button" class="btn btn-secondary btn-sm btn-edit-lead" data-id="' +
+                r.id +
+                '">Editar</button>' +
+                '<button type="button" class="btn btn-danger btn-sm btn-delete-lead" data-id="' +
+                r.id +
+                '">Apagar</button>' +
+                '</td>';
+              tbody.appendChild(tr);
+            });
+            tbody.querySelectorAll('.btn-edit-lead').forEach((b) =>
+              b.addEventListener('click', function () {
+                openEditLead(rows.find((x) => x.id === parseInt(this.dataset.id, 10)));
+              })
+            );
+            tbody.querySelectorAll('.btn-delete-lead').forEach((b) =>
+              b.addEventListener('click', function () {
+                if (confirm('Apagar este lead?')) deleteLead(this.dataset.id);
+              })
+            );
+          })
+          .catch(() => {
+            tbody.innerHTML = '<tr><td colspan="9">Erro ao carregar.</td></tr>';
+          });
+      }
+
+      function openEditLead(lead) {
+        document.getElementById('editLeadId').value = lead.id;
+        document.getElementById('editLeadNome').value = lead.nome || '';
+        document.getElementById('editLeadEmail').value = lead.email || '';
+        document.getElementById('editLeadEstado').value = lead.estado || 'aguardando_escolha';
+        document.getElementById('editLeadGestoraId').value = lead.gestora_id != null ? lead.gestora_id : '';
+        document.getElementById('modalLead').classList.add('visible');
+      }
+
+      document.getElementById('modalLeadCancel').addEventListener('click', function () {
+        document.getElementById('modalLead').classList.remove('visible');
+      });
+      document.getElementById('modalLeadSave').addEventListener('click', function () {
+        const id = document.getElementById('editLeadId').value;
+        const payload = {
+          nome: document.getElementById('editLeadNome').value.trim() || null,
+          email: document.getElementById('editLeadEmail').value.trim() || null,
+          estado: document.getElementById('editLeadEstado').value,
+          gestora_id: document.getElementById('editLeadGestoraId').value.trim() ? parseInt(document.getElementById('editLeadGestoraId').value, 10) : null,
+        };
+        fetch(API + '/leads/' + id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        })
+          .then(function (r) {
+            if (r.ok) return;
+            return r.json().then(function (d) { throw new Error(d.message || 'Erro ao guardar'); });
+          })
+          .then(function () {
+            document.getElementById('modalLead').classList.remove('visible');
+            loadLeads();
+          })
+          .catch(function (err) { alert(err.message || 'Erro ao guardar'); });
+      });
+
+      function deleteLead(id) {
+        fetch(API + '/leads/' + id, { method: 'DELETE', credentials: 'include' })
+          .then((r) => (r.ok ? loadLeads() : Promise.reject()))
+          .catch(() => alert('Erro ao apagar'));
+      }
+
+      function loadGestoras() {
+        const tbody = document.getElementById('gestorasBody');
+        tbody.innerHTML = '<tr><td colspan="6">A carregar…</td></tr>';
+        fetch(API + '/gestoras', { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : Promise.reject()))
+          .then((rows) => {
+            tbody.innerHTML = '';
+            if (!rows.length) {
+              tbody.innerHTML = '<tr><td colspan="6">Nenhuma gestora.</td></tr>';
+              return;
+            }
+            rows.forEach((r) => {
+              const tr = document.createElement('tr');
+              tr.innerHTML =
+                '<td>' +
+                r.id +
+                '</td><td>' +
+                escapeHtml(r.nome || '') +
+                '</td><td>' +
+                escapeHtml(r.email || '') +
+                '</td><td>' +
+                escapeHtml(r.whatsapp || '') +
+                '</td><td>' +
+                (r.ativo ? 'Sim' : 'Não') +
+                '</td><td class="actions">' +
+                '<button type="button" class="btn btn-secondary btn-sm btn-edit-gestora" data-id="' +
+                r.id +
+                '">Editar</button>' +
+                '<button type="button" class="btn btn-danger btn-sm btn-delete-gestora" data-id="' +
+                r.id +
+                '">Apagar</button>' +
+                '</td>';
+              tbody.appendChild(tr);
+            });
+            tbody.querySelectorAll('.btn-edit-gestora').forEach((b) =>
+              b.addEventListener('click', function () {
+                openEditGestora(rows.find((x) => x.id === parseInt(this.dataset.id, 10)));
+              })
+            );
+            tbody.querySelectorAll('.btn-delete-gestora').forEach((b) =>
+              b.addEventListener('click', function () {
+                if (confirm('Apagar esta gestora? Os leads associados ficarão sem gestora.')) deleteGestora(this.dataset.id);
+              })
+            );
+          })
+          .catch(() => {
+            tbody.innerHTML = '<tr><td colspan="6">Erro ao carregar.</td></tr>';
+          });
+      }
+
+      document.getElementById('btnNovaGestora').addEventListener('click', function () {
+        document.getElementById('modalGestoraTitle').textContent = 'Nova gestora';
+        document.getElementById('editGestoraId').value = '';
+        document.getElementById('editGestoraNome').value = '';
+        document.getElementById('editGestoraEmail').value = '';
+        document.getElementById('editGestoraWhatsapp').value = '';
+        document.getElementById('editGestoraAtivo').checked = true;
+        document.getElementById('modalGestora').classList.add('visible');
+      });
+
+      function openEditGestora(g) {
+        document.getElementById('modalGestoraTitle').textContent = 'Editar gestora';
+        document.getElementById('editGestoraId').value = g.id;
+        document.getElementById('editGestoraNome').value = g.nome || '';
+        document.getElementById('editGestoraEmail').value = g.email || '';
+        document.getElementById('editGestoraWhatsapp').value = g.whatsapp || '';
+        document.getElementById('editGestoraAtivo').checked = !!g.ativo;
+        document.getElementById('modalGestora').classList.add('visible');
+      }
+
+      document.getElementById('modalGestoraCancel').addEventListener('click', function () {
+        document.getElementById('modalGestora').classList.remove('visible');
+      });
+      document.getElementById('modalGestoraSave').addEventListener('click', function () {
+        const id = document.getElementById('editGestoraId').value;
+        const payload = {
+          nome: document.getElementById('editGestoraNome').value.trim(),
+          email: document.getElementById('editGestoraEmail').value.trim(),
+          whatsapp: document.getElementById('editGestoraWhatsapp').value.replace(/\D/g, ''),
+          ativo: document.getElementById('editGestoraAtivo').checked,
+        };
+        const url = id ? API + '/gestoras/' + id : API + '/gestoras';
+        const method = id ? 'PATCH' : 'POST';
+        fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        })
+          .then((r) => {
+            if (r.ok) return id ? Promise.resolve() : r.json();
+            return r.json().then((d) => Promise.reject(new Error(d.message || 'Erro')));
+          })
+          .then(() => {
+            document.getElementById('modalGestora').classList.remove('visible');
+            loadGestoras();
+          })
+          .catch((err) => alert(err.message || 'Erro ao guardar'));
+      });
+
+      function deleteGestora(id) {
+        fetch(API + '/gestoras/' + id, { method: 'DELETE', credentials: 'include' })
+          .then((r) => (r.ok ? loadGestoras() : Promise.reject()))
+          .catch(() => alert('Erro ao apagar'));
+      }
+
+      function escapeHtml(s) {
+        if (s == null) return '';
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+      }
+      function formatDate(d) {
+        if (!d) return '—';
+        const dt = new Date(d);
+        return isNaN(dt.getTime()) ? d : dt.toLocaleString('pt-PT');
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
