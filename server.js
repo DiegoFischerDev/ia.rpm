@@ -164,12 +164,33 @@ async function validateLeadAguardandoDocs(leadId) {
   return { lead };
 }
 
+// Permite envio de documentos quando: aguardando_docs OU sem_docs, e ainda não enviou (não reenvio).
+async function validateLeadCanSendDocs(leadId) {
+  if (!/^\d+$/.test(leadId)) return { error: 400, message: 'ID de lead inválido.' };
+  let lead;
+  try {
+    lead = await getLeadById(leadId);
+  } catch (err) {
+    logStartup(`validateLeadCanSendDocs error: ${err.message}`);
+    return { error: 500, message: 'Erro ao verificar dados.' };
+  }
+  if (!lead) return { error: 404, message: 'Link não encontrado.' };
+  const jaEnviou = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1);
+  if (jaEnviou) {
+    return { error: 403, message: 'Já enviaste os documentos. Não é possível reenviar.' };
+  }
+  if (lead.estado !== 'aguardando_docs' && lead.estado !== 'sem_docs') {
+    return { error: 403, message: 'Este link já não aceita envio de documentos.' };
+  }
+  return { lead };
+}
+
 function normalizeEmail(e) {
   return (e && typeof e === 'string' ? e.trim().toLowerCase() : '') || '';
 }
 
 async function requireEmailAccess(leadId, emailProvided) {
-  const v = await validateLeadAguardandoDocs(leadId);
+  const v = await validateLeadCanSendDocs(leadId);
   if (v.error) return v;
   const lead = v.lead;
   const hasEmail = !!(lead.email && lead.email.trim());
@@ -338,7 +359,7 @@ app.post('/api/leads/:leadId/access', async (req, res) => {
 app.get('/api/leads/:leadId/documents', async (req, res) => {
   const leadId = req.params.leadId;
   const emailQuery = req.query && req.query.email;
-  const v = await validateLeadAguardandoDocs(leadId);
+  const v = await validateLeadCanSendDocs(leadId);
   if (v.error) return res.status(v.error).json({ message: v.message });
   const lead = v.lead;
   if (!(lead.email && lead.email.trim())) {
@@ -498,7 +519,8 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
     .filter(Boolean)
     .join('\n');
 
-  const textWithNote = textBody + '\n\n---\n' + (mensagem ? mensagem : '(O lead não deixou mensagem)');
+  const nomeLead = (body.nome || lead.nome || 'O lead').trim() || 'O lead';
+  const textWithNote = textBody + '\n\n---\n' + (mensagem ? mensagem : `(${nomeLead} não deixou mensagem)`);
 
   try {
     const { error } = await resend.emails.send({
