@@ -380,6 +380,7 @@
       }
 
       const STORAGE_KEY = 'lead_' + leadId + '_email';
+      // IndexedDB: documentos e escolhas ficam apenas no dispositivo (compatível com todos os browsers modernos e telemóveis).
       const IDB_NAME = 'ia_app_lead_docs';
       const IDB_STORE = 'files';
       let pendingEmailForConfirm = '';
@@ -841,63 +842,77 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
           body: JSON.stringify({ email: getVerifiedEmail(), nome: nome || '' }),
         }).catch(function () {});
         idbSaveFormDados(leadId, {
+          nome: nome || '',
           estado_civil: estado_civil || '',
           num_dependentes: num_dependentes === '' ? '' : String(num_dependentes),
           anos_emprego_atual: anos_emprego_atual || '',
           vinculo_laboral: vinculo_laboral || '',
           disponibilidade_fiador: disponibilidade_fiador || '',
           consent_intermediaria: consent_intermediaria,
+          financiamento_100: document.getElementById('financiamento_100') && document.getElementById('financiamento_100').checked,
         }).catch(function () {});
       }
 
       function getDocListKeys() { return [...getRequiredBaseFields(), ...required100]; }
       function isDocKey(k) { return getDocListKeys().includes(k); }
 
+      // Restaura documentos e escolhas do formulário a partir do dispositivo (IndexedDB).
+      // Assim, em refresh os dados mantêm-se sem depender do servidor.
       function loadDocuments() {
         const email = getVerifiedEmail();
         if (!email) return;
-        fetch('/api/leads/' + leadId + '/documents?email=' + encodeURIComponent(email))
-          .then(function (r) { if (!r.ok) return r.json().then(function (d) { throw new Error(d.message || 'Erro'); }); return r.json(); })
-          .then(function (data) {
-            const nome = data.nome;
-            return Promise.all([idbGetAllKeys(leadId), idbGetFormDados(leadId)]).then(function (arr) {
-              var keys = arr[0];
-              var formDados = arr[1] || {};
-              docsState = {};
-              keys.filter(function (k) { return k !== FORM_DADOS_KEY; }).forEach(function (k) { docsState[k] = true; });
-              const nomeEl = document.getElementById('nome');
-              if (nomeEl) nomeEl.value = (nome != null ? nome : '') || '';
-              const estadoEl = document.getElementById('estado_civil');
-              if (estadoEl) estadoEl.value = (formDados.estado_civil != null ? formDados.estado_civil : '') || '';
-              const numDepEl = document.getElementById('num_dependentes');
-              if (numDepEl) numDepEl.value = (formDados.num_dependentes !== undefined && formDados.num_dependentes !== null ? String(formDados.num_dependentes) : '');
-              const anosEmpregoEl = document.getElementById('anos_emprego_atual');
-              if (anosEmpregoEl) anosEmpregoEl.value = (formDados.anos_emprego_atual != null ? String(formDados.anos_emprego_atual) : '');
-              const vinculoEl = document.getElementById('vinculo_laboral');
-              var vinculoVal = (formDados.vinculo_laboral != null ? formDados.vinculo_laboral : '') || '';
-              if (vinculoEl) vinculoEl.value = vinculoVal;
-              const dispFiadorEl = document.getElementById('disponibilidade_fiador');
-              if (dispFiadorEl) dispFiadorEl.value = (formDados.disponibilidade_fiador != null ? formDados.disponibilidade_fiador : '') || '';
-              var consentIntermediariaEl = document.getElementById('consent_intermediaria');
-              if (consentIntermediariaEl) consentIntermediariaEl.checked = !!(formDados.consent_intermediaria);
-              var fiadorWrap = document.getElementById('fiadorWrap');
-              if (fiadorWrap) fiadorWrap.style.display = (vinculoVal === VINCULO_TEMPORARIO || vinculoVal === VINCULO_RECIBOS_VERDES) ? 'block' : 'none';
-            var emailFormEl = document.getElementById('email');
-            if (emailFormEl) emailFormEl.value = email;
-            nomeEl.addEventListener('blur', saveDados);
-              numDepEl.addEventListener('blur', saveDados);
-              if (anosEmpregoEl) anosEmpregoEl.addEventListener('blur', saveDados);
-              if (vinculoEl) vinculoEl.addEventListener('change', saveDados);
-              if (dispFiadorEl) dispFiadorEl.addEventListener('change', saveDados);
-              if (consentIntermediariaEl) consentIntermediariaEl.addEventListener('change', saveDados);
-              estadoEl.addEventListener('change', saveDados);
-              renderAll();
-            });
-          })
-          .catch(function () {
-            docsState = {};
-            renderAll();
-          });
+        function applyStateFromIndexedDB(keys, formDados) {
+          formDados = formDados || {};
+          docsState = {};
+          keys.filter(function (k) { return k !== FORM_DADOS_KEY; }).forEach(function (k) { docsState[k] = true; });
+          const nomeEl = document.getElementById('nome');
+          if (nomeEl) nomeEl.value = (formDados.nome != null ? String(formDados.nome) : '') || '';
+          const estadoEl = document.getElementById('estado_civil');
+          if (estadoEl) estadoEl.value = (formDados.estado_civil != null ? formDados.estado_civil : '') || '';
+          const numDepEl = document.getElementById('num_dependentes');
+          if (numDepEl) numDepEl.value = (formDados.num_dependentes !== undefined && formDados.num_dependentes !== null ? String(formDados.num_dependentes) : '');
+          const anosEmpregoEl = document.getElementById('anos_emprego_atual');
+          if (anosEmpregoEl) anosEmpregoEl.value = (formDados.anos_emprego_atual != null ? String(formDados.anos_emprego_atual) : '');
+          const vinculoEl = document.getElementById('vinculo_laboral');
+          var vinculoVal = (formDados.vinculo_laboral != null ? formDados.vinculo_laboral : '') || '';
+          if (vinculoEl) vinculoEl.value = vinculoVal;
+          const dispFiadorEl = document.getElementById('disponibilidade_fiador');
+          if (dispFiadorEl) dispFiadorEl.value = (formDados.disponibilidade_fiador != null ? formDados.disponibilidade_fiador : '') || '';
+          var consentIntermediariaEl = document.getElementById('consent_intermediaria');
+          if (consentIntermediariaEl) consentIntermediariaEl.checked = !!(formDados.consent_intermediaria);
+          var fin100El = document.getElementById('financiamento_100');
+          if (fin100El) fin100El.checked = !!(formDados.financiamento_100);
+          var fiadorWrap = document.getElementById('fiadorWrap');
+          if (fiadorWrap) fiadorWrap.style.display = (vinculoVal === VINCULO_TEMPORARIO || vinculoVal === VINCULO_RECIBOS_VERDES) ? 'block' : 'none';
+          var emailFormEl = document.getElementById('email');
+          if (emailFormEl) emailFormEl.value = email;
+          nomeEl.addEventListener('blur', saveDados);
+          numDepEl.addEventListener('blur', saveDados);
+          if (anosEmpregoEl) anosEmpregoEl.addEventListener('blur', saveDados);
+          if (vinculoEl) vinculoEl.addEventListener('change', saveDados);
+          if (dispFiadorEl) dispFiadorEl.addEventListener('change', saveDados);
+          if (consentIntermediariaEl) consentIntermediariaEl.addEventListener('change', saveDados);
+          estadoEl.addEventListener('change', saveDados);
+          document.getElementById('financiamento_100').addEventListener('change', saveDados);
+          renderAll();
+        }
+        // Restaurar primeiro do dispositivo (IndexedDB) para sobreviver a refresh
+        Promise.all([idbGetAllKeys(leadId), idbGetFormDados(leadId)]).then(function (arr) {
+          applyStateFromIndexedDB(arr[0], arr[1]);
+          // Opcional: atualizar nome a partir do servidor se estiver disponível
+          fetch('/api/leads/' + leadId + '/documents?email=' + encodeURIComponent(email))
+            .then(function (r) { if (!r.ok) throw new Error(); return r.json(); })
+            .then(function (data) {
+              if (data.nome && data.nome.trim()) {
+                var nomeEl = document.getElementById('nome');
+                if (nomeEl && !nomeEl.value.trim()) nomeEl.value = data.nome.trim();
+              }
+            })
+            .catch(function () {});
+        }).catch(function () {
+          docsState = {};
+          renderAll();
+        });
       }
 
       fetch('/api/leads/' + leadId + '/status')
@@ -1129,6 +1144,8 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
             btn.disabled = false;
           });
       });
+
+      window.addEventListener('beforeunload', function () { saveDados(); });
     })();
   </script>
 </body>
