@@ -617,7 +617,7 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
       to: [toEmail],
       cc: [emailLead],
       replyTo: emailLead,
-      subject: `[Crédito Habitação] Documentos – ${lead.nome || leadId}`,
+      subject: `[${lead.nome || lead.email || leadId}] Documentos`,
       text: textWithNote,
       attachments: attachments.map((a) => ({ filename: a.filename, content: a.content })),
     });
