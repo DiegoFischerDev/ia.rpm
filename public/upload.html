@@ -254,17 +254,16 @@
 
     <div id="stepGate">
       <div id="stepNomeEmail" class="card" style="display:none;">
-        <h2>Dados pessoais</h2>
-        <label class="consent-checkbox">
-          <input type="checkbox" id="consent_rafa_gate" name="consent_rafa_gate" required>
-          Aceito partilhar o meu nome e email com a Rafa
-        </label>
-        <p class="doc-hint doc-privacy">Com a Rafa partilhamos apenas o seu nome e email. Os restantes dados (estado civil, vínculo laboral, etc.) são apenas para a gestora e para o seu processo (guardados de forma segura).</p>
         <label for="gate_nome">O seu nome completo *</label>
         <input type="text" id="gate_nome" placeholder="Ex.: Maria Silva" autocomplete="name">
         <label for="gate_email">O seu email *</label>
         <input type="email" id="gate_email" placeholder="email@exemplo.pt" autocomplete="email">
         <p class="doc-hint">Enviaremos um código de confirmação por email.</p>
+        <p class="doc-hint" style="margin-top:1rem;">Com a Rafa partilhamos apenas o seu nome e email.</p>
+        <label class="consent-checkbox">
+          <input type="checkbox" id="consent_rafa_gate" name="consent_rafa_gate" required>
+          Aceito partilhar o meu nome e email com a Rafa
+        </label>
         <div id="gateError1" class="error-msg" style="display:none;"></div>
         <button type="button" class="btn btn-primary" id="btnAvançar">Avançar</button>
       </div>
@@ -294,9 +293,6 @@
     </div>
 
     <div id="mainForm" style="display:none;">
-    <div id="semDocsDisclaimer" class="card" style="display:none;">
-      <p class="doc-hint" style="margin:0;">Poxa, infelizmente os bancos pedem todos estes documentos para avançar com o processo. Vamos manter contacto e, assim que tiveres tudo em ordem, continua por aqui. Boa sorte! ✨</p>
-    </div>
     <div id="progressWrap" class="card" style="display:none;">
       <p class="progress-text" id="progressText">0 de 10 documentos anexados</p>
       <div class="progress-bar"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
@@ -315,7 +311,7 @@
             Aceito compartilhar esses docs com a intermediária de crédito
           </label>
         </div>
-        <p class="doc-hint doc-privacy">Os documentos ficam guardados apenas no seu dispositivo até fazer o envio para a gestora. A equipe do RPM não tem acesso a essas informações.</p>
+        <p class="doc-hint doc-privacy">Os documentos ficam guardados apenas no seu dispositivo até fazer o envio para a gestora.</p>
         <p class="doc-hint doc-privacy" style="margin-top:0.75rem;">Dados para a gestora e para o seu processo:</p>
         <label for="estado_civil">Estado civil e regime de casamento</label>
         <select id="estado_civil" name="estado_civil">
@@ -366,9 +362,12 @@
         <textarea id="mensagem_gestora" name="mensagem_gestora" rows="3" placeholder="Alguma informação adicional..."></textarea>
       </div>
 
+      <div id="semDocsDisclaimer" style="display:none; margin-bottom:1rem;">
+        <p style="margin:0; color:var(--error); font-size:0.9375rem;">Poxa, infelizmente os bancos pedem todos estes documentos para avançar com o processo. Vamos manter contacto e, assim que tiveres tudo em ordem, continua por aqui. Boa sorte! ✨</p>
+      </div>
       <div id="formError" class="error-msg" style="display:none;"></div>
       <button type="submit" class="btn btn-primary" id="submitBtn" disabled><span class="btn-text">Enviar para a gestora</span></button>
-      <button type="button" class="btn btn-outline" id="btnSemDocs" style="margin-top:0.75rem; display:none;">Não tenho todos os docs</button>
+      <button type="button" class="btn btn-outline" id="btnSemDocs" style="margin-top:0.75rem; display:none; color:var(--error); border-color:var(--error);">Não tenho todos os docs</button>
     </form>
     </div>
   </div>
@@ -836,6 +835,8 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         const anos_emprego_atual = document.getElementById('anos_emprego_atual').value.trim();
         const vinculo_laboral = (document.getElementById('vinculo_laboral') && document.getElementById('vinculo_laboral').value) || '';
         const disponibilidade_fiador = (document.getElementById('disponibilidade_fiador') && document.getElementById('disponibilidade_fiador').value) || '';
+        const consentIntermediariaEl = document.getElementById('consent_intermediaria');
+        const consent_intermediaria = !!(consentIntermediariaEl && consentIntermediariaEl.checked);
         fetch('/api/leads/' + leadId, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -847,6 +848,7 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
           anos_emprego_atual: anos_emprego_atual || '',
           vinculo_laboral: vinculo_laboral || '',
           disponibilidade_fiador: disponibilidade_fiador || '',
+          consent_intermediaria: consent_intermediaria,
         }).catch(function () {});
       }
 
@@ -878,6 +880,8 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
               if (vinculoEl) vinculoEl.value = vinculoVal;
               const dispFiadorEl = document.getElementById('disponibilidade_fiador');
               if (dispFiadorEl) dispFiadorEl.value = (formDados.disponibilidade_fiador != null ? formDados.disponibilidade_fiador : '') || '';
+              var consentIntermediariaEl = document.getElementById('consent_intermediaria');
+              if (consentIntermediariaEl) consentIntermediariaEl.checked = !!(formDados.consent_intermediaria);
               var fiadorWrap = document.getElementById('fiadorWrap');
               if (fiadorWrap) fiadorWrap.style.display = (vinculoVal === VINCULO_TEMPORARIO || vinculoVal === VINCULO_RECIBOS_VERDES) ? 'block' : 'none';
             var emailFormEl = document.getElementById('email');
@@ -887,6 +891,7 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
               if (anosEmpregoEl) anosEmpregoEl.addEventListener('blur', saveDados);
               if (vinculoEl) vinculoEl.addEventListener('change', saveDados);
               if (dispFiadorEl) dispFiadorEl.addEventListener('change', saveDados);
+              if (consentIntermediariaEl) consentIntermediariaEl.addEventListener('change', saveDados);
               estadoEl.addEventListener('change', saveDados);
               renderAll();
             });
