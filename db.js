@@ -407,20 +407,19 @@ async function upsertResposta(perguntaId, gestoraId, texto) {
   );
 }
 
-/** Dúvidas pendentes: eh_pendente=1 ou (eh_pendente=0 e gestora ainda não respondeu). Gestoras não veem eh_spam=1. */
+/** Dúvidas pendentes: eh_pendente=1 ou (eh_pendente=0 e gestora ainda não respondeu). */
 async function listDuvidasPendentes(gestoraId) {
   const subCount = '(SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id)';
-  const spamFilter = gestoraId != null ? ' AND d.eh_spam = 0' : '';
   const sql = gestoraId != null
-    ? `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.eh_pendente, d.eh_spam, d.created_at, d.updated_at,
+    ? `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.eh_pendente, d.created_at, d.updated_at,
               l.nome AS lead_nome, ${subCount} AS num_respostas
        FROM ch_duvidas d
        LEFT JOIN ch_leads l ON l.id = d.lead_id
-       WHERE (d.eh_pendente = 1 OR (d.eh_pendente = 0 AND NOT EXISTS (
+       WHERE d.eh_pendente = 1 OR (d.eh_pendente = 0 AND NOT EXISTS (
          SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id AND r.gestora_id = ?
-       )))${spamFilter}
+       ))
        ORDER BY d.eh_pendente DESC, d.created_at DESC`
-    : `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.eh_pendente, d.eh_spam, d.created_at, d.updated_at,
+    : `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.eh_pendente, d.created_at, d.updated_at,
               l.nome AS lead_nome
        FROM ch_duvidas d
        LEFT JOIN ch_leads l ON l.id = d.lead_id
@@ -429,22 +428,21 @@ async function listDuvidasPendentes(gestoraId) {
   return gestoraId != null ? query(sql, [gestoraId]) : query(sql);
 }
 
-/** Listar id e texto das dúvidas pendentes não-spam (evo pode usar para duplicados). */
+/** Listar id e texto das dúvidas pendentes (evo pode usar para duplicados). */
 async function listDuvidasPendentesTextos() {
   const rows = await query(
-    "SELECT id, texto FROM ch_duvidas WHERE eh_pendente = 1 AND eh_spam = 0 AND texto IS NOT NULL AND TRIM(texto) != '' ORDER BY id ASC"
+    "SELECT id, texto FROM ch_duvidas WHERE eh_pendente = 1 AND texto IS NOT NULL AND TRIM(texto) != '' ORDER BY id ASC"
   );
   return rows.map((r) => ({ id: r.id, texto: (r.texto || '').trim() })).filter((r) => r.texto);
 }
 
-/** Contagem de dúvidas pendentes (mesmo filtro que listDuvidasPendentes; gestoras não contam spam). */
+/** Contagem de dúvidas pendentes (mesmo filtro que listDuvidasPendentes). */
 async function getDuvidasPendentesCount(gestoraId) {
-  const spamFilter = gestoraId != null ? ' AND d.eh_spam = 0' : '';
   const sql = gestoraId != null
     ? `SELECT COUNT(*) AS n FROM ch_duvidas d
-       WHERE (d.eh_pendente = 1 OR (d.eh_pendente = 0 AND NOT EXISTS (
+       WHERE d.eh_pendente = 1 OR (d.eh_pendente = 0 AND NOT EXISTS (
          SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id AND r.gestora_id = ?
-       )))${spamFilter}`
+       ))`
     : 'SELECT COUNT(*) AS n FROM ch_duvidas d WHERE d.eh_pendente = 1';
   const rows = gestoraId != null ? await query(sql, [gestoraId]) : await query(sql);
   return (rows[0] && rows[0].n != null) ? Number(rows[0].n) : 0;
@@ -464,7 +462,7 @@ async function createDuvidaPendente({ contactoWhatsapp, leadId, texto, origem = 
 
 async function getDuvidaPendenteById(id) {
   const rows = await query(
-    'SELECT id, contacto_whatsapp, lead_id, texto, origem, eh_pendente, eh_spam, created_at, updated_at FROM ch_duvidas WHERE id = ?',
+    'SELECT id, contacto_whatsapp, lead_id, texto, origem, eh_pendente, created_at, updated_at FROM ch_duvidas WHERE id = ?',
     [id]
   );
   return rows[0] || null;
