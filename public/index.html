@@ -365,6 +365,7 @@
             <h3 style="margin:0 0 0.25rem; font-size:1rem;">Dúvidas pendentes</h3>
             <p class="text-muted" style="font-size:0.875rem; margin:0;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
           </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btnNovaDuvida" style="display:none;">Nova pergunta</button>
         </div>
         <div class="card" style="margin-bottom:1.5rem;">
           <div class="table-wrap">
@@ -375,8 +376,7 @@
                   <th>Pergunta do lead</th>
                   <th class="th-contacto">Contacto</th>
                   <th>Data</th>
-                  <th>Respostas</th>
-                  <th class="th-acoes-admin">Ações (admin)</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody id="duvidasPendentesBody"></tbody>
@@ -388,7 +388,6 @@
             <h3 style="margin:0 0 0.25rem; font-size:1rem;">Perguntas do FAQ (já respondidas)</h3>
             <p class="text-muted" style="font-size:0.875rem; margin:0;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
           </div>
-          <button type="button" class="btn btn-primary btn-sm" id="btnNovaPergunta" style="display:none;">Nova pergunta</button>
         </div>
         <div class="card">
           <div class="table-wrap">
@@ -499,6 +498,19 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <div id="modalLeadEstadoDocs" class="modal-overlay">
+    <div class="modal">
+      <h3>Alterar estado docs</h3>
+      <input type="hidden" id="editLeadEstadoDocsLeadId">
+      <label for="editLeadEstadoDocsSelect">Estado docs</label>
+      <select id="editLeadEstadoDocsSelect"></select>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="modalLeadEstadoDocsCancel">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="modalLeadEstadoDocsSave">Guardar</button>
+      </div>
+    </div>
   </div>
 
   <div id="modalLead" class="modal-overlay">
@@ -845,14 +857,10 @@
         rows.forEach(function (r) {
           const tr = document.createElement('tr');
           if (isGestora) {
-            var sel = '<select class="lead-estado-docs-select" data-id="' + r.id + '">';
-            ESTADO_DOCS_OPCOES.forEach(function (v) {
-              sel += '<option value="' + escapeHtml(v) + '"' + (r.estado_docs === v ? ' selected' : '') + '>' + escapeHtml(v) + '</option>';
-            });
-            sel += '</select>';
             var num = (r.whatsapp_number || '').replace(/\D/g, '');
             var waUrl = num ? 'https://wa.me/' + num : '#';
             var waBtn = num ? '<a href="' + waUrl + '" target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp btn-sm">WhatsApp</a>' : '<span class="text-muted">—</span>';
+            var editBtn = '<button type="button" class="btn btn-secondary btn-sm btn-edit-lead-estado-docs" data-id="' + r.id + '">Editar</button>';
             var docsVal = r.estado_docs || '';
             var docsBadge = '<span class="' + leadBadgeClass('docs', docsVal) + '">' + escapeHtml(docsVal || '—') + '</span>';
             tr.innerHTML =
@@ -860,7 +868,7 @@
               '</td><td>' + escapeHtml(r.whatsapp_number || '') +
               '</td><td>' + escapeHtml(r.nome || '') +
               '</td><td>' + escapeHtml(r.email || '') +
-              '</td><td>' + docsBadge + ' ' + sel + '</td><td class="actions">' + waBtn + '</td>';
+              '</td><td>' + docsBadge + '</td><td class="actions">' + waBtn + ' ' + editBtn + '</td>';
           } else {
             var convVal = r.estado_conversa || '';
             var docsVal = r.estado_docs || '';
@@ -880,19 +888,12 @@
           tbody.appendChild(tr);
         });
         if (isGestora) {
-          tbody.querySelectorAll('.lead-estado-docs-select').forEach(function (sel) {
-            sel.addEventListener('change', function () {
-              var id = this.dataset.id;
-              var val = this.value;
-              fetch(API + '/leads/' + id, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ estado_docs: val }),
-              })
-                .then(function (res) { return res.ok ? undefined : res.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                .then(function () { loadLeads(); })
-                .catch(function (err) { alert(err.message || 'Erro ao atualizar estado.'); });
+          tbody.querySelectorAll('.btn-edit-lead-estado-docs').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              var id = parseInt(this.dataset.id, 10);
+              var lead = _leadsRows.find(function (x) { return x.id === id; });
+              if (!lead) return;
+              openEditLeadEstadoDocs(lead);
             });
           });
         } else {
@@ -972,7 +973,7 @@
         const duvidasBody = document.getElementById('duvidasPendentesBody');
         if (!perguntasBody || !duvidasBody) return;
         perguntasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
-        duvidasBody.innerHTML = '<tr><td colspan="6">A carregar…</td></tr>';
+        duvidasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
         Promise.all([
           fetch(API + '/duvidas-pendentes', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
           fetch(API + '/perguntas', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
@@ -984,18 +985,16 @@
             if (tblPerguntas) { tblPerguntas.classList.remove('role-admin', 'role-gestora'); tblPerguntas.classList.add(user && user.role === 'admin' ? 'role-admin' : 'role-gestora'); }
             duvidasBody.innerHTML = '';
             if (!duvidas.length) {
-              duvidasBody.innerHTML = '<tr><td colspan="6">Nenhuma dúvida pendente.</td></tr>';
+              duvidasBody.innerHTML = '<tr><td colspan="5">Nenhuma dúvida pendente.</td></tr>';
             } else {
               duvidas.forEach(function (d) {
                 const tr = document.createElement('tr');
                 const textoDuvida = (d.texto || '').trim();
-                const numRespostas = d.num_respostas != null ? Number(d.num_respostas) : 0;
                 const isAdmin = user && user.role === 'admin';
                 const isGestora = user && user.role === 'gestora';
-                const btn = !d.respondida && isGestora
+                const btn = isGestora
                   ? '<button type="button" class="btn btn-primary btn-sm btn-responder-duvida" data-id="' + d.id + '">Responder</button>'
                   : '';
-                const respostasCell = isAdmin ? String(numRespostas) : btn;
                 const spamBadge = d.eh_spam ? '<span class="badge" style="background:var(--error); color:#fff; font-size:0.7rem;">Spam</span> ' : '';
                 const spamBtn = isAdmin
                   ? (d.eh_spam ? '<button type="button" class="btn btn-outline btn-sm btn-spam-duvida" data-id="' + d.id + '" data-spam="1">Remover spam</button> '
@@ -1005,7 +1004,7 @@
                   ? spamBadge + spamBtn + '<button type="button" class="btn btn-danger btn-sm btn-excluir-duvida" data-id="' + d.id + '">Excluir</button>'
                   : '';
                 tr.innerHTML =
-                  '<td>' + d.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoDuvida) + '">' + escapeHtml(textoDuvida) + '</td><td class="td-contacto">' + escapeHtml(d.contacto_whatsapp || (d.lead_nome || '—')) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + respostasCell + '</td><td class="td-acoes-admin">' + acoesAdmin + '</td>';
+                  '<td>' + d.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoDuvida) + '">' + escapeHtml(textoDuvida) + '</td><td class="td-contacto">' + escapeHtml(d.contacto_whatsapp || (d.lead_nome || '—')) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + (isAdmin ? acoesAdmin : btn) + '</td>';
                 duvidasBody.appendChild(tr);
               });
               duvidasBody.querySelectorAll('.btn-responder-duvida').forEach(function (btn) {
@@ -1087,13 +1086,13 @@
                 });
               });
             }
-            var btnNova = document.getElementById('btnNovaPergunta');
-            if (btnNova) {
-              btnNova.style.display = user && user.role === 'admin' ? '' : 'none';
-              btnNova.onclick = function () {
-                var texto = prompt('Texto da nova pergunta:');
+            var btnNovaDuvida = document.getElementById('btnNovaDuvida');
+            if (btnNovaDuvida) {
+              btnNovaDuvida.style.display = user && user.role === 'admin' ? '' : 'none';
+              btnNovaDuvida.onclick = function () {
+                var texto = prompt('Texto da nova pergunta (será adicionada às dúvidas pendentes para as gestoras responderem):');
                 if (texto == null || !texto.trim()) return;
-                fetch(API + '/perguntas', {
+                fetch(API + '/duvidas-pendentes', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   credentials: 'include',
@@ -1107,7 +1106,7 @@
           })
           .catch(function () {
             perguntasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
-            duvidasBody.innerHTML = '<tr><td colspan="6" class="error-msg">Erro ao carregar.</td></tr>';
+            duvidasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
           });
       }
 
@@ -1364,6 +1363,40 @@
       });
       document.getElementById('profileRgpdSubstituirInput').addEventListener('change', function () {
         document.getElementById('profileRgpdSubstituirPreview').style.display = (this.files && this.files[0]) ? 'block' : 'none';
+      });
+
+      function openEditLeadEstadoDocs(lead) {
+        document.getElementById('editLeadEstadoDocsLeadId').value = lead.id;
+        var sel = document.getElementById('editLeadEstadoDocsSelect');
+        sel.innerHTML = '';
+        ESTADO_DOCS_OPCOES.forEach(function (v) {
+          var opt = document.createElement('option');
+          opt.value = v;
+          opt.textContent = v;
+          if ((lead.estado_docs || '') === v) opt.selected = true;
+          sel.appendChild(opt);
+        });
+        document.getElementById('modalLeadEstadoDocs').classList.add('visible');
+      }
+
+      document.getElementById('modalLeadEstadoDocsCancel').addEventListener('click', function () {
+        document.getElementById('modalLeadEstadoDocs').classList.remove('visible');
+      });
+      document.getElementById('modalLeadEstadoDocsSave').addEventListener('click', function () {
+        var id = document.getElementById('editLeadEstadoDocsLeadId').value;
+        var val = document.getElementById('editLeadEstadoDocsSelect').value;
+        fetch(API + '/leads/' + id, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ estado_docs: val }),
+        })
+          .then(function (r) { return r.ok ? undefined : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+          .then(function () {
+            document.getElementById('modalLeadEstadoDocs').classList.remove('visible');
+            loadLeads();
+          })
+          .catch(function (err) { alert(err.message || 'Erro ao atualizar estado.'); });
       });
 
       function openEditLead(lead) {

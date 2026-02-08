@@ -983,6 +983,24 @@ app.get('/api/dashboard/duvidas-pendentes', requireDashboardAuth, async (req, re
   }
 });
 
+app.post('/api/dashboard/duvidas-pendentes', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  const texto = (req.body && req.body.texto) ? String(req.body.texto).trim() : '';
+  if (!texto) return res.status(400).json({ message: 'texto é obrigatório.' });
+  try {
+    const row = await createDuvidaPendente({
+      contactoWhatsapp: '0',
+      leadId: null,
+      texto,
+      origem: 'admin',
+    });
+    if (!row) return res.status(500).json({ message: 'Erro ao criar dúvida.' });
+    res.status(201).json(row);
+  } catch (err) {
+    logStartup(`createDuvidaPendente (admin) error: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao criar.' });
+  }
+});
+
 app.patch('/api/dashboard/duvidas-pendentes/:id', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   const id = req.params.id;
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });

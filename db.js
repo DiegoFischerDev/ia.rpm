@@ -425,10 +425,11 @@ async function listDuvidasPendentes(gestoraId) {
          ))))
        ORDER BY d.respondida ASC, d.created_at DESC`
     : `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, COALESCE(d.eh_spam, 0) AS eh_spam, d.created_at, d.updated_at,
-              l.nome AS lead_nome, ${subCount} AS num_respostas
+              l.nome AS lead_nome
        FROM ch_duvidas_pendentes d
        LEFT JOIN ch_leads l ON l.id = d.lead_id
-       ORDER BY d.respondida ASC, d.created_at DESC`;
+       WHERE d.respondida = 0
+       ORDER BY d.created_at DESC`;
   return gestoraId != null ? query(sql, [gestoraId]) : query(sql);
 }
 
