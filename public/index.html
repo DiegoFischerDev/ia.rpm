@@ -165,6 +165,7 @@
     #screenDuvidas table.role-gestora .td-acoes-admin { display: none; }
     #screenDuvidas table.role-gestora .th-contacto,
     #screenDuvidas table.role-gestora .td-contacto { display: none; }
+    .cell-pergunta { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .error-msg { color: var(--error); font-size: 0.875rem; margin-top: 0.5rem; }
     .page-title { margin: 0 0 1.5rem; font-size: 1.375rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
     .card { background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); }
@@ -384,7 +385,7 @@
         </div>
         <div class="section-toolbar">
           <div>
-            <h3 style="margin:0 0 0.25rem; font-size:1rem;">Perguntas do FAQ</h3>
+            <h3 style="margin:0 0 0.25rem; font-size:1rem;">Perguntas do FAQ (já respondidas)</h3>
             <p class="text-muted" style="font-size:0.875rem; margin:0;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnNovaPergunta" style="display:none;">Nova pergunta</button>
@@ -397,7 +398,7 @@
                   <th>#</th>
                   <th>Pergunta</th>
                   <th>Freq.</th>
-                  <th></th>
+                  <th>Respostas</th>
                   <th class="th-acoes-admin">Ações (admin)</th>
                 </tr>
               </thead>
@@ -987,7 +988,7 @@
             } else {
               duvidas.forEach(function (d) {
                 const tr = document.createElement('tr');
-                const textoShort = (d.texto || '').slice(0, 60) + ((d.texto || '').length > 60 ? '…' : '');
+                const textoDuvida = (d.texto || '').trim();
                 const numRespostas = d.num_respostas != null ? Number(d.num_respostas) : 0;
                 const isAdmin = user && user.role === 'admin';
                 const isGestora = user && user.role === 'gestora';
@@ -1004,7 +1005,7 @@
                   ? spamBadge + spamBtn + '<button type="button" class="btn btn-danger btn-sm btn-excluir-duvida" data-id="' + d.id + '">Excluir</button>'
                   : '';
                 tr.innerHTML =
-                  '<td>' + d.id + '</td><td>' + escapeHtml(textoShort) + '</td><td class="td-contacto">' + escapeHtml(d.contacto_whatsapp || (d.lead_nome || '—')) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + respostasCell + '</td><td class="td-acoes-admin">' + acoesAdmin + '</td>';
+                  '<td>' + d.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoDuvida) + '">' + escapeHtml(textoDuvida) + '</td><td class="td-contacto">' + escapeHtml(d.contacto_whatsapp || (d.lead_nome || '—')) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + respostasCell + '</td><td class="td-acoes-admin">' + acoesAdmin + '</td>';
                 duvidasBody.appendChild(tr);
               });
               duvidasBody.querySelectorAll('.btn-responder-duvida').forEach(function (btn) {
@@ -1042,18 +1043,19 @@
             } else {
               perguntas.forEach(function (p) {
                 const tr = document.createElement('tr');
-                const textoShort = (p.texto || '').slice(0, 80) + ((p.texto || '').length > 80 ? '…' : '');
-                const jaRespondi = p.ja_respondi ? '<span class="text-muted" style="font-size:0.75rem;">✓ Respondi</span>' : '';
-                const spamBadge = p.eh_spam ? '<span class="badge" style="background:var(--error); color:#fff; font-size:0.7rem;">Spam</span> ' : '';
+                const textoPergunta = (p.texto || '').trim();
+                const jaRespondi = p.ja_respondi ? '<span class="text-muted" style="font-size:0.75rem;">✓ Respondi</span> ' : '';
+                const numRespostas = p.num_respostas != null ? Number(p.num_respostas) : 0;
                 const isAdmin = user && user.role === 'admin';
+                const respostasCell = isAdmin ? numRespostas + ' <button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>' : jaRespondi + '<button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>';
+                const spamBadge = p.eh_spam ? '<span class="badge" style="background:var(--error); color:#fff; font-size:0.7rem;">Spam</span> ' : '';
                 const acoes = isAdmin
                   ? spamBadge +
                     '<button type="button" class="btn btn-outline btn-sm btn-spam-pergunta" data-id="' + p.id + '" data-spam="' + (p.eh_spam ? '1' : '0') + '">' + (p.eh_spam ? 'Remover spam' : 'Marcar spam') + '</button> ' +
                     '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta" data-id="' + p.id + '">Excluir</button>'
                   : '';
                 tr.innerHTML =
-                  '<td>' + p.id + '</td><td>' + escapeHtml(textoShort) + '</td><td>' + (p.frequencia || 0) + '</td><td>' + jaRespondi +
-                  ' <button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button></td><td class="td-acoes-admin">' + acoes + '</td>';
+                  '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td><td>' + (p.frequencia || 0) + '</td><td>' + respostasCell + '</td><td class="td-acoes-admin">' + acoes + '</td>';
                 perguntasBody.appendChild(tr);
               });
               perguntasBody.querySelectorAll('.btn-ver-pergunta').forEach(function (btn) {

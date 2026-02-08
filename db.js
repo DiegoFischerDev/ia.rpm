@@ -338,10 +338,13 @@ async function hasGestoraRgpd(gestoraId) {
 
 // ---------- FAQ Dúvidas (perguntas + respostas gestoras + dúvidas pendentes) ----------
 
-/** Lista perguntas ordenadas por frequência (mais perguntadas primeiro) */
+/** Lista perguntas ordenadas por frequência (mais perguntadas primeiro), com número de respostas */
 async function listPerguntas() {
   return query(
-    'SELECT id, texto, frequencia, COALESCE(eh_spam, 0) AS eh_spam, created_at, updated_at FROM ch_perguntas ORDER BY frequencia DESC, updated_at DESC'
+    `SELECT p.id, p.texto, p.frequencia, COALESCE(p.eh_spam, 0) AS eh_spam, p.created_at, p.updated_at,
+            (SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = p.id) AS num_respostas
+     FROM ch_perguntas p
+     ORDER BY p.frequencia DESC, p.updated_at DESC`
   );
 }
 
