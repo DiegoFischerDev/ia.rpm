@@ -56,8 +56,9 @@ const {
   upsertResposta,
   listDuvidasPendentes,
   getDuvidasPendentesCount,
+  listDuvidasPendentesTextos,
   createDuvidaPendente,
-getDuvidaPendenteById,
+  getDuvidaPendenteById,
   markDuvidaRespondida,
   updateDuvidaPendenteTexto,
   deleteDuvidaPendente,
@@ -1126,6 +1127,15 @@ app.post('/api/faq/perguntas/:id/incrementar-frequencia', (req, res) => {
     .then(() => res.json({ ok: true }))
     .catch((err) => {
       logStartup(`incrementPerguntaFrequencia error: ${err.message}`);
+      res.status(500).json({ message: 'Erro.' });
+    });
+});
+
+app.get('/api/faq/duvidas-pendentes-textos', (req, res) => {
+  listDuvidasPendentesTextos()
+    .then((rows) => res.json(rows))
+    .catch((err) => {
+      logStartup(`faq/duvidas-pendentes-textos error: ${err.message}`);
       res.status(500).json({ message: 'Erro.' });
     });
 });

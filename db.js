@@ -428,6 +428,14 @@ async function listDuvidasPendentes(gestoraId) {
   return gestoraId != null ? query(sql, [gestoraId]) : query(sql);
 }
 
+/** Listar id e texto das dúvidas pendentes não respondidas (para o evo verificar duplicados por vetor). */
+async function listDuvidasPendentesTextos() {
+  const rows = await query(
+    'SELECT id, texto FROM ch_duvidas_pendentes WHERE respondida = 0 AND texto IS NOT NULL AND texto != "" ORDER BY id ASC'
+  );
+  return rows.map((r) => ({ id: r.id, texto: (r.texto || '').trim() })).filter((r) => r.texto);
+}
+
 /** Contagem de dúvidas pendentes (mesmos filtros que listDuvidasPendentes). */
 async function getDuvidasPendentesCount(gestoraId) {
   const sql = gestoraId != null
@@ -521,6 +529,7 @@ module.exports = {
   upsertResposta,
   listDuvidasPendentes,
   getDuvidasPendentesCount,
+  listDuvidasPendentesTextos,
   createDuvidaPendente,
   getDuvidaPendenteById,
   markDuvidaRespondida,
