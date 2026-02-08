@@ -408,19 +408,20 @@ async function upsertResposta(perguntaId, gestoraId, texto) {
 }
 
 /** Dúvidas pendentes: listar (não respondidas primeiro, depois por data).
- *  Se gestoraId for passado, exclui dúvidas já respondidas por essa gestora (para não aparecer na lista dela). */
+ *  Se gestoraId for passado, exclui dúvidas já respondidas por essa gestora e dúvidas marcadas como spam. */
 async function listDuvidasPendentes(gestoraId) {
   const subCount = '(SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id)';
   const sql = gestoraId != null
-    ? `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, d.created_at, d.updated_at,
+    ? `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, COALESCE(d.eh_spam, 0) AS eh_spam, d.created_at, d.updated_at,
               l.nome AS lead_nome, ${subCount} AS num_respostas
        FROM ch_duvidas_pendentes d
        LEFT JOIN ch_leads l ON l.id = d.lead_id
-       WHERE (d.respondida = 0) OR (d.respondida = 1 AND (d.pergunta_id IS NULL OR NOT EXISTS (
-         SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id AND r.gestora_id = ?
-       )))
+       WHERE (COALESCE(d.eh_spam, 0) = 0)
+         AND ((d.respondida = 0) OR (d.respondida = 1 AND (d.pergunta_id IS NULL OR NOT EXISTS (
+           SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id AND r.gestora_id = ?
+         ))))
        ORDER BY d.respondida ASC, d.created_at DESC`
-    : `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, d.created_at, d.updated_at,
+    : `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, COALESCE(d.eh_spam, 0) AS eh_spam, d.created_at, d.updated_at,
               l.nome AS lead_nome, ${subCount} AS num_respostas
        FROM ch_duvidas_pendentes d
        LEFT JOIN ch_leads l ON l.id = d.lead_id
@@ -458,6 +459,10 @@ async function markDuvidaRespondida(duvidaId, perguntaId) {
 
 async function deleteDuvidaPendente(id) {
   await query('DELETE FROM ch_duvidas_pendentes WHERE id = ?', [id]);
+}
+
+async function setDuvidaPendenteSpam(id, ehSpam) {
+  await query('UPDATE ch_duvidas_pendentes SET eh_spam = ?, updated_at = NOW() WHERE id = ?', [ehSpam ? 1 : 0, id]);
 }
 
 module.exports = {
@@ -507,4 +512,5 @@ module.exports = {
   getDuvidaPendenteById,
   markDuvidaRespondida,
   deleteDuvidaPendente,
+  setDuvidaPendenteSpam,
 };

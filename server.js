@@ -60,6 +60,7 @@ const {
   getDuvidaPendenteById,
   markDuvidaRespondida,
   deleteDuvidaPendente,
+  setDuvidaPendenteSpam,
 } = require('./db');
 const {
   saveDocument,
@@ -979,6 +980,20 @@ app.get('/api/dashboard/duvidas-pendentes', requireDashboardAuth, async (req, re
   } catch (err) {
     logStartup(`listDuvidasPendentes error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar dúvidas.' });
+  }
+});
+
+app.patch('/api/dashboard/duvidas-pendentes/:id', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  const ehSpam = req.body && req.body.eh_spam;
+  if (typeof ehSpam !== 'boolean') return res.status(400).json({ message: 'eh_spam (boolean) é obrigatório.' });
+  try {
+    await setDuvidaPendenteSpam(id, ehSpam);
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`setDuvidaPendenteSpam error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao atualizar.' });
   }
 });
 

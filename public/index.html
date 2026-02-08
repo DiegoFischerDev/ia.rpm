@@ -163,6 +163,8 @@
     }
     #screenDuvidas table.role-gestora .th-acoes-admin,
     #screenDuvidas table.role-gestora .td-acoes-admin { display: none; }
+    #screenDuvidas table.role-gestora .th-contacto,
+    #screenDuvidas table.role-gestora .td-contacto { display: none; }
     .error-msg { color: var(--error); font-size: 0.875rem; margin-top: 0.5rem; }
     .page-title { margin: 0 0 1.5rem; font-size: 1.375rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
     .card { background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); }
@@ -357,22 +359,22 @@
       </div>
       <div id="screenDuvidas" class="screen">
         <h2 class="page-title">Dúvidas</h2>
-        <div class="card" style="margin-bottom:1.5rem;">
-          <div class="section-toolbar">
-            <div>
-              <h3 style="margin:0 0 0.25rem; font-size:1rem;">Dúvidas pendentes</h3>
-              <p class="text-muted" style="font-size:0.875rem; margin:0;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
-            </div>
+        <div class="section-toolbar">
+          <div>
+            <h3 style="margin:0 0 0.25rem; font-size:1rem;">Dúvidas pendentes</h3>
+            <p class="text-muted" style="font-size:0.875rem; margin:0;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
           </div>
+        </div>
+        <div class="card" style="margin-bottom:1.5rem;">
           <div class="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>#</th>
                   <th>Pergunta do lead</th>
-                  <th>Contacto</th>
+                  <th class="th-contacto">Contacto</th>
                   <th>Data</th>
-                  <th>Nº respostas</th>
+                  <th>Respostas</th>
                   <th class="th-acoes-admin">Ações (admin)</th>
                 </tr>
               </thead>
@@ -380,14 +382,14 @@
             </table>
           </div>
         </div>
-        <div class="card">
-          <div class="section-toolbar">
-            <div>
-              <h3 style="margin:0 0 0.25rem; font-size:1rem;">Perguntas do FAQ</h3>
-              <p class="text-muted" style="font-size:0.875rem; margin:0;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
-            </div>
-            <button type="button" class="btn btn-primary btn-sm" id="btnNovaPergunta" style="display:none;">Nova pergunta</button>
+        <div class="section-toolbar">
+          <div>
+            <h3 style="margin:0 0 0.25rem; font-size:1rem;">Perguntas do FAQ</h3>
+            <p class="text-muted" style="font-size:0.875rem; margin:0;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
           </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btnNovaPergunta" style="display:none;">Nova pergunta</button>
+        </div>
+        <div class="card">
           <div class="table-wrap">
             <table>
               <thead>
@@ -987,19 +989,41 @@
                 const tr = document.createElement('tr');
                 const textoShort = (d.texto || '').slice(0, 60) + ((d.texto || '').length > 60 ? '…' : '');
                 const numRespostas = d.num_respostas != null ? Number(d.num_respostas) : 0;
-                const btn = !d.respondida && user && user.role === 'gestora'
-                  ? ' <button type="button" class="btn btn-primary btn-sm btn-responder-duvida" data-id="' + d.id + '">Responder</button>'
-                  : '';
                 const isAdmin = user && user.role === 'admin';
+                const isGestora = user && user.role === 'gestora';
+                const btn = !d.respondida && isGestora
+                  ? '<button type="button" class="btn btn-primary btn-sm btn-responder-duvida" data-id="' + d.id + '">Responder</button>'
+                  : '';
+                const respostasCell = isAdmin ? String(numRespostas) : btn;
+                const spamBadge = d.eh_spam ? '<span class="badge" style="background:var(--error); color:#fff; font-size:0.7rem;">Spam</span> ' : '';
+                const spamBtn = isAdmin
+                  ? (d.eh_spam ? '<button type="button" class="btn btn-outline btn-sm btn-spam-duvida" data-id="' + d.id + '" data-spam="1">Remover spam</button> '
+                    : '<button type="button" class="btn btn-outline btn-sm btn-spam-duvida" data-id="' + d.id + '" data-spam="0">Marcar spam</button> ')
+                  : '';
                 const acoesAdmin = isAdmin
-                  ? '<button type="button" class="btn btn-danger btn-sm btn-excluir-duvida" data-id="' + d.id + '">Excluir</button>'
+                  ? spamBadge + spamBtn + '<button type="button" class="btn btn-danger btn-sm btn-excluir-duvida" data-id="' + d.id + '">Excluir</button>'
                   : '';
                 tr.innerHTML =
-                  '<td>' + d.id + '</td><td>' + escapeHtml(textoShort) + '</td><td>' + escapeHtml(d.contacto_whatsapp || (d.lead_nome || '—')) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + numRespostas + btn + '</td><td class="td-acoes-admin">' + acoesAdmin + '</td>';
+                  '<td>' + d.id + '</td><td>' + escapeHtml(textoShort) + '</td><td class="td-contacto">' + escapeHtml(d.contacto_whatsapp || (d.lead_nome || '—')) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + respostasCell + '</td><td class="td-acoes-admin">' + acoesAdmin + '</td>';
                 duvidasBody.appendChild(tr);
               });
               duvidasBody.querySelectorAll('.btn-responder-duvida').forEach(function (btn) {
                 btn.addEventListener('click', function () { openResponderDuvida(parseInt(this.dataset.id, 10)); });
+              });
+              duvidasBody.querySelectorAll('.btn-spam-duvida').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                  const id = parseInt(this.dataset.id, 10);
+                  const ehSpam = this.dataset.spam !== '1';
+                  fetch(API + '/duvidas-pendentes/' + id, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ eh_spam: ehSpam }),
+                  })
+                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                    .then(function () { loadDuvidas(); })
+                    .catch(function (err) { alert(err.message || 'Erro ao atualizar.'); });
+                });
               });
               duvidasBody.querySelectorAll('.btn-excluir-duvida').forEach(function (btn) {
                 btn.addEventListener('click', function () {
@@ -1165,6 +1189,8 @@
           .then(function () {
             document.getElementById('modalDuvidaResponder').classList.remove('visible');
             loadDuvidas();
+            const nome = user && user.nome && user.nome.trim() ? user.nome.trim() : 'Gestora';
+            alert('Obrigado pela ajuda, ' + nome + ' 😊👍');
           })
           .catch(function (err) { alert(err.message || 'Erro ao responder.'); });
       }
