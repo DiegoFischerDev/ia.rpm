@@ -57,6 +57,7 @@ const {
   upsertResposta,
   listDuvidasPendentes,
   getDuvidasPendentesCount,
+  listDuvidasPendentesSpam,
   createDuvidaPendente,
   getDuvidaPendenteById,
   markDuvidaRespondida,
@@ -976,6 +977,11 @@ app.post('/api/dashboard/perguntas/:id/respostas', requireDashboardAuth, async (
 app.get('/api/dashboard/duvidas-pendentes', requireDashboardAuth, async (req, res) => {
   try {
     const user = req.session.dashboardUser;
+    const onlySpam = req.query.spam === '1' || req.query.spam === 'true';
+    if (onlySpam && user && user.role === 'admin') {
+      const rows = await listDuvidasPendentesSpam();
+      return res.json(rows);
+    }
     const gestoraId = user && user.role === 'gestora' ? user.id : null;
     const rows = await listDuvidasPendentes(gestoraId);
     res.json(rows);

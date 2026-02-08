@@ -448,6 +448,17 @@ async function getDuvidasPendentesCount(gestoraId) {
   return (rows[0] && rows[0].n != null) ? Number(rows[0].n) : 0;
 }
 
+/** Listar apenas dúvidas pendentes marcadas como spam (para painel admin Spam). */
+async function listDuvidasPendentesSpam() {
+  const sql = `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, COALESCE(d.eh_spam, 0) AS eh_spam, d.created_at, d.updated_at,
+       l.nome AS lead_nome
+    FROM ch_duvidas_pendentes d
+    LEFT JOIN ch_leads l ON l.id = d.lead_id
+    WHERE (COALESCE(d.eh_spam, 0) = 1)
+    ORDER BY d.created_at DESC`;
+  return query(sql);
+}
+
 async function createDuvidaPendente({ contactoWhatsapp, leadId, texto, origem = 'evo' }) {
   const contacto = String(contactoWhatsapp || '').replace(/\D/g, '') || null;
   const textoVal = typeof texto === 'string' ? texto.trim() : '';
@@ -528,6 +539,7 @@ module.exports = {
   upsertResposta,
   listDuvidasPendentes,
   getDuvidasPendentesCount,
+  listDuvidasPendentesSpam,
   createDuvidaPendente,
   getDuvidaPendenteById,
   markDuvidaRespondida,
