@@ -299,7 +299,6 @@
         <span id="navDuvidasPendentesBadge" class="nav-badge hidden">0</span>
       </a>
       <a href="#duvidas-respondidas" id="navDuvidasRespondidas" class="sidebar-nav-item">FAQ</a>
-      <a href="#duvidas-spam" id="navDuvidasSpam" class="sidebar-nav-item" style="display:none;">Spam</a>
       <a href="#perfil" id="navPerfil" class="sidebar-nav-item" style="display:none;">Perfil</a>
       <div class="sidebar-footer">
         <span class="sidebar-footer-icon" aria-hidden="true">
@@ -403,41 +402,6 @@
                 </tr>
               </thead>
               <tbody id="perguntasBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      <div id="screenDuvidasSpam" class="screen">
-        <h2 class="page-title">Spam</h2>
-        <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Perguntas do FAQ e dúvidas pendentes marcadas como spam. Só são exibidas aqui.</p>
-        <h3 style="margin:1.5rem 0 0.5rem; font-size:1rem;">Perguntas do FAQ (spam)</h3>
-        <div class="card">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Pergunta</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody id="perguntasSpamBody"></tbody>
-            </table>
-          </div>
-        </div>
-        <h3 style="margin:1.5rem 0 0.5rem; font-size:1rem;">Dúvidas pendentes (spam)</h3>
-        <div class="card">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Pergunta do lead</th>
-                  <th>Data</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody id="duvidasPendentesSpamBody"></tbody>
             </table>
           </div>
         </div>
@@ -654,14 +618,10 @@
       let user = null;
 
       function hashToScreenId(hash) {
-        var map = { gestoras: 'gestoras', rafa: 'rafa', perfil: 'perfil', 'duvidas-pendentes': 'duvidasPendentes', 'duvidas-respondidas': 'duvidasRespondidas', 'duvidas-spam': 'duvidasSpam' };
+        var map = { gestoras: 'gestoras', rafa: 'rafa', perfil: 'perfil', 'duvidas-pendentes': 'duvidasPendentes', 'duvidas-respondidas': 'duvidasRespondidas' };
         return map[hash] || 'leads';
       }
       function showScreen(id) {
-        if (id === 'duvidasSpam' && user && user.role !== 'admin') {
-          window.location.hash = 'duvidas-pendentes';
-          return;
-        }
         document.querySelectorAll('.main .screen').forEach((s) => s.classList.remove('visible'));
         document.querySelectorAll('.sidebar-nav-item').forEach((el) => el.classList.remove('active'));
         const s = document.getElementById('screen' + id.charAt(0).toUpperCase() + id.slice(1));
@@ -674,7 +634,6 @@
         if (id === 'perfil') loadProfile();
         if (id === 'duvidasPendentes') loadDuvidasPendentes();
         if (id === 'duvidasRespondidas') loadDuvidasRespondidas();
-        if (id === 'duvidasSpam') loadDuvidasSpam();
       }
 
       function updateRafaBadge() {
@@ -738,9 +697,8 @@
             updateDuvidasPendentesBadge();
             document.getElementById('navDuvidasPendentes').style.display = '';
             document.getElementById('navDuvidasRespondidas').style.display = '';
-            if (user.role === 'admin') document.getElementById('navDuvidasSpam').style.display = '';
             const hashRaw = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
-            const hash = hashRaw === 'duvidas' ? 'duvidas-pendentes' : hashRaw;
+            const hash = (hashRaw === 'duvidas' || hashRaw === 'duvidas-spam') ? 'duvidas-pendentes' : hashRaw;
             const screenId = hashToScreenId(hash);
             if (hash !== hashRaw && hashRaw === 'duvidas') window.location.hash = 'duvidas-pendentes';
             showScreen(screenId);
@@ -894,7 +852,7 @@
         if (!user) return;
         dashboardApp.classList.remove('nav-open');
         const hashRaw = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
-        const hash = hashRaw === 'duvidas' ? 'duvidas-pendentes' : hashRaw;
+        const hash = (hashRaw === 'duvidas' || hashRaw === 'duvidas-spam') ? 'duvidas-pendentes' : hashRaw;
         if (hash !== hashRaw) window.location.hash = 'duvidas-pendentes';
         const screenId = hashToScreenId(hash);
         showScreen(screenId);
@@ -1071,14 +1029,9 @@
                 const btn = isGestora
                   ? '<button type="button" class="btn btn-primary btn-sm btn-responder-duvida" data-id="' + d.id + '">Responder</button>'
                   : '';
-                const spamBadge = d.eh_spam ? '<span class="badge" style="background:var(--error); color:#fff; font-size:0.7rem;">Spam</span> ' : '';
-                const spamBtn = isAdmin
-                  ? (d.eh_spam ? '<button type="button" class="btn btn-outline btn-sm btn-spam-duvida" data-id="' + d.id + '" data-spam="1">Remover spam</button> '
-                    : '<button type="button" class="btn btn-outline btn-sm btn-spam-duvida" data-id="' + d.id + '" data-spam="0">Marcar spam</button> ')
-                  : '';
                 const verBtn = isAdmin ? '<button type="button" class="btn btn-secondary btn-sm btn-ver-duvida" data-id="' + d.id + '">Ver</button> ' : '';
                 const acoesAdmin = isAdmin
-                  ? verBtn + spamBadge + spamBtn + '<button type="button" class="btn btn-danger btn-sm btn-excluir-duvida" data-id="' + d.id + '">Excluir</button>'
+                  ? verBtn + '<button type="button" class="btn btn-danger btn-sm btn-excluir-duvida" data-id="' + d.id + '">Excluir</button>'
                   : '';
                 tr.innerHTML =
                   '<td>' + d.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoDuvida) + '">' + escapeHtml(textoDuvida) + '</td><td class="td-contacto">' + escapeHtml(d.contacto_whatsapp || (d.lead_nome || '—')) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + (isAdmin ? acoesAdmin : btn) + '</td>';
@@ -1092,21 +1045,6 @@
                   var id = parseInt(this.dataset.id, 10);
                   var duvida = duvidas.find(function (x) { return x.id === id; });
                   if (duvida) openVerDuvida(duvida);
-                });
-              });
-              duvidasBody.querySelectorAll('.btn-spam-duvida').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                  const id = parseInt(this.dataset.id, 10);
-                  const ehSpam = this.dataset.spam !== '1';
-                  fetch(API + '/duvidas-pendentes/' + id, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ eh_spam: ehSpam }),
-                  })
-                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                    .then(function () { loadDuvidasPendentes(); })
-                    .catch(function (err) { alert(err.message || 'Erro ao atualizar.'); });
                 });
               });
               duvidasBody.querySelectorAll('.btn-excluir-duvida').forEach(function (btn) {
@@ -1163,11 +1101,8 @@
                 const numRespostas = p.num_respostas != null ? Number(p.num_respostas) : 0;
                 const isAdmin = user && user.role === 'admin';
                 const respostasCell = isAdmin ? numRespostas + ' <button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>' : jaRespondi + '<button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>';
-                const spamBadge = p.eh_spam ? '<span class="badge" style="background:var(--error); color:#fff; font-size:0.7rem;">Spam</span> ' : '';
                 const acoes = isAdmin
-                  ? spamBadge +
-                    '<button type="button" class="btn btn-outline btn-sm btn-spam-pergunta" data-id="' + p.id + '" data-spam="' + (p.eh_spam ? '1' : '0') + '">' + (p.eh_spam ? 'Remover spam' : 'Marcar spam') + '</button> ' +
-                    '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta" data-id="' + p.id + '">Excluir</button>'
+                  ? '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta" data-id="' + p.id + '">Excluir</button>'
                   : '';
                 tr.innerHTML =
                   '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td><td>' + (p.frequencia || 0) + '</td><td>' + respostasCell + '</td><td class="td-acoes-admin">' + acoes + '</td>';
@@ -1175,21 +1110,6 @@
               });
               perguntasBody.querySelectorAll('.btn-ver-pergunta').forEach(function (btn) {
                 btn.addEventListener('click', function () { openPerguntaDetail(parseInt(this.dataset.id, 10)); });
-              });
-              perguntasBody.querySelectorAll('.btn-spam-pergunta').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                  const id = parseInt(this.dataset.id, 10);
-                  const ehSpam = this.dataset.spam !== '1';
-                  fetch(API + '/perguntas/' + id, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ eh_spam: ehSpam }),
-                  })
-                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                    .then(function () { loadDuvidasRespondidas(); })
-                    .catch(function (err) { alert(err.message || 'Erro ao atualizar.'); });
-                });
               });
               perguntasBody.querySelectorAll('.btn-excluir-pergunta').forEach(function (btn) {
                 btn.addEventListener('click', function () {
@@ -1205,112 +1125,6 @@
           })
           .catch(function () {
             perguntasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
-          });
-      }
-
-      function loadDuvidasSpam() {
-        const spamBody = document.getElementById('perguntasSpamBody');
-        const duvidasSpamBody = document.getElementById('duvidasPendentesSpamBody');
-        if (!spamBody) return;
-        spamBody.innerHTML = '<tr><td colspan="3">A carregar…</td></tr>';
-        if (duvidasSpamBody) duvidasSpamBody.innerHTML = '<tr><td colspan="4">A carregar…</td></tr>';
-        Promise.all([
-          fetch(API + '/perguntas?spam=1', { credentials: 'include' }).then(function (r) { return r.ok ? r.json() : []; }),
-          fetch(API + '/duvidas-pendentes?spam=1', { credentials: 'include' }).then(function (r) { return r.ok ? r.json() : []; }),
-        ])
-          .then(function (results) {
-            var perguntasSpam = results[0];
-            var duvidasSpam = results[1];
-            spamBody.innerHTML = '';
-            if (!perguntasSpam.length) {
-              spamBody.innerHTML = '<tr><td colspan="3">Nenhuma pergunta do FAQ marcada como spam.</td></tr>';
-            } else {
-              perguntasSpam.forEach(function (p) {
-                var tr = document.createElement('tr');
-                var textoP = (p.texto || '').trim();
-                tr.innerHTML =
-                  '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoP) + '">' + escapeHtml(textoP) + '</td><td>' +
-                  '<button type="button" class="btn btn-outline btn-sm btn-spam-pergunta-spam" data-id="' + p.id + '">Remover spam</button> ' +
-                  '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta-spam" data-id="' + p.id + '">Excluir</button></td>';
-                spamBody.appendChild(tr);
-              });
-              spamBody.querySelectorAll('.btn-spam-pergunta-spam').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                  var id = parseInt(this.dataset.id, 10);
-                  fetch(API + '/perguntas/' + id, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ eh_spam: false }),
-                  })
-                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                    .then(function () { loadDuvidasSpam(); })
-                    .catch(function (err) { alert(err.message || 'Erro ao atualizar.'); });
-                });
-              });
-              spamBody.querySelectorAll('.btn-excluir-pergunta-spam').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                  if (!confirm('Excluir esta pergunta da base de dados?')) return;
-                  var id = parseInt(this.dataset.id, 10);
-                  fetch(API + '/perguntas/' + id, { method: 'DELETE', credentials: 'include' })
-                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                    .then(function () { loadDuvidasSpam(); })
-                    .catch(function (err) { alert(err.message || 'Erro ao excluir.'); });
-                });
-              });
-            }
-            if (duvidasSpamBody) {
-              duvidasSpamBody.innerHTML = '';
-              if (!duvidasSpam.length) {
-                duvidasSpamBody.innerHTML = '<tr><td colspan="4">Nenhuma dúvida pendente marcada como spam.</td></tr>';
-              } else {
-                duvidasSpam.forEach(function (d) {
-                  var tr = document.createElement('tr');
-                  var textoD = (d.texto || '').trim();
-                  tr.innerHTML =
-                    '<td>' + d.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoD) + '">' + escapeHtml(textoD) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' +
-                    '<button type="button" class="btn btn-secondary btn-sm btn-ver-duvida-spam" data-id="' + d.id + '">Ver</button> ' +
-                    '<button type="button" class="btn btn-outline btn-sm btn-spam-duvida-spam" data-id="' + d.id + '">Remover spam</button> ' +
-                    '<button type="button" class="btn btn-danger btn-sm btn-excluir-duvida-spam" data-id="' + d.id + '">Excluir</button></td>';
-                  duvidasSpamBody.appendChild(tr);
-                });
-                duvidasSpamBody.querySelectorAll('.btn-ver-duvida-spam').forEach(function (btn) {
-                  btn.addEventListener('click', function () {
-                    var id = parseInt(this.dataset.id, 10);
-                    var duvida = duvidasSpam.find(function (x) { return x.id === id; });
-                    if (duvida) openVerDuvida(duvida);
-                  });
-                });
-                duvidasSpamBody.querySelectorAll('.btn-spam-duvida-spam').forEach(function (btn) {
-                  btn.addEventListener('click', function () {
-                    var id = parseInt(this.dataset.id, 10);
-                    fetch(API + '/duvidas-pendentes/' + id, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify({ eh_spam: false }),
-                    })
-                      .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                      .then(function () { loadDuvidasSpam(); updateDuvidasPendentesBadge(); })
-                      .catch(function (err) { alert(err.message || 'Erro ao atualizar.'); });
-                  });
-                });
-                duvidasSpamBody.querySelectorAll('.btn-excluir-duvida-spam').forEach(function (btn) {
-                  btn.addEventListener('click', function () {
-                    if (!confirm('Remover esta dúvida pendente da lista?')) return;
-                    var id = parseInt(this.dataset.id, 10);
-                    fetch(API + '/duvidas-pendentes/' + id, { method: 'DELETE', credentials: 'include' })
-                      .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                      .then(function () { loadDuvidasSpam(); updateDuvidasPendentesBadge(); })
-                      .catch(function (err) { alert(err.message || 'Erro ao excluir.'); });
-                  });
-                });
-              }
-            }
-          })
-          .catch(function () {
-            spamBody.innerHTML = '<tr><td colspan="3" class="error-msg">Erro ao carregar.</td></tr>';
-            if (duvidasSpamBody) duvidasSpamBody.innerHTML = '<tr><td colspan="4" class="error-msg">Erro ao carregar.</td></tr>';
           });
       }
 

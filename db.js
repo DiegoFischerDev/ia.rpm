@@ -338,20 +338,18 @@ async function hasGestoraRgpd(gestoraId) {
 
 // ---------- FAQ Dúvidas (perguntas + respostas gestoras + dúvidas pendentes) ----------
 
-/** Lista perguntas ordenadas por frequência. onlySpam: true = só spam, false/undefined = só não spam */
-async function listPerguntas(onlySpam) {
-  const spamFilter = onlySpam === true ? 'WHERE COALESCE(p.eh_spam, 0) = 1' : 'WHERE COALESCE(p.eh_spam, 0) = 0';
+/** Lista perguntas ordenadas por frequência. */
+async function listPerguntas() {
   return query(
-    `SELECT p.id, p.texto, p.frequencia, COALESCE(p.eh_spam, 0) AS eh_spam, p.created_at, p.updated_at,
+    `SELECT p.id, p.texto, p.frequencia, p.created_at, p.updated_at,
             (SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = p.id) AS num_respostas
      FROM ch_perguntas p
-     ${spamFilter}
      ORDER BY p.frequencia DESC, p.updated_at DESC`
   );
 }
 
 async function getPerguntaById(id) {
-  const rows = await query('SELECT id, texto, frequencia, COALESCE(eh_spam, 0) AS eh_spam, created_at, updated_at FROM ch_perguntas WHERE id = ?', [id]);
+  const rows = await query('SELECT id, texto, frequencia, created_at, updated_at FROM ch_perguntas WHERE id = ?', [id]);
   return rows[0] || null;
 }
 
@@ -375,10 +373,6 @@ async function incrementPerguntaFrequencia(perguntaId) {
 
 async function deletePergunta(id) {
   await query('DELETE FROM ch_perguntas WHERE id = ?', [id]);
-}
-
-async function setPerguntaSpam(id, ehSpam) {
-  await query('UPDATE ch_perguntas SET eh_spam = ?, updated_at = NOW() WHERE id = ?', [ehSpam ? 1 : 0, id]);
 }
 
 /** Respostas de uma pergunta (com nome da gestora) */
@@ -413,24 +407,23 @@ async function upsertResposta(perguntaId, gestoraId, texto) {
 }
 
 /** Dúvidas pendentes: listar (não respondidas primeiro, depois por data).
- *  Se gestoraId for passado, exclui dúvidas já respondidas por essa gestora e dúvidas marcadas como spam. */
+ *  Se gestoraId for passado, exclui dúvidas já respondidas por essa gestora. */
 async function listDuvidasPendentes(gestoraId) {
   const subCount = '(SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id)';
   const sql = gestoraId != null
-    ? `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, COALESCE(d.eh_spam, 0) AS eh_spam, d.created_at, d.updated_at,
+    ? `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, d.created_at, d.updated_at,
               l.nome AS lead_nome, ${subCount} AS num_respostas
        FROM ch_duvidas_pendentes d
        LEFT JOIN ch_leads l ON l.id = d.lead_id
-       WHERE (COALESCE(d.eh_spam, 0) = 0)
-         AND ((d.respondida = 0) OR (d.respondida = 1 AND (d.pergunta_id IS NULL OR NOT EXISTS (
-           SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id AND r.gestora_id = ?
-         ))))
+       WHERE (d.respondida = 0) OR (d.respondida = 1 AND (d.pergunta_id IS NULL OR NOT EXISTS (
+         SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id AND r.gestora_id = ?
+       )))
        ORDER BY d.respondida ASC, d.created_at DESC`
-    : `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, COALESCE(d.eh_spam, 0) AS eh_spam, d.created_at, d.updated_at,
+    : `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, d.created_at, d.updated_at,
               l.nome AS lead_nome
        FROM ch_duvidas_pendentes d
        LEFT JOIN ch_leads l ON l.id = d.lead_id
-       WHERE d.respondida = 0 AND (COALESCE(d.eh_spam, 0) = 0)
+       WHERE d.respondida = 0
        ORDER BY d.created_at DESC`;
   return gestoraId != null ? query(sql, [gestoraId]) : query(sql);
 }
@@ -439,24 +432,12 @@ async function listDuvidasPendentes(gestoraId) {
 async function getDuvidasPendentesCount(gestoraId) {
   const sql = gestoraId != null
     ? `SELECT COUNT(*) AS n FROM ch_duvidas_pendentes d
-       WHERE (COALESCE(d.eh_spam, 0) = 0)
-         AND ((d.respondida = 0) OR (d.respondida = 1 AND (d.pergunta_id IS NULL OR NOT EXISTS (
-           SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id AND r.gestora_id = ?
-         ))))`
-    : `SELECT COUNT(*) AS n FROM ch_duvidas_pendentes d WHERE d.respondida = 0 AND (COALESCE(d.eh_spam, 0) = 0)`;
+       WHERE (d.respondida = 0) OR (d.respondida = 1 AND (d.pergunta_id IS NULL OR NOT EXISTS (
+         SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id AND r.gestora_id = ?
+       )))`
+    : `SELECT COUNT(*) AS n FROM ch_duvidas_pendentes d WHERE d.respondida = 0`;
   const rows = gestoraId != null ? await query(sql, [gestoraId]) : await query(sql);
   return (rows[0] && rows[0].n != null) ? Number(rows[0].n) : 0;
-}
-
-/** Listar apenas dúvidas pendentes marcadas como spam (para painel admin Spam). */
-async function listDuvidasPendentesSpam() {
-  const sql = `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, COALESCE(d.eh_spam, 0) AS eh_spam, d.created_at, d.updated_at,
-       l.nome AS lead_nome
-    FROM ch_duvidas_pendentes d
-    LEFT JOIN ch_leads l ON l.id = d.lead_id
-    WHERE (COALESCE(d.eh_spam, 0) = 1)
-    ORDER BY d.created_at DESC`;
-  return query(sql);
 }
 
 async function createDuvidaPendente({ contactoWhatsapp, leadId, texto, origem = 'evo' }) {
@@ -489,10 +470,6 @@ async function markDuvidaRespondida(duvidaId, perguntaId) {
 
 async function deleteDuvidaPendente(id) {
   await query('DELETE FROM ch_duvidas_pendentes WHERE id = ?', [id]);
-}
-
-async function setDuvidaPendenteSpam(id, ehSpam) {
-  await query('UPDATE ch_duvidas_pendentes SET eh_spam = ?, updated_at = NOW() WHERE id = ?', [ehSpam ? 1 : 0, id]);
 }
 
 module.exports = {
@@ -532,17 +509,14 @@ module.exports = {
   createPergunta,
   updatePergunta,
   deletePergunta,
-  setPerguntaSpam,
   incrementPerguntaFrequencia,
   listRespostasByPerguntaId,
   getRespostaByPerguntaAndGestora,
   upsertResposta,
   listDuvidasPendentes,
   getDuvidasPendentesCount,
-  listDuvidasPendentesSpam,
   createDuvidaPendente,
   getDuvidaPendenteById,
   markDuvidaRespondida,
   deleteDuvidaPendente,
-  setDuvidaPendenteSpam,
 };

@@ -50,20 +50,17 @@ const {
   createPergunta,
   updatePergunta,
   deletePergunta,
-  setPerguntaSpam,
   incrementPerguntaFrequencia,
   listRespostasByPerguntaId,
   getRespostaByPerguntaAndGestora,
   upsertResposta,
   listDuvidasPendentes,
   getDuvidasPendentesCount,
-  listDuvidasPendentesSpam,
   createDuvidaPendente,
   getDuvidaPendenteById,
   markDuvidaRespondida,
   deleteDuvidaPendente,
-  setDuvidaPendenteSpam,
-} = require('./db');
+  } = require('./db');
 const {
   saveDocument,
   listDocuments,
@@ -881,11 +878,10 @@ app.delete('/api/dashboard/gestoras/:id', requireDashboardAuth, requireAdminAuth
 // ---------- FAQ Dúvidas (perguntas + respostas + dúvidas pendentes) ----------
 app.get('/api/dashboard/perguntas', requireDashboardAuth, async (req, res) => {
   try {
-    const onlySpam = req.query.spam === '1' || req.query.spam === 'true';
-    const rows = await listPerguntas(onlySpam);
+    const rows = await listPerguntas();
     const user = req.session.dashboardUser;
     const isGestora = user && user.role === 'gestora';
-    if (onlySpam || !isGestora) return res.json(rows);
+    if (!isGestora) return res.json(rows);
     const withFlags = await Promise.all(
       rows.map(async (p) => {
         const minha = await getRespostaByPerguntaAndGestora(p.id, user.id);
@@ -933,13 +929,11 @@ app.patch('/api/dashboard/perguntas/:id', requireDashboardAuth, requireAdminAuth
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
   const body = req.body || {};
   const texto = body.texto != null ? String(body.texto).trim() : null;
-  const ehSpam = body.eh_spam;
   try {
-    if (typeof ehSpam === 'boolean') await setPerguntaSpam(id, ehSpam);
     if (texto !== null) await updatePergunta(id, texto);
     res.json({ ok: true });
   } catch (err) {
-    logStartup(`updatePergunta/setPerguntaSpam error: ${err.message}`);
+    logStartup(`updatePergunta error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao atualizar.' });
   }
 });
@@ -977,11 +971,6 @@ app.post('/api/dashboard/perguntas/:id/respostas', requireDashboardAuth, async (
 app.get('/api/dashboard/duvidas-pendentes', requireDashboardAuth, async (req, res) => {
   try {
     const user = req.session.dashboardUser;
-    const onlySpam = req.query.spam === '1' || req.query.spam === 'true';
-    if (onlySpam && user && user.role === 'admin') {
-      const rows = await listDuvidasPendentesSpam();
-      return res.json(rows);
-    }
     const gestoraId = user && user.role === 'gestora' ? user.id : null;
     const rows = await listDuvidasPendentes(gestoraId);
     res.json(rows);
@@ -1018,20 +1007,6 @@ app.post('/api/dashboard/duvidas-pendentes', requireDashboardAuth, requireAdminA
   } catch (err) {
     logStartup(`createDuvidaPendente (admin) error: ${err.message}`);
     res.status(500).json({ message: err.message || 'Erro ao criar.' });
-  }
-});
-
-app.patch('/api/dashboard/duvidas-pendentes/:id', requireDashboardAuth, requireAdminAuth, async (req, res) => {
-  const id = req.params.id;
-  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
-  const ehSpam = req.body && req.body.eh_spam;
-  if (typeof ehSpam !== 'boolean') return res.status(400).json({ message: 'eh_spam (boolean) é obrigatório.' });
-  try {
-    await setDuvidaPendenteSpam(id, ehSpam);
-    res.json({ ok: true });
-  } catch (err) {
-    logStartup(`setDuvidaPendenteSpam error: ${err.message}`);
-    res.status(500).json({ message: 'Erro ao atualizar.' });
   }
 });
 
