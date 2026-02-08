@@ -45,6 +45,18 @@ const {
   saveGestoraRgpd,
   readGestoraRgpd,
   hasGestoraRgpd,
+  listPerguntas,
+  getPerguntaById,
+  createPergunta,
+  updatePergunta,
+  incrementPerguntaFrequencia,
+  listRespostasByPerguntaId,
+  getRespostaByPerguntaAndGestora,
+  upsertResposta,
+  listDuvidasPendentes,
+  createDuvidaPendente,
+  getDuvidaPendenteById,
+  markDuvidaRespondida,
 } = require('./db');
 const {
   saveDocument,
@@ -857,6 +869,196 @@ app.delete('/api/dashboard/gestoras/:id', requireDashboardAuth, requireAdminAuth
   } catch (err) {
     logStartup(`deleteGestora error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao apagar.' });
+  }
+});
+
+// ---------- FAQ Dúvidas (perguntas + respostas + dúvidas pendentes) ----------
+app.get('/api/dashboard/perguntas', requireDashboardAuth, async (req, res) => {
+  try {
+    const rows = await listPerguntas();
+    const user = req.session.dashboardUser;
+    const isGestora = user && user.role === 'gestora';
+    if (!isGestora) return res.json(rows);
+    const withFlags = await Promise.all(
+      rows.map(async (p) => {
+        const minha = await getRespostaByPerguntaAndGestora(p.id, user.id);
+        return { ...p, ja_respondi: !!minha };
+      })
+    );
+    withFlags.sort((a, b) => (a.ja_respondi === b.ja_respondi ? 0 : a.ja_respondi ? 1 : -1));
+    res.json(withFlags);
+  } catch (err) {
+    logStartup(`listPerguntas error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao listar perguntas.' });
+  }
+});
+
+app.get('/api/dashboard/perguntas/:id', requireDashboardAuth, async (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  try {
+    const pergunta = await getPerguntaById(id);
+    if (!pergunta) return res.status(404).json({ message: 'Pergunta não encontrada.' });
+    const respostas = await listRespostasByPerguntaId(id);
+    const user = req.session.dashboardUser;
+    const minha = user && user.role === 'gestora' ? await getRespostaByPerguntaAndGestora(id, user.id) : null;
+    res.json({ pergunta, respostas, minha_resposta: minha });
+  } catch (err) {
+    logStartup(`getPergunta error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao carregar pergunta.' });
+  }
+});
+
+app.post('/api/dashboard/perguntas', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  const texto = (req.body && req.body.texto) ? String(req.body.texto).trim() : '';
+  if (!texto) return res.status(400).json({ message: 'Texto da pergunta é obrigatório.' });
+  try {
+    const row = await createPergunta(texto);
+    res.status(201).json(row);
+  } catch (err) {
+    logStartup(`createPergunta error: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao criar.' });
+  }
+});
+
+app.patch('/api/dashboard/perguntas/:id', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  const texto = (req.body && req.body.texto) != null ? String(req.body.texto).trim() : null;
+  if (texto === null) return res.status(400).json({ message: 'texto é obrigatório.' });
+  try {
+    await updatePergunta(id, texto);
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`updatePergunta error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao atualizar.' });
+  }
+});
+
+app.post('/api/dashboard/perguntas/:id/respostas', requireDashboardAuth, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (user.role !== 'gestora') return res.status(403).json({ message: 'Acesso reservado à gestora.' });
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  const texto = (req.body && req.body.texto) != null ? String(req.body.texto).trim() : '';
+  if (!texto) return res.status(400).json({ message: 'Texto da resposta é obrigatório.' });
+  try {
+    const pergunta = await getPerguntaById(id);
+    if (!pergunta) return res.status(404).json({ message: 'Pergunta não encontrada.' });
+    await upsertResposta(Number(id), user.id, texto);
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`upsertResposta error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao guardar resposta.' });
+  }
+});
+
+app.get('/api/dashboard/duvidas-pendentes', requireDashboardAuth, async (req, res) => {
+  try {
+    const rows = await listDuvidasPendentes();
+    res.json(rows);
+  } catch (err) {
+    logStartup(`listDuvidasPendentes error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao listar dúvidas.' });
+  }
+});
+
+app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (user.role !== 'gestora') return res.status(403).json({ message: 'Acesso reservado à gestora.' });
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  const texto = (req.body && req.body.texto) != null ? String(req.body.texto).trim() : '';
+  if (!texto) return res.status(400).json({ message: 'Texto da resposta é obrigatório.' });
+  try {
+    const duvida = await getDuvidaPendenteById(id);
+    if (!duvida) return res.status(404).json({ message: 'Dúvida não encontrada.' });
+    if (duvida.respondida) return res.status(400).json({ message: 'Esta dúvida já foi respondida.' });
+    const pergunta = await createPergunta(duvida.texto);
+    if (!pergunta) return res.status(500).json({ message: 'Erro ao criar pergunta.' });
+    await upsertResposta(pergunta.id, user.id, texto);
+    await markDuvidaRespondida(Number(id), pergunta.id);
+    const evoUrl = (process.env.EVO_URL || '').replace(/\/$/, '');
+    const evoSecret = process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET;
+    if (evoUrl && duvida.contacto_whatsapp) {
+      const num = String(duvida.contacto_whatsapp).replace(/\D/g, '');
+      const msg = `Olá! Uma gestora respondeu à sua dúvida:\n\n"${(duvida.texto || '').slice(0, 200)}${(duvida.texto || '').length > 200 ? '…' : ''}"\n\n*Resposta:*\n${texto}`;
+      const headers = { 'Content-Type': 'application/json' };
+      if (evoSecret) headers['X-Internal-Secret'] = evoSecret;
+      try {
+        await fetch(evoUrl + '/api/internal/send-text', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ number: num, text: msg }),
+        });
+      } catch (err) {
+        logStartup(`Enviar resposta ao lead (WhatsApp) falhou: ${err.message}`);
+      }
+    }
+    res.json({ ok: true, pergunta_id: pergunta.id });
+  } catch (err) {
+    logStartup(`responderDuvida error: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao responder.' });
+  }
+});
+
+// APIs para o Evo (busca por vetores, incrementar frequência, criar dúvida pendente)
+app.get('/api/faq/perguntas', (req, res) => {
+  listPerguntas()
+    .then((rows) => res.json(rows.map((p) => ({ id: p.id, texto: p.texto }))))
+    .catch((err) => {
+      logStartup(`faq/perguntas error: ${err.message}`);
+      res.status(500).json({ message: 'Erro.' });
+    });
+});
+
+app.get('/api/faq/perguntas/:id', (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  getPerguntaById(id)
+    .then((pergunta) => {
+      if (!pergunta) return res.status(404).json({ message: 'Não encontrado.' });
+      return listRespostasByPerguntaId(id).then((respostas) => res.json({ pergunta, respostas }));
+    })
+    .catch((err) => {
+      logStartup(`faq/perguntas/:id error: ${err.message}`);
+      res.status(500).json({ message: 'Erro.' });
+    });
+});
+
+app.post('/api/faq/perguntas/:id/incrementar-frequencia', (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  incrementPerguntaFrequencia(Number(id))
+    .then(() => res.json({ ok: true }))
+    .catch((err) => {
+      logStartup(`incrementPerguntaFrequencia error: ${err.message}`);
+      res.status(500).json({ message: 'Erro.' });
+    });
+});
+
+app.post('/api/faq/duvidas-pendentes', async (req, res) => {
+  const body = req.body || {};
+  let contactoWhatsapp = (body.contacto_whatsapp || body.contactoWhatsapp || body.whatsapp_number || '').trim().replace(/\D/g, '');
+  const leadId = body.lead_id != null ? body.lead_id : null;
+  const texto = (body.texto || '').trim();
+  if (!texto) return res.status(400).json({ message: 'texto é obrigatório.' });
+  if (!contactoWhatsapp && leadId) {
+    const lead = await getLeadById(leadId).catch(() => null);
+    if (lead && lead.whatsapp_number) contactoWhatsapp = String(lead.whatsapp_number).replace(/\D/g, '');
+  }
+  if (!contactoWhatsapp) return res.status(400).json({ message: 'contacto_whatsapp ou lead_id é obrigatório.' });
+  try {
+    const row = await createDuvidaPendente({
+      contactoWhatsapp,
+      leadId: leadId || undefined,
+      texto,
+      origem: body.origem || 'evo',
+    });
+    res.status(201).json(row);
+  } catch (err) {
+    logStartup(`createDuvidaPendente error: ${err.message}`);
+    res.status(500).json({ message: 'Erro.' });
   }
 });
 

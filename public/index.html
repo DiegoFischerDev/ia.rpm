@@ -279,6 +279,7 @@
         <span id="navRafaBadge" class="nav-badge hidden">0</span>
       </a>
       <a href="#gestoras" id="navGestoras" class="sidebar-nav-item">Gestoras</a>
+      <a href="#duvidas" id="navDuvidas" class="sidebar-nav-item">Dúvidas</a>
       <a href="#perfil" id="navPerfil" class="sidebar-nav-item" style="display:none;">Perfil</a>
       <div class="sidebar-footer">
         <span class="sidebar-footer-icon" aria-hidden="true">
@@ -340,6 +341,49 @@
             </thead>
             <tbody id="rafaBody"></tbody>
           </table>
+        </div>
+      </div>
+      <div id="screenDuvidas" class="screen">
+        <h2 class="page-title">Dúvidas</h2>
+        <div class="card" style="margin-bottom:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
+            <div>
+              <h3 style="margin:0 0 0.25rem; font-size:1rem;">Perguntas do FAQ</h3>
+              <p class="text-muted" style="font-size:0.875rem; margin:0;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="btnNovaPergunta" style="display:none;">Nova pergunta</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Pergunta</th>
+                  <th>Freq.</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="perguntasBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3 style="margin:0 0 1rem; font-size:1rem;">Dúvidas pendentes</h3>
+          <p class="text-muted" style="font-size:0.875rem; margin-bottom:1rem;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Pergunta do lead</th>
+                  <th>Contacto</th>
+                  <th>Data</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="duvidasPendentesBody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
       <div id="screenGestoras" class="screen">
@@ -492,6 +536,39 @@
     </div>
   </div>
 
+  <div id="modalPergunta" class="modal-overlay">
+    <div class="modal" style="max-width:560px;">
+      <h3 id="modalPerguntaTitle">Pergunta</h3>
+      <p id="modalPerguntaTexto" class="text-muted" style="white-space:pre-wrap;margin-bottom:1rem;"></p>
+      <p class="text-muted" style="font-size:0.8125rem;margin-bottom:0.5rem;"><strong>Respostas das gestoras:</strong></p>
+      <div id="modalPerguntaRespostas" style="margin-bottom:1rem;"></div>
+      <div id="modalPerguntaMinhaRespostaWrap" style="display:none;">
+        <label for="modalPerguntaMinhaResposta">A sua resposta</label>
+        <textarea id="modalPerguntaMinhaResposta" rows="4" placeholder="Escreva ou edite a sua opinião..."></textarea>
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button type="button" class="btn btn-secondary" id="modalPerguntaCancel">Cancelar</button>
+          <button type="button" class="btn btn-primary" id="modalPerguntaSave">Guardar resposta</button>
+        </div>
+      </div>
+      <div id="modalPerguntaAdminActions" style="display:none; margin-top:1rem;">
+        <button type="button" class="btn btn-secondary" id="modalPerguntaClose">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalDuvidaResponder" class="modal-overlay">
+    <div class="modal" style="max-width:520px;">
+      <h3>Responder dúvida pendente</h3>
+      <p id="modalDuvidaTexto" class="text-muted" style="white-space:pre-wrap;margin-bottom:1rem;"></p>
+      <label for="modalDuvidaRespostaTexto">A sua resposta (será enviada ao lead e criará a pergunta no FAQ)</label>
+      <textarea id="modalDuvidaRespostaTexto" rows="5" placeholder="Escreva a resposta..."></textarea>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button type="button" class="btn btn-secondary" id="modalDuvidaResponderCancel">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="modalDuvidaResponderSubmit">Enviar resposta</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     (function () {
       const API = '/api/dashboard';
@@ -508,6 +585,7 @@
         if (id === 'gestoras') loadGestoras();
         if (id === 'rafa') loadRafa();
         if (id === 'perfil') loadProfile();
+        if (id === 'duvidas') loadDuvidas();
       }
 
       function updateRafaBadge() {
@@ -550,8 +628,9 @@
               document.getElementById('navGestoras').style.display = 'none';
               document.getElementById('navPerfil').style.display = '';
             }
+            document.getElementById('navDuvidas').style.display = '';
             const hash = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
-            const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : hash === 'perfil' ? 'perfil' : 'leads';
+            const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : hash === 'perfil' ? 'perfil' : hash === 'duvidas' ? 'duvidas' : 'leads';
             showScreen(screenId);
           })
           .catch(() => {
@@ -703,7 +782,7 @@
         if (!user) return;
         dashboardApp.classList.remove('nav-open');
         const hash = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
-        const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : hash === 'perfil' ? 'perfil' : 'leads';
+        const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : hash === 'perfil' ? 'perfil' : hash === 'duvidas' ? 'duvidas' : 'leads';
         showScreen(screenId);
       });
 
@@ -863,6 +942,170 @@
         if (btn) btn.addEventListener('click', function () { if (_leadsRows.length) renderLeads(); });
         if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); if (_leadsRows.length) renderLeads(); } });
       })();
+
+      var _perguntaModalId = null;
+      var _duvidaModalId = null;
+
+      function loadDuvidas() {
+        const perguntasBody = document.getElementById('perguntasBody');
+        const duvidasBody = document.getElementById('duvidasPendentesBody');
+        if (!perguntasBody || !duvidasBody) return;
+        perguntasBody.innerHTML = '<tr><td colspan="4">A carregar…</td></tr>';
+        duvidasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
+        Promise.all([
+          fetch(API + '/perguntas', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
+          fetch(API + '/duvidas-pendentes', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
+        ])
+          .then(([perguntas, duvidas]) => {
+            perguntasBody.innerHTML = '';
+            if (!perguntas.length) {
+              perguntasBody.innerHTML = '<tr><td colspan="4">Nenhuma pergunta no FAQ.</td></tr>';
+            } else {
+              perguntas.forEach(function (p) {
+                const tr = document.createElement('tr');
+                const textoShort = (p.texto || '').slice(0, 80) + ((p.texto || '').length > 80 ? '…' : '');
+                const jaRespondi = p.ja_respondi ? '<span class="text-muted" style="font-size:0.75rem;">✓ Respondi</span>' : '';
+                tr.innerHTML =
+                  '<td>' + p.id + '</td><td>' + escapeHtml(textoShort) + '</td><td>' + (p.frequencia || 0) + '</td><td>' + jaRespondi +
+                  ' <button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button></td>';
+                perguntasBody.appendChild(tr);
+              });
+              perguntasBody.querySelectorAll('.btn-ver-pergunta').forEach(function (btn) {
+                btn.addEventListener('click', function () { openPerguntaDetail(parseInt(this.dataset.id, 10)); });
+              });
+            }
+            duvidasBody.innerHTML = '';
+            if (!duvidas.length) {
+              duvidasBody.innerHTML = '<tr><td colspan="5">Nenhuma dúvida pendente.</td></tr>';
+            } else {
+              duvidas.forEach(function (d) {
+                const tr = document.createElement('tr');
+                const textoShort = (d.texto || '').slice(0, 60) + ((d.texto || '').length > 60 ? '…' : '');
+                const respondida = d.respondida ? 'Sim' : 'Não';
+                const btn = !d.respondida && user && user.role === 'gestora'
+                  ? '<button type="button" class="btn btn-primary btn-sm btn-responder-duvida" data-id="' + d.id + '">Responder</button>'
+                  : '';
+                tr.innerHTML =
+                  '<td>' + d.id + '</td><td>' + escapeHtml(textoShort) + '</td><td>' + escapeHtml(d.contacto_whatsapp || (d.lead_nome || '—')) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + respondida + ' ' + btn + '</td>';
+                duvidasBody.appendChild(tr);
+              });
+              duvidasBody.querySelectorAll('.btn-responder-duvida').forEach(function (btn) {
+                btn.addEventListener('click', function () { openResponderDuvida(parseInt(this.dataset.id, 10)); });
+              });
+            }
+            var btnNova = document.getElementById('btnNovaPergunta');
+            if (btnNova) {
+              btnNova.style.display = user && user.role === 'admin' ? '' : 'none';
+              btnNova.onclick = function () {
+                var texto = prompt('Texto da nova pergunta:');
+                if (texto == null || !texto.trim()) return;
+                fetch(API + '/perguntas', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ texto: texto.trim() }),
+                })
+                  .then(function (r) { return r.ok ? r.json() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                  .then(function () { loadDuvidas(); })
+                  .catch(function (err) { alert(err.message || 'Erro ao criar.'); });
+              };
+            }
+          })
+          .catch(function () {
+            perguntasBody.innerHTML = '<tr><td colspan="4" class="error-msg">Erro ao carregar.</td></tr>';
+            duvidasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
+          });
+      }
+
+      function openPerguntaDetail(perguntaId) {
+        _perguntaModalId = perguntaId;
+        fetch(API + '/perguntas/' + perguntaId, { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : Promise.reject()))
+          .then(function (data) {
+            document.getElementById('modalPerguntaTitle').textContent = 'Pergunta #' + perguntaId;
+            document.getElementById('modalPerguntaTexto').textContent = data.pergunta ? data.pergunta.texto : '';
+            const respDiv = document.getElementById('modalPerguntaRespostas');
+            respDiv.innerHTML = '';
+            if (data.respostas && data.respostas.length) {
+              data.respostas.forEach(function (r) {
+                const p = document.createElement('p');
+                p.style.marginBottom = '0.75rem';
+                p.innerHTML = '<strong>' + escapeHtml(r.gestora_nome || 'Gestora') + ':</strong><br><span style="white-space:pre-wrap;">' + escapeHtml(r.texto || '') + '</span>';
+                respDiv.appendChild(p);
+              });
+            } else {
+              respDiv.innerHTML = '<p class="text-muted">Ainda sem respostas.</p>';
+            }
+            const minhaWrap = document.getElementById('modalPerguntaMinhaRespostaWrap');
+            const adminActions = document.getElementById('modalPerguntaAdminActions');
+            if (user && user.role === 'gestora') {
+              minhaWrap.style.display = 'block';
+              adminActions.style.display = 'none';
+              document.getElementById('modalPerguntaMinhaResposta').value = data.minha_resposta ? data.minha_resposta.texto : '';
+            } else {
+              minhaWrap.style.display = 'none';
+              adminActions.style.display = 'block';
+            }
+            document.getElementById('modalPergunta').classList.add('visible');
+          })
+          .catch(function () { alert('Erro ao carregar pergunta.'); });
+      }
+
+      function saveRespostaPergunta() {
+        if (!_perguntaModalId || !user || user.role !== 'gestora') return;
+        const texto = document.getElementById('modalPerguntaMinhaResposta').value.trim();
+        if (!texto) { alert('Escreva a sua resposta.'); return; }
+        fetch(API + '/perguntas/' + _perguntaModalId + '/respostas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ texto: texto }),
+        })
+          .then((r) => (r.ok ? Promise.resolve() : r.json().then((d) => Promise.reject(new Error(d.message || 'Erro')))))
+          .then(function () {
+            document.getElementById('modalPergunta').classList.remove('visible');
+            loadDuvidas();
+          })
+          .catch(function (err) { alert(err.message || 'Erro ao guardar.'); });
+      }
+
+      function openResponderDuvida(duvidaId) {
+        _duvidaModalId = duvidaId;
+        fetch(API + '/duvidas-pendentes', { credentials: 'include' })
+          .then((r) => r.json())
+          .then(function (list) {
+            const d = list.find(function (x) { return x.id === duvidaId; });
+            if (!d) { alert('Dúvida não encontrada.'); return; }
+            document.getElementById('modalDuvidaTexto').textContent = d.texto || '';
+            document.getElementById('modalDuvidaRespostaTexto').value = '';
+            document.getElementById('modalDuvidaResponder').classList.add('visible');
+          })
+          .catch(function () { alert('Erro ao carregar.'); });
+      }
+
+      function submitResponderDuvida() {
+        if (!_duvidaModalId) return;
+        const texto = document.getElementById('modalDuvidaRespostaTexto').value.trim();
+        if (!texto) { alert('Escreva a resposta.'); return; }
+        fetch(API + '/duvidas-pendentes/' + _duvidaModalId + '/responder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ texto: texto }),
+        })
+          .then((r) => (r.ok ? Promise.resolve() : r.json().then((d) => Promise.reject(new Error(d.message || 'Erro')))))
+          .then(function () {
+            document.getElementById('modalDuvidaResponder').classList.remove('visible');
+            loadDuvidas();
+          })
+          .catch(function (err) { alert(err.message || 'Erro ao responder.'); });
+      }
+
+      document.getElementById('modalPerguntaCancel').addEventListener('click', function () { document.getElementById('modalPergunta').classList.remove('visible'); });
+      document.getElementById('modalPerguntaSave').addEventListener('click', saveRespostaPergunta);
+      document.getElementById('modalPerguntaClose').addEventListener('click', function () { document.getElementById('modalPergunta').classList.remove('visible'); });
+      document.getElementById('modalDuvidaResponderCancel').addEventListener('click', function () { document.getElementById('modalDuvidaResponder').classList.remove('visible'); });
+      document.getElementById('modalDuvidaResponderSubmit').addEventListener('click', submitResponderDuvida);
 
       function loadRafa() {
         const tbody = document.getElementById('rafaBody');

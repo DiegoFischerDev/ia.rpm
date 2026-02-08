@@ -336,6 +336,108 @@ async function hasGestoraRgpd(gestoraId) {
   return rows.length > 0;
 }
 
+// ---------- FAQ Dúvidas (perguntas + respostas gestoras + dúvidas pendentes) ----------
+
+/** Lista perguntas ordenadas por frequência (mais perguntadas primeiro) */
+async function listPerguntas() {
+  return query(
+    'SELECT id, texto, frequencia, created_at, updated_at FROM ch_perguntas ORDER BY frequencia DESC, updated_at DESC'
+  );
+}
+
+async function getPerguntaById(id) {
+  const rows = await query('SELECT id, texto, frequencia, created_at, updated_at FROM ch_perguntas WHERE id = ?', [id]);
+  return rows[0] || null;
+}
+
+async function createPergunta(texto) {
+  const t = typeof texto === 'string' ? texto.trim() : '';
+  if (!t) return null;
+  await query('INSERT INTO ch_perguntas (texto) VALUES (?)', [t]);
+  const rows = await query('SELECT id, texto, frequencia, created_at, updated_at FROM ch_perguntas ORDER BY id DESC LIMIT 1');
+  return rows[0] || null;
+}
+
+async function updatePergunta(id, texto) {
+  const t = typeof texto === 'string' ? texto.trim() : null;
+  if (t === null) return;
+  await query('UPDATE ch_perguntas SET texto = ?, updated_at = NOW() WHERE id = ?', [t, id]);
+}
+
+async function incrementPerguntaFrequencia(perguntaId) {
+  await query('UPDATE ch_perguntas SET frequencia = frequencia + 1, updated_at = NOW() WHERE id = ?', [perguntaId]);
+}
+
+/** Respostas de uma pergunta (com nome da gestora) */
+async function listRespostasByPerguntaId(perguntaId) {
+  return query(
+    `SELECT r.id, r.pergunta_id, r.gestora_id, r.texto, r.created_at, r.updated_at, g.nome AS gestora_nome
+     FROM ch_pergunta_respostas r
+     JOIN ch_gestoras g ON g.id = r.gestora_id
+     WHERE r.pergunta_id = ?
+     ORDER BY r.updated_at ASC`,
+    [perguntaId]
+  );
+}
+
+async function getRespostaByPerguntaAndGestora(perguntaId, gestoraId) {
+  const rows = await query(
+    'SELECT id, pergunta_id, gestora_id, texto, created_at, updated_at FROM ch_pergunta_respostas WHERE pergunta_id = ? AND gestora_id = ?',
+    [perguntaId, gestoraId]
+  );
+  return rows[0] || null;
+}
+
+/** Cria ou atualiza resposta de uma gestora a uma pergunta */
+async function upsertResposta(perguntaId, gestoraId, texto) {
+  const t = typeof texto === 'string' ? texto.trim() : '';
+  if (!t) return;
+  await query(
+    `INSERT INTO ch_pergunta_respostas (pergunta_id, gestora_id, texto) VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE texto = VALUES(texto), updated_at = NOW()`,
+    [perguntaId, gestoraId, t]
+  );
+}
+
+/** Dúvidas pendentes: listar (não respondidas primeiro, depois por data) */
+async function listDuvidasPendentes() {
+  return query(
+    `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, d.created_at, d.updated_at,
+            l.nome AS lead_nome
+     FROM ch_duvidas_pendentes d
+     LEFT JOIN ch_leads l ON l.id = d.lead_id
+     ORDER BY d.respondida ASC, d.created_at DESC`
+  );
+}
+
+async function createDuvidaPendente({ contactoWhatsapp, leadId, texto, origem = 'evo' }) {
+  const contacto = String(contactoWhatsapp || '').replace(/\D/g, '') || null;
+  const textoVal = typeof texto === 'string' ? texto.trim() : '';
+  if (!contacto || !textoVal) return null;
+  await query(
+    'INSERT INTO ch_duvidas_pendentes (contacto_whatsapp, lead_id, texto, origem) VALUES (?, ?, ?, ?)',
+    [contacto, leadId || null, textoVal, origem || 'evo']
+  );
+  const rows = await query('SELECT * FROM ch_duvidas_pendentes ORDER BY id DESC LIMIT 1');
+  return rows[0] || null;
+}
+
+async function getDuvidaPendenteById(id) {
+  const rows = await query(
+    'SELECT id, contacto_whatsapp, lead_id, texto, origem, respondida, pergunta_id, created_at, updated_at FROM ch_duvidas_pendentes WHERE id = ?',
+    [id]
+  );
+  return rows[0] || null;
+}
+
+/** Marcar dúvida como respondida e associar à pergunta do FAQ criada */
+async function markDuvidaRespondida(duvidaId, perguntaId) {
+  await query(
+    'UPDATE ch_duvidas_pendentes SET respondida = 1, pergunta_id = ?, updated_at = NOW() WHERE id = ?',
+    [perguntaId, duvidaId]
+  );
+}
+
 module.exports = {
   getPool,
   query,
@@ -368,4 +470,16 @@ module.exports = {
   saveGestoraRgpd,
   readGestoraRgpd,
   hasGestoraRgpd,
+  listPerguntas,
+  getPerguntaById,
+  createPergunta,
+  updatePergunta,
+  incrementPerguntaFrequencia,
+  listRespostasByPerguntaId,
+  getRespostaByPerguntaAndGestora,
+  upsertResposta,
+  listDuvidasPendentes,
+  createDuvidaPendente,
+  getDuvidaPendenteById,
+  markDuvidaRespondida,
 };
