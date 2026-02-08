@@ -879,10 +879,11 @@ app.delete('/api/dashboard/gestoras/:id', requireDashboardAuth, requireAdminAuth
 // ---------- FAQ Dúvidas (perguntas + respostas + dúvidas pendentes) ----------
 app.get('/api/dashboard/perguntas', requireDashboardAuth, async (req, res) => {
   try {
-    const rows = await listPerguntas();
+    const onlySpam = req.query.spam === '1' || req.query.spam === 'true';
+    const rows = await listPerguntas(onlySpam);
     const user = req.session.dashboardUser;
     const isGestora = user && user.role === 'gestora';
-    if (!isGestora) return res.json(rows);
+    if (onlySpam || !isGestora) return res.json(rows);
     const withFlags = await Promise.all(
       rows.map(async (p) => {
         const minha = await getRespostaByPerguntaAndGestora(p.id, user.id);
