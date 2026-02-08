@@ -151,6 +151,18 @@
     .btn-icon svg { width: 18px; height: 18px; display: block; }
     .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
     .btn-outline:hover { background: var(--bg); border-color: var(--text-muted); }
+    .section-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      background: transparent;
+      border: none;
+    }
+    #screenDuvidas table.role-gestora .th-acoes-admin,
+    #screenDuvidas table.role-gestora .td-acoes-admin { display: none; }
     .error-msg { color: var(--error); font-size: 0.875rem; margin-top: 0.5rem; }
     .page-title { margin: 0 0 1.5rem; font-size: 1.375rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
     .card { background: var(--surface); border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); border: 1px solid var(--border); }
@@ -346,7 +358,30 @@
       <div id="screenDuvidas" class="screen">
         <h2 class="page-title">Dúvidas</h2>
         <div class="card" style="margin-bottom:1.5rem;">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.75rem; margin-bottom:1rem;">
+          <div class="section-toolbar">
+            <div>
+              <h3 style="margin:0 0 0.25rem; font-size:1rem;">Dúvidas pendentes</h3>
+              <p class="text-muted" style="font-size:0.875rem; margin:0;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Pergunta do lead</th>
+                  <th>Contacto</th>
+                  <th>Data</th>
+                  <th>Nº respostas</th>
+                  <th class="th-acoes-admin">Ações (admin)</th>
+                </tr>
+              </thead>
+              <tbody id="duvidasPendentesBody"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="section-toolbar">
             <div>
               <h3 style="margin:0 0 0.25rem; font-size:1rem;">Perguntas do FAQ</h3>
               <p class="text-muted" style="font-size:0.875rem; margin:0;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
@@ -361,28 +396,10 @@
                   <th>Pergunta</th>
                   <th>Freq.</th>
                   <th></th>
-                  <th>Ações (admin)</th>
+                  <th class="th-acoes-admin">Ações (admin)</th>
                 </tr>
               </thead>
               <tbody id="perguntasBody"></tbody>
-            </table>
-          </div>
-        </div>
-        <div class="card">
-          <h3 style="margin:0 0 1rem; font-size:1rem;">Dúvidas pendentes</h3>
-          <p class="text-muted" style="font-size:0.875rem; margin-bottom:1rem;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Pergunta do lead</th>
-                  <th>Contacto</th>
-                  <th>Data</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody id="duvidasPendentesBody"></tbody>
             </table>
           </div>
         </div>
@@ -952,12 +969,49 @@
         const duvidasBody = document.getElementById('duvidasPendentesBody');
         if (!perguntasBody || !duvidasBody) return;
         perguntasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
-        duvidasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
+        duvidasBody.innerHTML = '<tr><td colspan="6">A carregar…</td></tr>';
         Promise.all([
-          fetch(API + '/perguntas', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
           fetch(API + '/duvidas-pendentes', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
+          fetch(API + '/perguntas', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
         ])
-          .then(([perguntas, duvidas]) => {
+          .then(([duvidas, perguntas]) => {
+            var tblDuvidas = duvidasBody.closest('table');
+            var tblPerguntas = perguntasBody.closest('table');
+            if (tblDuvidas) { tblDuvidas.classList.remove('role-admin', 'role-gestora'); tblDuvidas.classList.add(user && user.role === 'admin' ? 'role-admin' : 'role-gestora'); }
+            if (tblPerguntas) { tblPerguntas.classList.remove('role-admin', 'role-gestora'); tblPerguntas.classList.add(user && user.role === 'admin' ? 'role-admin' : 'role-gestora'); }
+            duvidasBody.innerHTML = '';
+            if (!duvidas.length) {
+              duvidasBody.innerHTML = '<tr><td colspan="6">Nenhuma dúvida pendente.</td></tr>';
+            } else {
+              duvidas.forEach(function (d) {
+                const tr = document.createElement('tr');
+                const textoShort = (d.texto || '').slice(0, 60) + ((d.texto || '').length > 60 ? '…' : '');
+                const numRespostas = d.num_respostas != null ? Number(d.num_respostas) : 0;
+                const btn = !d.respondida && user && user.role === 'gestora'
+                  ? ' <button type="button" class="btn btn-primary btn-sm btn-responder-duvida" data-id="' + d.id + '">Responder</button>'
+                  : '';
+                const isAdmin = user && user.role === 'admin';
+                const acoesAdmin = isAdmin
+                  ? '<button type="button" class="btn btn-danger btn-sm btn-excluir-duvida" data-id="' + d.id + '">Excluir</button>'
+                  : '';
+                tr.innerHTML =
+                  '<td>' + d.id + '</td><td>' + escapeHtml(textoShort) + '</td><td>' + escapeHtml(d.contacto_whatsapp || (d.lead_nome || '—')) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + numRespostas + btn + '</td><td class="td-acoes-admin">' + acoesAdmin + '</td>';
+                duvidasBody.appendChild(tr);
+              });
+              duvidasBody.querySelectorAll('.btn-responder-duvida').forEach(function (btn) {
+                btn.addEventListener('click', function () { openResponderDuvida(parseInt(this.dataset.id, 10)); });
+              });
+              duvidasBody.querySelectorAll('.btn-excluir-duvida').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                  if (!confirm('Remover esta dúvida pendente da lista? O lead não será notificado.')) return;
+                  const id = parseInt(this.dataset.id, 10);
+                  fetch(API + '/duvidas-pendentes/' + id, { method: 'DELETE', credentials: 'include' })
+                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                    .then(function () { loadDuvidas(); })
+                    .catch(function (err) { alert(err.message || 'Erro ao excluir.'); });
+                });
+              });
+            }
             perguntasBody.innerHTML = '';
             if (!perguntas.length) {
               perguntasBody.innerHTML = '<tr><td colspan="5">Nenhuma pergunta no FAQ.</td></tr>';
@@ -975,7 +1029,7 @@
                   : '';
                 tr.innerHTML =
                   '<td>' + p.id + '</td><td>' + escapeHtml(textoShort) + '</td><td>' + (p.frequencia || 0) + '</td><td>' + jaRespondi +
-                  ' <button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button></td><td>' + acoes + '</td>';
+                  ' <button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button></td><td class="td-acoes-admin">' + acoes + '</td>';
                 perguntasBody.appendChild(tr);
               });
               perguntasBody.querySelectorAll('.btn-ver-pergunta').forEach(function (btn) {
@@ -1007,25 +1061,6 @@
                 });
               });
             }
-            duvidasBody.innerHTML = '';
-            if (!duvidas.length) {
-              duvidasBody.innerHTML = '<tr><td colspan="5">Nenhuma dúvida pendente.</td></tr>';
-            } else {
-              duvidas.forEach(function (d) {
-                const tr = document.createElement('tr');
-                const textoShort = (d.texto || '').slice(0, 60) + ((d.texto || '').length > 60 ? '…' : '');
-                const respondida = d.respondida ? 'Sim' : 'Não';
-                const btn = !d.respondida && user && user.role === 'gestora'
-                  ? '<button type="button" class="btn btn-primary btn-sm btn-responder-duvida" data-id="' + d.id + '">Responder</button>'
-                  : '';
-                tr.innerHTML =
-                  '<td>' + d.id + '</td><td>' + escapeHtml(textoShort) + '</td><td>' + escapeHtml(d.contacto_whatsapp || (d.lead_nome || '—')) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + respondida + ' ' + btn + '</td>';
-                duvidasBody.appendChild(tr);
-              });
-              duvidasBody.querySelectorAll('.btn-responder-duvida').forEach(function (btn) {
-                btn.addEventListener('click', function () { openResponderDuvida(parseInt(this.dataset.id, 10)); });
-              });
-            }
             var btnNova = document.getElementById('btnNovaPergunta');
             if (btnNova) {
               btnNova.style.display = user && user.role === 'admin' ? '' : 'none';
@@ -1046,7 +1081,7 @@
           })
           .catch(function () {
             perguntasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
-            duvidasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
+            duvidasBody.innerHTML = '<tr><td colspan="6" class="error-msg">Erro ao carregar.</td></tr>';
           });
       }
 

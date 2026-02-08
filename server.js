@@ -59,6 +59,7 @@ const {
   createDuvidaPendente,
   getDuvidaPendenteById,
   markDuvidaRespondida,
+  deleteDuvidaPendente,
 } = require('./db');
 const {
   saveDocument,
@@ -971,11 +972,25 @@ app.post('/api/dashboard/perguntas/:id/respostas', requireDashboardAuth, async (
 
 app.get('/api/dashboard/duvidas-pendentes', requireDashboardAuth, async (req, res) => {
   try {
-    const rows = await listDuvidasPendentes();
+    const user = req.session.dashboardUser;
+    const gestoraId = user && user.role === 'gestora' ? user.id : null;
+    const rows = await listDuvidasPendentes(gestoraId);
     res.json(rows);
   } catch (err) {
     logStartup(`listDuvidasPendentes error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar dúvidas.' });
+  }
+});
+
+app.delete('/api/dashboard/duvidas-pendentes/:id', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  try {
+    await deleteDuvidaPendente(id);
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`deleteDuvidaPendente error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao excluir.' });
   }
 });
 

@@ -407,15 +407,25 @@ async function upsertResposta(perguntaId, gestoraId, texto) {
   );
 }
 
-/** Dúvidas pendentes: listar (não respondidas primeiro, depois por data) */
-async function listDuvidasPendentes() {
-  return query(
-    `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, d.created_at, d.updated_at,
-            l.nome AS lead_nome
-     FROM ch_duvidas_pendentes d
-     LEFT JOIN ch_leads l ON l.id = d.lead_id
-     ORDER BY d.respondida ASC, d.created_at DESC`
-  );
+/** Dúvidas pendentes: listar (não respondidas primeiro, depois por data).
+ *  Se gestoraId for passado, exclui dúvidas já respondidas por essa gestora (para não aparecer na lista dela). */
+async function listDuvidasPendentes(gestoraId) {
+  const subCount = '(SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id)';
+  const sql = gestoraId != null
+    ? `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, d.created_at, d.updated_at,
+              l.nome AS lead_nome, ${subCount} AS num_respostas
+       FROM ch_duvidas_pendentes d
+       LEFT JOIN ch_leads l ON l.id = d.lead_id
+       WHERE (d.respondida = 0) OR (d.respondida = 1 AND (d.pergunta_id IS NULL OR NOT EXISTS (
+         SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id AND r.gestora_id = ?
+       )))
+       ORDER BY d.respondida ASC, d.created_at DESC`
+    : `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, d.created_at, d.updated_at,
+              l.nome AS lead_nome, ${subCount} AS num_respostas
+       FROM ch_duvidas_pendentes d
+       LEFT JOIN ch_leads l ON l.id = d.lead_id
+       ORDER BY d.respondida ASC, d.created_at DESC`;
+  return gestoraId != null ? query(sql, [gestoraId]) : query(sql);
 }
 
 async function createDuvidaPendente({ contactoWhatsapp, leadId, texto, origem = 'evo' }) {
@@ -444,6 +454,10 @@ async function markDuvidaRespondida(duvidaId, perguntaId) {
     'UPDATE ch_duvidas_pendentes SET respondida = 1, pergunta_id = ?, updated_at = NOW() WHERE id = ?',
     [perguntaId, duvidaId]
   );
+}
+
+async function deleteDuvidaPendente(id) {
+  await query('DELETE FROM ch_duvidas_pendentes WHERE id = ?', [id]);
 }
 
 module.exports = {
@@ -492,4 +506,5 @@ module.exports = {
   createDuvidaPendente,
   getDuvidaPendenteById,
   markDuvidaRespondida,
+  deleteDuvidaPendente,
 };
