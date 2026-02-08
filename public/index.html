@@ -294,7 +294,12 @@
         <span id="navRafaBadge" class="nav-badge hidden">0</span>
       </a>
       <a href="#gestoras" id="navGestoras" class="sidebar-nav-item">Gestoras</a>
-      <a href="#duvidas" id="navDuvidas" class="sidebar-nav-item">Dúvidas</a>
+      <a href="#duvidas-pendentes" id="navDuvidasPendentes" class="sidebar-nav-item">
+        <span class="nav-label">Perguntas pendentes</span>
+        <span id="navDuvidasPendentesBadge" class="nav-badge hidden">0</span>
+      </a>
+      <a href="#duvidas-respondidas" id="navDuvidasRespondidas" class="sidebar-nav-item">Perguntas respondidas</a>
+      <a href="#duvidas-spam" id="navDuvidasSpam" class="sidebar-nav-item" style="display:none;">Perguntas spam</a>
       <a href="#perfil" id="navPerfil" class="sidebar-nav-item" style="display:none;">Perfil</a>
       <div class="sidebar-footer">
         <span class="sidebar-footer-icon" aria-hidden="true">
@@ -358,18 +363,16 @@
           </table>
         </div>
       </div>
-      <div id="screenDuvidas" class="screen">
-        <h2 class="page-title">Dúvidas</h2>
+      <div id="screenDuvidasPendentes" class="screen">
+        <h2 class="page-title">Perguntas pendentes</h2>
+        <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
         <div class="section-toolbar">
-          <div>
-            <h3 style="margin:0 0 0.25rem; font-size:1rem;">Dúvidas pendentes</h3>
-            <p class="text-muted" style="font-size:0.875rem; margin:0;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
-          </div>
+          <div></div>
           <button type="button" class="btn btn-primary btn-sm" id="btnNovaDuvida" style="display:none;">Nova pergunta</button>
         </div>
-        <div class="card" style="margin-bottom:1.5rem;">
+        <div class="card">
           <div class="table-wrap">
-            <table>
+            <table id="tblDuvidasPendentes">
               <thead>
                 <tr>
                   <th>#</th>
@@ -383,15 +386,13 @@
             </table>
           </div>
         </div>
-        <div class="section-toolbar">
-          <div>
-            <h3 style="margin:0 0 0.25rem; font-size:1rem;">Perguntas do FAQ (já respondidas)</h3>
-            <p class="text-muted" style="font-size:0.875rem; margin:0;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
-          </div>
-        </div>
+      </div>
+      <div id="screenDuvidasRespondidas" class="screen">
+        <h2 class="page-title">Perguntas respondidas</h2>
+        <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
         <div class="card">
           <div class="table-wrap">
-            <table>
+            <table id="tblPerguntasRespondidas">
               <thead>
                 <tr>
                   <th>#</th>
@@ -405,13 +406,11 @@
             </table>
           </div>
         </div>
-        <div id="perguntasSpamSection" class="section-toolbar" style="display:none; margin-top:1.5rem;">
-          <div>
-            <h3 style="margin:0 0 0.25rem; font-size:1rem;">Perguntas marcadas como spam</h3>
-            <p class="text-muted" style="font-size:0.875rem; margin:0;">Só são exibidas aqui. O Evo ignora match com estas perguntas.</p>
-          </div>
-        </div>
-        <div id="perguntasSpamCard" class="card" style="display:none;">
+      </div>
+      <div id="screenDuvidasSpam" class="screen">
+        <h2 class="page-title">Perguntas spam</h2>
+        <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Perguntas marcadas como spam. Só são exibidas aqui. O Evo ignora match com estas perguntas.</p>
+        <div class="card">
           <div class="table-wrap">
             <table>
               <thead>
@@ -637,7 +636,15 @@
       const API = '/api/dashboard';
       let user = null;
 
+      function hashToScreenId(hash) {
+        var map = { gestoras: 'gestoras', rafa: 'rafa', perfil: 'perfil', 'duvidas-pendentes': 'duvidasPendentes', 'duvidas-respondidas': 'duvidasRespondidas', 'duvidas-spam': 'duvidasSpam' };
+        return map[hash] || 'leads';
+      }
       function showScreen(id) {
+        if (id === 'duvidasSpam' && user && user.role !== 'admin') {
+          window.location.hash = 'duvidas-pendentes';
+          return;
+        }
         document.querySelectorAll('.main .screen').forEach((s) => s.classList.remove('visible'));
         document.querySelectorAll('.sidebar-nav-item').forEach((el) => el.classList.remove('active'));
         const s = document.getElementById('screen' + id.charAt(0).toUpperCase() + id.slice(1));
@@ -648,7 +655,9 @@
         if (id === 'gestoras') loadGestoras();
         if (id === 'rafa') loadRafa();
         if (id === 'perfil') loadProfile();
-        if (id === 'duvidas') loadDuvidas();
+        if (id === 'duvidasPendentes') loadDuvidasPendentes();
+        if (id === 'duvidasRespondidas') loadDuvidasRespondidas();
+        if (id === 'duvidasSpam') loadDuvidasSpam();
       }
 
       function updateRafaBadge() {
@@ -663,6 +672,24 @@
           .catch(() => {
             document.getElementById('navRafaBadge').classList.add('hidden');
           });
+      }
+
+      function updateDuvidasPendentesBadge(count) {
+        const badge = document.getElementById('navDuvidasPendentesBadge');
+        if (!badge) return;
+        if (typeof count === 'number') {
+          badge.textContent = count > 99 ? '99+' : String(count);
+          badge.classList.toggle('hidden', count === 0);
+          return;
+        }
+        fetch(API + '/duvidas-pendentes/count', { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : { count: 0 }))
+          .then((data) => {
+            const n = data.count || 0;
+            badge.textContent = n > 99 ? '99+' : String(n);
+            badge.classList.toggle('hidden', n === 0);
+          })
+          .catch(() => { badge.classList.add('hidden'); });
       }
 
       function checkAuth() {
@@ -691,9 +718,14 @@
               document.getElementById('navGestoras').style.display = 'none';
               document.getElementById('navPerfil').style.display = '';
             }
-            document.getElementById('navDuvidas').style.display = '';
-            const hash = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
-            const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : hash === 'perfil' ? 'perfil' : hash === 'duvidas' ? 'duvidas' : 'leads';
+            updateDuvidasPendentesBadge();
+            document.getElementById('navDuvidasPendentes').style.display = '';
+            document.getElementById('navDuvidasRespondidas').style.display = '';
+            if (user.role === 'admin') document.getElementById('navDuvidasSpam').style.display = '';
+            const hashRaw = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
+            const hash = hashRaw === 'duvidas' ? 'duvidas-pendentes' : hashRaw;
+            const screenId = hashToScreenId(hash);
+            if (hash !== hashRaw && hashRaw === 'duvidas') window.location.hash = 'duvidas-pendentes';
             showScreen(screenId);
           })
           .catch(() => {
@@ -844,8 +876,10 @@
       window.addEventListener('hashchange', function () {
         if (!user) return;
         dashboardApp.classList.remove('nav-open');
-        const hash = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
-        const screenId = hash === 'gestoras' ? 'gestoras' : hash === 'rafa' ? 'rafa' : hash === 'perfil' ? 'perfil' : hash === 'duvidas' ? 'duvidas' : 'leads';
+        const hashRaw = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
+        const hash = hashRaw === 'duvidas' ? 'duvidas-pendentes' : hashRaw;
+        if (hash !== hashRaw) window.location.hash = 'duvidas-pendentes';
+        const screenId = hashToScreenId(hash);
         showScreen(screenId);
       });
 
@@ -998,21 +1032,16 @@
       var _perguntaModalId = null;
       var _duvidaModalId = null;
 
-      function loadDuvidas() {
-        const perguntasBody = document.getElementById('perguntasBody');
+      function loadDuvidasPendentes() {
         const duvidasBody = document.getElementById('duvidasPendentesBody');
-        if (!perguntasBody || !duvidasBody) return;
-        perguntasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
+        if (!duvidasBody) return;
         duvidasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
-        Promise.all([
-          fetch(API + '/duvidas-pendentes', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
-          fetch(API + '/perguntas', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
-        ])
-          .then(([duvidas, perguntas]) => {
-            var tblDuvidas = duvidasBody.closest('table');
-            var tblPerguntas = perguntasBody.closest('table');
-            if (tblDuvidas) { tblDuvidas.classList.remove('role-admin', 'role-gestora'); tblDuvidas.classList.add(user && user.role === 'admin' ? 'role-admin' : 'role-gestora'); }
-            if (tblPerguntas) { tblPerguntas.classList.remove('role-admin', 'role-gestora'); tblPerguntas.classList.add(user && user.role === 'admin' ? 'role-admin' : 'role-gestora'); }
+        var tblDuvidas = document.getElementById('tblDuvidasPendentes');
+        if (tblDuvidas) { tblDuvidas.classList.remove('role-admin', 'role-gestora'); tblDuvidas.classList.add(user && user.role === 'admin' ? 'role-admin' : 'role-gestora'); }
+        fetch(API + '/duvidas-pendentes', { credentials: 'include' })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (duvidas) {
+            updateDuvidasPendentesBadge(duvidas.length);
             duvidasBody.innerHTML = '';
             if (!duvidas.length) {
               duvidasBody.innerHTML = '<tr><td colspan="5">Nenhuma dúvida pendente.</td></tr>';
@@ -1059,7 +1088,7 @@
                     body: JSON.stringify({ eh_spam: ehSpam }),
                   })
                     .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                    .then(function () { loadDuvidas(); })
+                    .then(function () { loadDuvidasPendentes(); })
                     .catch(function (err) { alert(err.message || 'Erro ao atualizar.'); });
                 });
               });
@@ -1069,11 +1098,43 @@
                   const id = parseInt(this.dataset.id, 10);
                   fetch(API + '/duvidas-pendentes/' + id, { method: 'DELETE', credentials: 'include' })
                     .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                    .then(function () { loadDuvidas(); })
+                    .then(function () { loadDuvidasPendentes(); })
                     .catch(function (err) { alert(err.message || 'Erro ao excluir.'); });
                 });
               });
             }
+            var btnNovaDuvida = document.getElementById('btnNovaDuvida');
+            if (btnNovaDuvida) {
+              btnNovaDuvida.style.display = user && user.role === 'admin' ? '' : 'none';
+              btnNovaDuvida.onclick = function () {
+                var texto = prompt('Texto da nova pergunta (será adicionada às dúvidas pendentes para as gestoras responderem):');
+                if (texto == null || !texto.trim()) return;
+                fetch(API + '/duvidas-pendentes', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ texto: texto.trim() }),
+                })
+                  .then(function (r) { return r.ok ? r.json() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                  .then(function () { loadDuvidasPendentes(); })
+                  .catch(function (err) { alert(err.message || 'Erro ao criar.'); });
+              };
+            }
+          })
+          .catch(function () {
+            duvidasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
+          });
+      }
+
+      function loadDuvidasRespondidas() {
+        const perguntasBody = document.getElementById('perguntasBody');
+        if (!perguntasBody) return;
+        perguntasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
+        var tblPerguntas = document.getElementById('tblPerguntasRespondidas');
+        if (tblPerguntas) { tblPerguntas.classList.remove('role-admin', 'role-gestora'); tblPerguntas.classList.add(user && user.role === 'admin' ? 'role-admin' : 'role-gestora'); }
+        fetch(API + '/perguntas', { credentials: 'include' })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (perguntas) {
             perguntasBody.innerHTML = '';
             if (!perguntas.length) {
               perguntasBody.innerHTML = '<tr><td colspan="5">Nenhuma pergunta no FAQ.</td></tr>';
@@ -1109,7 +1170,7 @@
                     body: JSON.stringify({ eh_spam: ehSpam }),
                   })
                     .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                    .then(function () { loadDuvidas(); })
+                    .then(function () { loadDuvidasRespondidas(); })
                     .catch(function (err) { alert(err.message || 'Erro ao atualizar.'); });
                 });
               });
@@ -1119,86 +1180,64 @@
                   const id = parseInt(this.dataset.id, 10);
                   fetch(API + '/perguntas/' + id, { method: 'DELETE', credentials: 'include' })
                     .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                    .then(function () { loadDuvidas(); })
+                    .then(function () { loadDuvidasRespondidas(); })
                     .catch(function (err) { alert(err.message || 'Erro ao excluir.'); });
                 });
               });
             }
-            var btnNovaDuvida = document.getElementById('btnNovaDuvida');
-            if (btnNovaDuvida) {
-              btnNovaDuvida.style.display = user && user.role === 'admin' ? '' : 'none';
-              btnNovaDuvida.onclick = function () {
-                var texto = prompt('Texto da nova pergunta (será adicionada às dúvidas pendentes para as gestoras responderem):');
-                if (texto == null || !texto.trim()) return;
-                fetch(API + '/duvidas-pendentes', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({ texto: texto.trim() }),
-                })
-                  .then(function (r) { return r.ok ? r.json() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                  .then(function () { loadDuvidas(); })
-                  .catch(function (err) { alert(err.message || 'Erro ao criar.'); });
-              };
-            }
-            var spamSection = document.getElementById('perguntasSpamSection');
-            var spamCard = document.getElementById('perguntasSpamCard');
-            var spamBody = document.getElementById('perguntasSpamBody');
-            if (user && user.role === 'admin' && spamSection && spamCard && spamBody) {
-              spamSection.style.display = 'block';
-              spamCard.style.display = 'block';
-              fetch(API + '/perguntas?spam=1', { credentials: 'include' })
-                .then(function (r) { return r.ok ? r.json() : []; })
-                .then(function (perguntasSpam) {
-                  spamBody.innerHTML = '';
-                  if (!perguntasSpam.length) {
-                    spamBody.innerHTML = '<tr><td colspan="3">Nenhuma pergunta marcada como spam.</td></tr>';
-                  } else {
-                    perguntasSpam.forEach(function (p) {
-                      var tr = document.createElement('tr');
-                      var textoP = (p.texto || '').trim();
-                      tr.innerHTML =
-                        '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoP) + '">' + escapeHtml(textoP) + '</td><td>' +
-                        '<button type="button" class="btn btn-outline btn-sm btn-spam-pergunta-spam" data-id="' + p.id + '">Remover spam</button> ' +
-                        '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta-spam" data-id="' + p.id + '">Excluir</button></td>';
-                      spamBody.appendChild(tr);
-                    });
-                    spamBody.querySelectorAll('.btn-spam-pergunta-spam').forEach(function (btn) {
-                      btn.addEventListener('click', function () {
-                        var id = parseInt(this.dataset.id, 10);
-                        fetch(API + '/perguntas/' + id, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          credentials: 'include',
-                          body: JSON.stringify({ eh_spam: false }),
-                        })
-                          .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                          .then(function () { loadDuvidas(); })
-                          .catch(function (err) { alert(err.message || 'Erro ao atualizar.'); });
-                      });
-                    });
-                    spamBody.querySelectorAll('.btn-excluir-pergunta-spam').forEach(function (btn) {
-                      btn.addEventListener('click', function () {
-                        if (!confirm('Excluir esta pergunta da base de dados?')) return;
-                        var id = parseInt(this.dataset.id, 10);
-                        fetch(API + '/perguntas/' + id, { method: 'DELETE', credentials: 'include' })
-                          .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                          .then(function () { loadDuvidas(); })
-                          .catch(function (err) { alert(err.message || 'Erro ao excluir.'); });
-                      });
-                    });
-                  }
-                })
-                .catch(function () { spamBody.innerHTML = '<tr><td colspan="3" class="error-msg">Erro ao carregar.</td></tr>'; });
-            } else if (spamSection && spamCard) {
-              spamSection.style.display = 'none';
-              spamCard.style.display = 'none';
-            }
           })
           .catch(function () {
             perguntasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
-            duvidasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
           });
+      }
+
+      function loadDuvidasSpam() {
+        const spamBody = document.getElementById('perguntasSpamBody');
+        if (!spamBody) return;
+        spamBody.innerHTML = '<tr><td colspan="3">A carregar…</td></tr>';
+        fetch(API + '/perguntas?spam=1', { credentials: 'include' })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (perguntasSpam) {
+            spamBody.innerHTML = '';
+            if (!perguntasSpam.length) {
+              spamBody.innerHTML = '<tr><td colspan="3">Nenhuma pergunta marcada como spam.</td></tr>';
+            } else {
+              perguntasSpam.forEach(function (p) {
+                var tr = document.createElement('tr');
+                var textoP = (p.texto || '').trim();
+                tr.innerHTML =
+                  '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoP) + '">' + escapeHtml(textoP) + '</td><td>' +
+                  '<button type="button" class="btn btn-outline btn-sm btn-spam-pergunta-spam" data-id="' + p.id + '">Remover spam</button> ' +
+                  '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta-spam" data-id="' + p.id + '">Excluir</button></td>';
+                spamBody.appendChild(tr);
+              });
+              spamBody.querySelectorAll('.btn-spam-pergunta-spam').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                  var id = parseInt(this.dataset.id, 10);
+                  fetch(API + '/perguntas/' + id, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ eh_spam: false }),
+                  })
+                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                    .then(function () { loadDuvidasSpam(); })
+                    .catch(function (err) { alert(err.message || 'Erro ao atualizar.'); });
+                });
+              });
+              spamBody.querySelectorAll('.btn-excluir-pergunta-spam').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                  if (!confirm('Excluir esta pergunta da base de dados?')) return;
+                  var id = parseInt(this.dataset.id, 10);
+                  fetch(API + '/perguntas/' + id, { method: 'DELETE', credentials: 'include' })
+                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                    .then(function () { loadDuvidasSpam(); })
+                    .catch(function (err) { alert(err.message || 'Erro ao excluir.'); });
+                });
+              });
+            }
+          })
+          .catch(function () { spamBody.innerHTML = '<tr><td colspan="3" class="error-msg">Erro ao carregar.</td></tr>'; });
       }
 
       function openPerguntaDetail(perguntaId) {
@@ -1248,7 +1287,7 @@
           .then((r) => (r.ok ? Promise.resolve() : r.json().then((d) => Promise.reject(new Error(d.message || 'Erro')))))
           .then(function () {
             document.getElementById('modalPergunta').classList.remove('visible');
-            loadDuvidas();
+            loadDuvidasRespondidas();
           })
           .catch(function (err) { alert(err.message || 'Erro ao guardar.'); });
       }
@@ -1285,7 +1324,8 @@
           .then((r) => (r.ok ? Promise.resolve() : r.json().then((d) => Promise.reject(new Error(d.message || 'Erro')))))
           .then(function () {
             document.getElementById('modalDuvidaResponder').classList.remove('visible');
-            loadDuvidas();
+            loadDuvidasPendentes();
+            loadDuvidasRespondidas();
             const nome = user && user.nome && user.nome.trim() ? user.nome.trim() : 'Gestora';
             alert('Obrigado pela ajuda, ' + nome + ' 😊👍');
           })

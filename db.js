@@ -430,9 +430,22 @@ async function listDuvidasPendentes(gestoraId) {
               l.nome AS lead_nome
        FROM ch_duvidas_pendentes d
        LEFT JOIN ch_leads l ON l.id = d.lead_id
-       WHERE d.respondida = 0
+       WHERE d.respondida = 0 AND (COALESCE(d.eh_spam, 0) = 0)
        ORDER BY d.created_at DESC`;
   return gestoraId != null ? query(sql, [gestoraId]) : query(sql);
+}
+
+/** Contagem de dúvidas pendentes (mesmos filtros que listDuvidasPendentes). */
+async function getDuvidasPendentesCount(gestoraId) {
+  const sql = gestoraId != null
+    ? `SELECT COUNT(*) AS n FROM ch_duvidas_pendentes d
+       WHERE (COALESCE(d.eh_spam, 0) = 0)
+         AND ((d.respondida = 0) OR (d.respondida = 1 AND (d.pergunta_id IS NULL OR NOT EXISTS (
+           SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id AND r.gestora_id = ?
+         ))))`
+    : `SELECT COUNT(*) AS n FROM ch_duvidas_pendentes d WHERE d.respondida = 0 AND (COALESCE(d.eh_spam, 0) = 0)`;
+  const rows = gestoraId != null ? await query(sql, [gestoraId]) : await query(sql);
+  return (rows[0] && rows[0].n != null) ? Number(rows[0].n) : 0;
 }
 
 async function createDuvidaPendente({ contactoWhatsapp, leadId, texto, origem = 'evo' }) {
@@ -514,6 +527,7 @@ module.exports = {
   getRespostaByPerguntaAndGestora,
   upsertResposta,
   listDuvidasPendentes,
+  getDuvidasPendentesCount,
   createDuvidaPendente,
   getDuvidaPendenteById,
   markDuvidaRespondida,

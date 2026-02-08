@@ -56,6 +56,7 @@ const {
   getRespostaByPerguntaAndGestora,
   upsertResposta,
   listDuvidasPendentes,
+  getDuvidasPendentesCount,
   createDuvidaPendente,
   getDuvidaPendenteById,
   markDuvidaRespondida,
@@ -981,6 +982,18 @@ app.get('/api/dashboard/duvidas-pendentes', requireDashboardAuth, async (req, re
   } catch (err) {
     logStartup(`listDuvidasPendentes error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar dúvidas.' });
+  }
+});
+
+app.get('/api/dashboard/duvidas-pendentes/count', requireDashboardAuth, async (req, res) => {
+  try {
+    const user = req.session.dashboardUser;
+    const gestoraId = user && user.role === 'gestora' ? user.id : null;
+    const count = await getDuvidasPendentesCount(gestoraId);
+    res.json({ count });
+  } catch (err) {
+    logStartup(`getDuvidasPendentesCount error: ${err.message}`);
+    res.status(500).json({ count: 0 });
   }
 });
 
