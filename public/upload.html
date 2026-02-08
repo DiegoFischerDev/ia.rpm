@@ -99,6 +99,7 @@
     }
     .btn-ver-exemplo:hover { background: var(--accent-hover); color: #000; transform: scale(1.02); }
     .btn-ver-exemplo:active { transform: scale(0.98); }
+    .doc-exemplo-wrap { display: block; margin-top: 0.5rem; margin-bottom: 0.5rem; }
     .recibos-row {
       display: grid;
       grid-template-columns: 1fr;
@@ -739,7 +740,7 @@
         if (v === VINCULO_RECIBOS_VERDES) {
           return [
             cartao,
-            { field: 'extrato_recibos_12_meses', label: '2. Extrato dos últimos 12 meses de recibos verdes', description: 'Comprovativo dos rendimentos como trabalhador independente. No <a href="https://www.portaldasfinancas.gov.pt" target="_blank" rel="noopener" class="doc-link-inline">Portal das Finanças</a>, após login (NIF + password ou Chave Móvel Digital), aceda a «Faturas e Recibos» / «Recibos Verdes Eletrónicos» → «Consultar Recibos». Use os filtros de datas (início e fim) para os últimos 12 meses. O Portal não gera um extrato automático com média mensal; tire um print da tela e use para anexar aqui. <button type="button" class="btn-ver-exemplo" data-url="/exemplo_recibos_verdes.jpeg" data-title="Exemplo de extrato de recibos verdes">Ver exemplo</button>' },
+            { field: 'extrato_recibos_12_meses', label: '2. Extrato dos últimos 12 meses de recibos verdes', description: 'Comprovativo dos rendimentos como trabalhador independente. No <a href="https://www.portaldasfinancas.gov.pt" target="_blank" rel="noopener" class="doc-link-inline">Portal das Finanças</a>, após login (NIF + password ou Chave Móvel Digital), aceda a «Faturas e Recibos» / «Recibos Verdes Eletrónicos» → «Consultar Recibos». Use os filtros de datas (início e fim) para os últimos 12 meses. O Portal não gera um extrato automático com média mensal; tire um print da tela e use para anexar aqui.<div class="doc-exemplo-wrap"><button type="button" class="btn-ver-exemplo" data-url="/exemplo_recibos_verdes.jpeg" data-title="Exemplo de extrato de recibos verdes">Ver exemplo</button></div>' },
             { field: 'declaracao_abertura_atividade', label: '3. Declaração de abertura de atividade', description: 'Documento que comprova que está inscrito como trabalhador independente (recibos verdes). Pode ser o comprovativo de inscrição na Segurança Social ou a declaração de início de atividade das Finanças. Se não tiver, pode obtê-lo no portal da Segurança Social Direta ou no Portal das Finanças.' },
             ...common,
           ];

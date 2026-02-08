@@ -910,7 +910,7 @@ app.post('/api/dashboard/profile', requireDashboardAuth, profileUpload, async (r
 
   try {
     const updates = {};
-    if (whatsapp !== '') updates.whatsapp = whatsapp.replace(/\D/g, '');
+    if (body.whatsapp !== undefined && body.whatsapp !== null) updates.whatsapp = whatsapp === '' ? '' : whatsapp.replace(/\D/g, '');
     if (emailParaLeads !== undefined) updates.email_para_leads = emailParaLeads === '' ? null : emailParaLeads;
     if (Object.keys(updates).length) await updateGestora(gestoraId, updates);
 
