@@ -1184,6 +1184,20 @@ app.post('/api/faq/duvidas-pendentes', async (req, res) => {
       texto,
       origem: body.origem || 'evo',
     });
+    const evoUrl = (process.env.EVO_URL || '').replace(/\/$/, '');
+    const evoSecret = process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET;
+    if (row && row.id && texto && evoUrl && evoSecret) {
+      try {
+        const r = await fetch(evoUrl + '/api/internal/atualizar-embedding-duvida', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': evoSecret },
+          body: JSON.stringify({ duvida_id: Number(row.id), texto }),
+        });
+        if (!r.ok) logStartup(`atualizar-embedding-duvida (faq criar) ${r.status}`);
+      } catch (err) {
+        logStartup(`atualizar-embedding-duvida (faq criar) erro: ${err.message}`);
+      }
+    }
     res.status(201).json(row);
   } catch (err) {
     logStartup(`createDuvidaPendente error: ${err.message}`);
