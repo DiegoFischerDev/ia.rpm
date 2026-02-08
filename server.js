@@ -930,7 +930,26 @@ app.patch('/api/dashboard/perguntas/:id', requireDashboardAuth, requireAdminAuth
   const body = req.body || {};
   const texto = body.texto != null ? String(body.texto).trim() : null;
   try {
-    if (texto !== null) await updatePergunta(id, texto);
+    if (texto !== null) {
+      await updatePergunta(id, texto);
+      const evoUrl = (process.env.EVO_URL || '').replace(/\/$/, '');
+      const evoSecret = process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET;
+      if (evoUrl && evoSecret) {
+        try {
+          const r = await fetch(evoUrl + '/api/internal/atualizar-embedding-pergunta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': evoSecret },
+            body: JSON.stringify({ pergunta_id: Number(id), texto }),
+          });
+          if (!r.ok) {
+            const data = await r.json().catch(() => ({}));
+            logStartup(`atualizar-embedding-pergunta (evo) ${r.status}: ${data.message || r.statusText}`);
+          }
+        } catch (err) {
+          logStartup(`atualizar-embedding-pergunta (evo) erro: ${err.message}`);
+        }
+      }
+    }
     res.json({ ok: true });
   } catch (err) {
     logStartup(`updatePergunta error: ${err.message}`);

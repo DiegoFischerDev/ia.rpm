@@ -569,6 +569,19 @@
     </div>
   </div>
 
+  <div id="modalEditarPergunta" class="modal-overlay">
+    <div class="modal" style="max-width:560px;">
+      <h3 id="modalEditarPerguntaTitle">Editar pergunta</h3>
+      <label for="modalEditarPerguntaTexto">Texto da pergunta</label>
+      <textarea id="modalEditarPerguntaTexto" rows="4" placeholder="Texto da pergunta..."></textarea>
+      <p class="text-muted" style="font-size:0.8125rem; margin-top:0.25rem;">Ao guardar, o vetor de busca será atualizado para o novo texto.</p>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button type="button" class="btn btn-secondary" id="modalEditarPerguntaCancel">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="modalEditarPerguntaSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="modalPergunta" class="modal-overlay">
     <div class="modal" style="max-width:560px;">
       <h3 id="modalPerguntaTitle">Pergunta</h3>
@@ -1102,7 +1115,8 @@
                 const isAdmin = user && user.role === 'admin';
                 const respostasCell = isAdmin ? numRespostas + ' <button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>' : jaRespondi + '<button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>';
                 const acoes = isAdmin
-                  ? '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta" data-id="' + p.id + '">Excluir</button>'
+                  ? '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta" data-id="' + p.id + '">Editar</button> ' +
+                    '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta" data-id="' + p.id + '">Excluir</button>'
                   : '';
                 tr.innerHTML =
                   '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td><td>' + (p.frequencia || 0) + '</td><td>' + respostasCell + '</td><td class="td-acoes-admin">' + acoes + '</td>';
@@ -1110,6 +1124,9 @@
               });
               perguntasBody.querySelectorAll('.btn-ver-pergunta').forEach(function (btn) {
                 btn.addEventListener('click', function () { openPerguntaDetail(parseInt(this.dataset.id, 10)); });
+              });
+              perguntasBody.querySelectorAll('.btn-editar-pergunta').forEach(function (btn) {
+                btn.addEventListener('click', function () { openEditarPergunta(parseInt(this.dataset.id, 10)); });
               });
               perguntasBody.querySelectorAll('.btn-excluir-pergunta').forEach(function (btn) {
                 btn.addEventListener('click', function () {
@@ -1126,6 +1143,41 @@
           .catch(function () {
             perguntasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
           });
+      }
+
+      var _perguntaEditarId = null;
+
+      function openEditarPergunta(perguntaId) {
+        _perguntaEditarId = perguntaId;
+        document.getElementById('modalEditarPerguntaTitle').textContent = 'Editar pergunta #' + perguntaId;
+        document.getElementById('modalEditarPerguntaTexto').value = '';
+        document.getElementById('modalEditarPergunta').classList.add('visible');
+        fetch(API + '/perguntas/' + perguntaId, { credentials: 'include' })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+          .then(function (data) {
+            var texto = (data.pergunta && data.pergunta.texto) ? data.pergunta.texto : '';
+            document.getElementById('modalEditarPerguntaTexto').value = texto;
+          })
+          .catch(function () { alert('Erro ao carregar pergunta.'); });
+      }
+
+      function saveEditarPergunta() {
+        if (!_perguntaEditarId) return;
+        var texto = document.getElementById('modalEditarPerguntaTexto').value.trim();
+        if (!texto) { alert('Escreva o texto da pergunta.'); return; }
+        fetch(API + '/perguntas/' + _perguntaEditarId, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ texto: texto }),
+        })
+          .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+          .then(function () {
+            document.getElementById('modalEditarPergunta').classList.remove('visible');
+            _perguntaEditarId = null;
+            loadDuvidasRespondidas();
+          })
+          .catch(function (err) { alert(err.message || 'Erro ao guardar.'); });
       }
 
       function openPerguntaDetail(perguntaId) {
@@ -1220,6 +1272,8 @@
           .catch(function (err) { alert(err.message || 'Erro ao responder.'); });
       }
 
+      document.getElementById('modalEditarPerguntaCancel').addEventListener('click', function () { document.getElementById('modalEditarPergunta').classList.remove('visible'); _perguntaEditarId = null; });
+      document.getElementById('modalEditarPerguntaSave').addEventListener('click', saveEditarPergunta);
       document.getElementById('modalPerguntaCancel').addEventListener('click', function () { document.getElementById('modalPergunta').classList.remove('visible'); });
       document.getElementById('modalPerguntaSave').addEventListener('click', saveRespostaPergunta);
       document.getElementById('modalPerguntaClose').addEventListener('click', function () { document.getElementById('modalPergunta').classList.remove('visible'); });
