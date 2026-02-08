@@ -341,12 +341,12 @@ async function hasGestoraRgpd(gestoraId) {
 /** Lista perguntas ordenadas por frequência (mais perguntadas primeiro) */
 async function listPerguntas() {
   return query(
-    'SELECT id, texto, frequencia, created_at, updated_at FROM ch_perguntas ORDER BY frequencia DESC, updated_at DESC'
+    'SELECT id, texto, frequencia, COALESCE(eh_spam, 0) AS eh_spam, created_at, updated_at FROM ch_perguntas ORDER BY frequencia DESC, updated_at DESC'
   );
 }
 
 async function getPerguntaById(id) {
-  const rows = await query('SELECT id, texto, frequencia, created_at, updated_at FROM ch_perguntas WHERE id = ?', [id]);
+  const rows = await query('SELECT id, texto, frequencia, COALESCE(eh_spam, 0) AS eh_spam, created_at, updated_at FROM ch_perguntas WHERE id = ?', [id]);
   return rows[0] || null;
 }
 
@@ -366,6 +366,14 @@ async function updatePergunta(id, texto) {
 
 async function incrementPerguntaFrequencia(perguntaId) {
   await query('UPDATE ch_perguntas SET frequencia = frequencia + 1, updated_at = NOW() WHERE id = ?', [perguntaId]);
+}
+
+async function deletePergunta(id) {
+  await query('DELETE FROM ch_perguntas WHERE id = ?', [id]);
+}
+
+async function setPerguntaSpam(id, ehSpam) {
+  await query('UPDATE ch_perguntas SET eh_spam = ?, updated_at = NOW() WHERE id = ?', [ehSpam ? 1 : 0, id]);
 }
 
 /** Respostas de uma pergunta (com nome da gestora) */
@@ -474,6 +482,8 @@ module.exports = {
   getPerguntaById,
   createPergunta,
   updatePergunta,
+  deletePergunta,
+  setPerguntaSpam,
   incrementPerguntaFrequencia,
   listRespostasByPerguntaId,
   getRespostaByPerguntaAndGestora,

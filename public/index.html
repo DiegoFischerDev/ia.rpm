@@ -361,6 +361,7 @@
                   <th>Pergunta</th>
                   <th>Freq.</th>
                   <th></th>
+                  <th>Ações (admin)</th>
                 </tr>
               </thead>
               <tbody id="perguntasBody"></tbody>
@@ -950,7 +951,7 @@
         const perguntasBody = document.getElementById('perguntasBody');
         const duvidasBody = document.getElementById('duvidasPendentesBody');
         if (!perguntasBody || !duvidasBody) return;
-        perguntasBody.innerHTML = '<tr><td colspan="4">A carregar…</td></tr>';
+        perguntasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
         duvidasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
         Promise.all([
           fetch(API + '/perguntas', { credentials: 'include' }).then((r) => (r.ok ? r.json() : [])),
@@ -959,19 +960,51 @@
           .then(([perguntas, duvidas]) => {
             perguntasBody.innerHTML = '';
             if (!perguntas.length) {
-              perguntasBody.innerHTML = '<tr><td colspan="4">Nenhuma pergunta no FAQ.</td></tr>';
+              perguntasBody.innerHTML = '<tr><td colspan="5">Nenhuma pergunta no FAQ.</td></tr>';
             } else {
               perguntas.forEach(function (p) {
                 const tr = document.createElement('tr');
                 const textoShort = (p.texto || '').slice(0, 80) + ((p.texto || '').length > 80 ? '…' : '');
                 const jaRespondi = p.ja_respondi ? '<span class="text-muted" style="font-size:0.75rem;">✓ Respondi</span>' : '';
+                const spamBadge = p.eh_spam ? '<span class="badge" style="background:var(--error); color:#fff; font-size:0.7rem;">Spam</span> ' : '';
+                const isAdmin = user && user.role === 'admin';
+                const acoes = isAdmin
+                  ? spamBadge +
+                    '<button type="button" class="btn btn-outline btn-sm btn-spam-pergunta" data-id="' + p.id + '" data-spam="' + (p.eh_spam ? '1' : '0') + '">' + (p.eh_spam ? 'Remover spam' : 'Marcar spam') + '</button> ' +
+                    '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta" data-id="' + p.id + '">Excluir</button>'
+                  : '';
                 tr.innerHTML =
                   '<td>' + p.id + '</td><td>' + escapeHtml(textoShort) + '</td><td>' + (p.frequencia || 0) + '</td><td>' + jaRespondi +
-                  ' <button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button></td>';
+                  ' <button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button></td><td>' + acoes + '</td>';
                 perguntasBody.appendChild(tr);
               });
               perguntasBody.querySelectorAll('.btn-ver-pergunta').forEach(function (btn) {
                 btn.addEventListener('click', function () { openPerguntaDetail(parseInt(this.dataset.id, 10)); });
+              });
+              perguntasBody.querySelectorAll('.btn-spam-pergunta').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                  const id = parseInt(this.dataset.id, 10);
+                  const ehSpam = this.dataset.spam !== '1';
+                  fetch(API + '/perguntas/' + id, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ eh_spam: ehSpam }),
+                  })
+                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                    .then(function () { loadDuvidas(); })
+                    .catch(function (err) { alert(err.message || 'Erro ao atualizar.'); });
+                });
+              });
+              perguntasBody.querySelectorAll('.btn-excluir-pergunta').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                  if (!confirm('Excluir esta pergunta da base de dados? As respostas das gestoras também serão removidas.')) return;
+                  const id = parseInt(this.dataset.id, 10);
+                  fetch(API + '/perguntas/' + id, { method: 'DELETE', credentials: 'include' })
+                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                    .then(function () { loadDuvidas(); })
+                    .catch(function (err) { alert(err.message || 'Erro ao excluir.'); });
+                });
               });
             }
             duvidasBody.innerHTML = '';
@@ -1012,7 +1045,7 @@
             }
           })
           .catch(function () {
-            perguntasBody.innerHTML = '<tr><td colspan="4" class="error-msg">Erro ao carregar.</td></tr>';
+            perguntasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
             duvidasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
           });
       }

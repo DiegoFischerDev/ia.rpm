@@ -49,6 +49,8 @@ const {
   getPerguntaById,
   createPergunta,
   updatePergunta,
+  deletePergunta,
+  setPerguntaSpam,
   incrementPerguntaFrequencia,
   listRespostasByPerguntaId,
   getRespostaByPerguntaAndGestora,
@@ -924,14 +926,28 @@ app.post('/api/dashboard/perguntas', requireDashboardAuth, requireAdminAuth, asy
 app.patch('/api/dashboard/perguntas/:id', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   const id = req.params.id;
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
-  const texto = (req.body && req.body.texto) != null ? String(req.body.texto).trim() : null;
-  if (texto === null) return res.status(400).json({ message: 'texto é obrigatório.' });
+  const body = req.body || {};
+  const texto = body.texto != null ? String(body.texto).trim() : null;
+  const ehSpam = body.eh_spam;
   try {
-    await updatePergunta(id, texto);
+    if (typeof ehSpam === 'boolean') await setPerguntaSpam(id, ehSpam);
+    if (texto !== null) await updatePergunta(id, texto);
     res.json({ ok: true });
   } catch (err) {
-    logStartup(`updatePergunta error: ${err.message}`);
+    logStartup(`updatePergunta/setPerguntaSpam error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao atualizar.' });
+  }
+});
+
+app.delete('/api/dashboard/perguntas/:id', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  try {
+    await deletePergunta(id);
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`deletePergunta error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao excluir.' });
   }
 });
 
