@@ -938,17 +938,17 @@ app.patch('/api/dashboard/perguntas/:id', requireDashboardAuth, requireAdminAuth
       const evoSecret = process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET;
       if (evoUrl && evoSecret) {
         try {
-          const r = await fetch(evoUrl + '/api/internal/atualizar-embedding-pergunta', {
+          const r = await fetch(evoUrl + '/api/internal/atualizar-embedding-duvida', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': evoSecret },
-            body: JSON.stringify({ pergunta_id: Number(id), texto }),
+            body: JSON.stringify({ duvida_id: Number(id), texto }),
           });
           if (!r.ok) {
             const data = await r.json().catch(() => ({}));
-            logStartup(`atualizar-embedding-pergunta (evo) ${r.status}: ${data.message || r.statusText}`);
+            logStartup(`atualizar-embedding-duvida (evo) ${r.status}: ${data.message || r.statusText}`);
           }
         } catch (err) {
-          logStartup(`atualizar-embedding-pergunta (evo) erro: ${err.message}`);
+          logStartup(`atualizar-embedding-duvida (evo) erro: ${err.message}`);
         }
       }
     }
@@ -1024,6 +1024,20 @@ app.post('/api/dashboard/duvidas-pendentes', requireDashboardAuth, requireAdminA
       origem: 'admin',
     });
     if (!row) return res.status(500).json({ message: 'Erro ao criar dúvida.' });
+    const evoUrl = (process.env.EVO_URL || '').replace(/\/$/, '');
+    const evoSecret = process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET;
+    if (evoUrl && evoSecret && row.id && texto) {
+      try {
+        const r = await fetch(evoUrl + '/api/internal/atualizar-embedding-duvida', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': evoSecret },
+          body: JSON.stringify({ duvida_id: Number(row.id), texto }),
+        });
+        if (!r.ok) logStartup(`atualizar-embedding-duvida (criar) ${r.status}`);
+      } catch (err) {
+        logStartup(`atualizar-embedding-duvida (criar) erro: ${err.message}`);
+      }
+    }
     res.status(201).json(row);
   } catch (err) {
     logStartup(`createDuvidaPendente (admin) error: ${err.message}`);
@@ -1038,6 +1052,20 @@ app.patch('/api/dashboard/duvidas-pendentes/:id', requireDashboardAuth, requireA
   if (!texto) return res.status(400).json({ message: 'texto é obrigatório.' });
   try {
     await updateDuvidaPendenteTexto(id, texto);
+    const evoUrl = (process.env.EVO_URL || '').replace(/\/$/, '');
+    const evoSecret = process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET;
+    if (evoUrl && evoSecret) {
+      try {
+        const r = await fetch(evoUrl + '/api/internal/atualizar-embedding-duvida', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Internal-Secret': evoSecret },
+          body: JSON.stringify({ duvida_id: Number(id), texto }),
+        });
+        if (!r.ok) logStartup(`atualizar-embedding-duvida (editar) ${r.status}`);
+      } catch (err) {
+        logStartup(`atualizar-embedding-duvida (editar) erro: ${err.message}`);
+      }
+    }
     res.json({ ok: true });
   } catch (err) {
     logStartup(`updateDuvidaPendenteTexto error: ${err.message}`);
@@ -1067,11 +1095,9 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
   try {
     const duvida = await getDuvidaPendenteById(id);
     if (!duvida) return res.status(404).json({ message: 'Dúvida não encontrada.' });
-    if (duvida.respondida) return res.status(400).json({ message: 'Esta dúvida já foi respondida.' });
-    const pergunta = await createPergunta(duvida.texto);
-    if (!pergunta) return res.status(500).json({ message: 'Erro ao criar pergunta.' });
-    await upsertResposta(pergunta.id, user.id, texto);
-    await markDuvidaRespondida(Number(id), pergunta.id);
+    if (!duvida.eh_pendente) return res.status(400).json({ message: 'Esta dúvida já foi respondida.' });
+    await upsertResposta(Number(id), user.id, texto);
+    await markDuvidaRespondida(Number(id));
     const evoUrl = (process.env.EVO_URL || '').replace(/\/$/, '');
     const evoSecret = process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET;
     if (evoUrl && duvida.contacto_whatsapp) {
@@ -1089,7 +1115,7 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
         logStartup(`Enviar resposta ao lead (WhatsApp) falhou: ${err.message}`);
       }
     }
-    res.json({ ok: true, pergunta_id: pergunta.id });
+    res.json({ ok: true, pergunta_id: Number(id) });
   } catch (err) {
     logStartup(`responderDuvida error: ${err.message}`);
     res.status(500).json({ message: err.message || 'Erro ao responder.' });

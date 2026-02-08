@@ -336,46 +336,47 @@ async function hasGestoraRgpd(gestoraId) {
   return rows.length > 0;
 }
 
-// ---------- FAQ Dúvidas (perguntas + respostas gestoras + dúvidas pendentes) ----------
+// ---------- Dúvidas unificadas (eh_pendente=1 pendentes, eh_pendente=0 FAQ com respostas) ----------
 
-/** Lista perguntas ordenadas por frequência. */
+/** Lista perguntas do FAQ (eh_pendente=0) ordenadas por frequência. */
 async function listPerguntas() {
   return query(
-    `SELECT p.id, p.texto, p.frequencia, p.created_at, p.updated_at,
-            (SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = p.id) AS num_respostas
-     FROM ch_perguntas p
-     ORDER BY p.frequencia DESC, p.updated_at DESC`
+    `SELECT d.id, d.texto, d.frequencia, d.created_at, d.updated_at,
+            (SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id) AS num_respostas
+     FROM ch_duvidas d
+     WHERE d.eh_pendente = 0
+     ORDER BY d.frequencia DESC, d.updated_at DESC`
   );
 }
 
 async function getPerguntaById(id) {
-  const rows = await query('SELECT id, texto, frequencia, created_at, updated_at FROM ch_perguntas WHERE id = ?', [id]);
+  const rows = await query('SELECT id, texto, frequencia, created_at, updated_at FROM ch_duvidas WHERE id = ?', [id]);
   return rows[0] || null;
 }
 
 async function createPergunta(texto) {
   const t = typeof texto === 'string' ? texto.trim() : '';
   if (!t) return null;
-  await query('INSERT INTO ch_perguntas (texto) VALUES (?)', [t]);
-  const rows = await query('SELECT id, texto, frequencia, created_at, updated_at FROM ch_perguntas ORDER BY id DESC LIMIT 1');
+  await query('INSERT INTO ch_duvidas (texto, eh_pendente) VALUES (?, 0)', [t]);
+  const rows = await query('SELECT id, texto, frequencia, created_at, updated_at FROM ch_duvidas ORDER BY id DESC LIMIT 1');
   return rows[0] || null;
 }
 
 async function updatePergunta(id, texto) {
   const t = typeof texto === 'string' ? texto.trim() : null;
   if (t === null) return;
-  await query('UPDATE ch_perguntas SET texto = ?, updated_at = NOW() WHERE id = ?', [t, id]);
+  await query('UPDATE ch_duvidas SET texto = ?, updated_at = NOW() WHERE id = ?', [t, id]);
 }
 
 async function incrementPerguntaFrequencia(perguntaId) {
-  await query('UPDATE ch_perguntas SET frequencia = frequencia + 1, updated_at = NOW() WHERE id = ?', [perguntaId]);
+  await query('UPDATE ch_duvidas SET frequencia = frequencia + 1, updated_at = NOW() WHERE id = ?', [perguntaId]);
 }
 
 async function deletePergunta(id) {
-  await query('DELETE FROM ch_perguntas WHERE id = ?', [id]);
+  await query('DELETE FROM ch_duvidas WHERE id = ?', [id]);
 }
 
-/** Respostas de uma pergunta (com nome da gestora) */
+/** Respostas de uma pergunta (com nome da gestora). pergunta_id referencia ch_duvidas.id */
 async function listRespostasByPerguntaId(perguntaId) {
   return query(
     `SELECT r.id, r.pergunta_id, r.gestora_id, r.texto, r.created_at, r.updated_at, g.nome AS gestora_nome
@@ -406,44 +407,45 @@ async function upsertResposta(perguntaId, gestoraId, texto) {
   );
 }
 
-/** Dúvidas pendentes: listar (não respondidas primeiro, depois por data).
- *  Se gestoraId for passado, exclui dúvidas já respondidas por essa gestora. */
+/** Dúvidas pendentes: eh_pendente=1 ou (eh_pendente=0 e gestora ainda não respondeu). Gestoras não veem eh_spam=1. */
 async function listDuvidasPendentes(gestoraId) {
-  const subCount = '(SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id)';
+  const subCount = '(SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id)';
+  const spamFilter = gestoraId != null ? ' AND d.eh_spam = 0' : '';
   const sql = gestoraId != null
-    ? `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, d.created_at, d.updated_at,
+    ? `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.eh_pendente, d.eh_spam, d.created_at, d.updated_at,
               l.nome AS lead_nome, ${subCount} AS num_respostas
-       FROM ch_duvidas_pendentes d
+       FROM ch_duvidas d
        LEFT JOIN ch_leads l ON l.id = d.lead_id
-       WHERE (d.respondida = 0) OR (d.respondida = 1 AND (d.pergunta_id IS NULL OR NOT EXISTS (
-         SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id AND r.gestora_id = ?
-       )))
-       ORDER BY d.respondida ASC, d.created_at DESC`
-    : `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.respondida, d.pergunta_id, d.created_at, d.updated_at,
+       WHERE (d.eh_pendente = 1 OR (d.eh_pendente = 0 AND NOT EXISTS (
+         SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id AND r.gestora_id = ?
+       )))${spamFilter}
+       ORDER BY d.eh_pendente DESC, d.created_at DESC`
+    : `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.eh_pendente, d.eh_spam, d.created_at, d.updated_at,
               l.nome AS lead_nome
-       FROM ch_duvidas_pendentes d
+       FROM ch_duvidas d
        LEFT JOIN ch_leads l ON l.id = d.lead_id
-       WHERE d.respondida = 0
+       WHERE d.eh_pendente = 1
        ORDER BY d.created_at DESC`;
   return gestoraId != null ? query(sql, [gestoraId]) : query(sql);
 }
 
-/** Listar id e texto das dúvidas pendentes não respondidas (para o evo verificar duplicados por vetor). */
+/** Listar id e texto das dúvidas pendentes não-spam (evo pode usar para duplicados). */
 async function listDuvidasPendentesTextos() {
   const rows = await query(
-    'SELECT id, texto FROM ch_duvidas_pendentes WHERE respondida = 0 AND texto IS NOT NULL AND texto != "" ORDER BY id ASC'
+    "SELECT id, texto FROM ch_duvidas WHERE eh_pendente = 1 AND eh_spam = 0 AND texto IS NOT NULL AND TRIM(texto) != '' ORDER BY id ASC"
   );
   return rows.map((r) => ({ id: r.id, texto: (r.texto || '').trim() })).filter((r) => r.texto);
 }
 
-/** Contagem de dúvidas pendentes (mesmos filtros que listDuvidasPendentes). */
+/** Contagem de dúvidas pendentes (mesmo filtro que listDuvidasPendentes; gestoras não contam spam). */
 async function getDuvidasPendentesCount(gestoraId) {
+  const spamFilter = gestoraId != null ? ' AND d.eh_spam = 0' : '';
   const sql = gestoraId != null
-    ? `SELECT COUNT(*) AS n FROM ch_duvidas_pendentes d
-       WHERE (d.respondida = 0) OR (d.respondida = 1 AND (d.pergunta_id IS NULL OR NOT EXISTS (
-         SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.pergunta_id AND r.gestora_id = ?
-       )))`
-    : `SELECT COUNT(*) AS n FROM ch_duvidas_pendentes d WHERE d.respondida = 0`;
+    ? `SELECT COUNT(*) AS n FROM ch_duvidas d
+       WHERE (d.eh_pendente = 1 OR (d.eh_pendente = 0 AND NOT EXISTS (
+         SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id AND r.gestora_id = ?
+       )))${spamFilter}`
+    : 'SELECT COUNT(*) AS n FROM ch_duvidas d WHERE d.eh_pendente = 1';
   const rows = gestoraId != null ? await query(sql, [gestoraId]) : await query(sql);
   return (rows[0] && rows[0].n != null) ? Number(rows[0].n) : 0;
 }
@@ -453,37 +455,34 @@ async function createDuvidaPendente({ contactoWhatsapp, leadId, texto, origem = 
   const textoVal = typeof texto === 'string' ? texto.trim() : '';
   if (!contacto || !textoVal) return null;
   await query(
-    'INSERT INTO ch_duvidas_pendentes (contacto_whatsapp, lead_id, texto, origem) VALUES (?, ?, ?, ?)',
-    [contacto, leadId || null, textoVal, origem || 'evo']
+    'INSERT INTO ch_duvidas (texto, eh_pendente, contacto_whatsapp, lead_id, origem) VALUES (?, 1, ?, ?, ?)',
+    [textoVal, contacto, leadId || null, origem || 'evo']
   );
-  const rows = await query('SELECT * FROM ch_duvidas_pendentes ORDER BY id DESC LIMIT 1');
+  const rows = await query('SELECT * FROM ch_duvidas ORDER BY id DESC LIMIT 1');
   return rows[0] || null;
 }
 
 async function getDuvidaPendenteById(id) {
   const rows = await query(
-    'SELECT id, contacto_whatsapp, lead_id, texto, origem, respondida, pergunta_id, created_at, updated_at FROM ch_duvidas_pendentes WHERE id = ?',
+    'SELECT id, contacto_whatsapp, lead_id, texto, origem, eh_pendente, eh_spam, created_at, updated_at FROM ch_duvidas WHERE id = ?',
     [id]
   );
   return rows[0] || null;
 }
 
-/** Marcar dúvida como respondida e associar à pergunta do FAQ criada */
-async function markDuvidaRespondida(duvidaId, perguntaId) {
-  await query(
-    'UPDATE ch_duvidas_pendentes SET respondida = 1, pergunta_id = ?, updated_at = NOW() WHERE id = ?',
-    [perguntaId, duvidaId]
-  );
+/** Marcar dúvida como respondida (passa a FAQ, eh_pendente=0). */
+async function markDuvidaRespondida(duvidaId) {
+  await query('UPDATE ch_duvidas SET eh_pendente = 0, updated_at = NOW() WHERE id = ?', [duvidaId]);
 }
 
 async function updateDuvidaPendenteTexto(id, texto) {
   const t = typeof texto === 'string' ? texto.trim() : '';
   if (!t) return;
-  await query('UPDATE ch_duvidas_pendentes SET texto = ?, updated_at = NOW() WHERE id = ?', [t, id]);
+  await query('UPDATE ch_duvidas SET texto = ?, updated_at = NOW() WHERE id = ?', [t, id]);
 }
 
 async function deleteDuvidaPendente(id) {
-  await query('DELETE FROM ch_duvidas_pendentes WHERE id = ?', [id]);
+  await query('DELETE FROM ch_duvidas WHERE id = ?', [id]);
 }
 
 module.exports = {
