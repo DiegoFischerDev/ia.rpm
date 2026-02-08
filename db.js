@@ -468,6 +468,12 @@ async function markDuvidaRespondida(duvidaId, perguntaId) {
   );
 }
 
+async function updateDuvidaPendenteTexto(id, texto) {
+  const t = typeof texto === 'string' ? texto.trim() : '';
+  if (!t) return;
+  await query('UPDATE ch_duvidas_pendentes SET texto = ?, updated_at = NOW() WHERE id = ?', [t, id]);
+}
+
 async function deleteDuvidaPendente(id) {
   await query('DELETE FROM ch_duvidas_pendentes WHERE id = ?', [id]);
 }
@@ -518,5 +524,6 @@ module.exports = {
   createDuvidaPendente,
   getDuvidaPendenteById,
   markDuvidaRespondida,
+  updateDuvidaPendenteTexto,
   deleteDuvidaPendente,
 };

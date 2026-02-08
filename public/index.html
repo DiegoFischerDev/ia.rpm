@@ -590,7 +590,7 @@
       <div id="modalPerguntaRespostas" style="margin-bottom:1rem;"></div>
       <div id="modalPerguntaMinhaRespostaWrap" style="display:none;">
         <label for="modalPerguntaMinhaResposta">A sua resposta</label>
-        <textarea id="modalPerguntaMinhaResposta" rows="4" placeholder="Escreva ou edite a sua opinião..."></textarea>
+        <textarea id="modalPerguntaMinhaResposta" rows="4" placeholder="Escreva ou edite a sua opinião..." style="width:100%; box-sizing:border-box;"></textarea>
         <div class="modal-actions" style="margin-top:1rem;">
           <button type="button" class="btn btn-secondary" id="modalPerguntaCancel">Cancelar</button>
           <button type="button" class="btn btn-primary" id="modalPerguntaSave">Guardar resposta</button>
@@ -608,6 +608,18 @@
       <p id="modalVerDuvidaTexto" class="text-muted" style="white-space:pre-wrap;margin-bottom:1rem;"></p>
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" id="modalVerDuvidaFechar">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalEditarDuvida" class="modal-overlay">
+    <div class="modal" style="max-width:560px;">
+      <h3 id="modalEditarDuvidaTitle">Editar dúvida pendente</h3>
+      <label for="modalEditarDuvidaTexto">Texto da dúvida</label>
+      <textarea id="modalEditarDuvidaTexto" rows="4" placeholder="Texto da dúvida..."></textarea>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button type="button" class="btn btn-secondary" id="modalEditarDuvidaCancel">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="modalEditarDuvidaSave">Guardar</button>
       </div>
     </div>
   </div>
@@ -1043,8 +1055,9 @@
                   ? '<button type="button" class="btn btn-primary btn-sm btn-responder-duvida" data-id="' + d.id + '">Responder</button>'
                   : '';
                 const verBtn = isAdmin ? '<button type="button" class="btn btn-secondary btn-sm btn-ver-duvida" data-id="' + d.id + '">Ver</button> ' : '';
+                const editarBtn = isAdmin ? '<button type="button" class="btn btn-outline btn-sm btn-editar-duvida" data-id="' + d.id + '">Editar</button> ' : '';
                 const acoesAdmin = isAdmin
-                  ? verBtn + '<button type="button" class="btn btn-danger btn-sm btn-excluir-duvida" data-id="' + d.id + '">Excluir</button>'
+                  ? verBtn + editarBtn + '<button type="button" class="btn btn-danger btn-sm btn-excluir-duvida" data-id="' + d.id + '">Excluir</button>'
                   : '';
                 tr.innerHTML =
                   '<td>' + d.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoDuvida) + '">' + escapeHtml(textoDuvida) + '</td><td class="td-contacto">' + escapeHtml(d.contacto_whatsapp || (d.lead_nome || '—')) + '</td><td>' + escapeHtml(formatDate(d.created_at)) + '</td><td>' + (isAdmin ? acoesAdmin : btn) + '</td>';
@@ -1058,6 +1071,13 @@
                   var id = parseInt(this.dataset.id, 10);
                   var duvida = duvidas.find(function (x) { return x.id === id; });
                   if (duvida) openVerDuvida(duvida);
+                });
+              });
+              duvidasBody.querySelectorAll('.btn-editar-duvida').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                  var id = parseInt(this.dataset.id, 10);
+                  var duvida = duvidas.find(function (x) { return x.id === id; });
+                  if (duvida) openEditarDuvida(duvida);
                 });
               });
               duvidasBody.querySelectorAll('.btn-excluir-duvida').forEach(function (btn) {
@@ -1113,9 +1133,10 @@
                 const jaRespondi = p.ja_respondi ? '<span class="text-muted" style="font-size:0.75rem;">✓ Respondi</span> ' : '';
                 const numRespostas = p.num_respostas != null ? Number(p.num_respostas) : 0;
                 const isAdmin = user && user.role === 'admin';
-                const respostasCell = isAdmin ? numRespostas + ' <button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>' : jaRespondi + '<button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>';
+                const respostasCell = isAdmin ? String(numRespostas) : jaRespondi + '<button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>';
                 const acoes = isAdmin
-                  ? '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta" data-id="' + p.id + '">Editar</button> ' +
+                  ? '<button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button> ' +
+                    '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta" data-id="' + p.id + '">Editar</button> ' +
                     '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta" data-id="' + p.id + '">Excluir</button>'
                   : '';
                 tr.innerHTML =
@@ -1237,6 +1258,35 @@
         document.getElementById('modalVerDuvida').classList.add('visible');
       }
 
+      var _duvidaEditarId = null;
+
+      function openEditarDuvida(duvida) {
+        if (!duvida || !duvida.id) return;
+        _duvidaEditarId = duvida.id;
+        document.getElementById('modalEditarDuvidaTitle').textContent = 'Editar dúvida #' + duvida.id;
+        document.getElementById('modalEditarDuvidaTexto').value = (duvida.texto || '').trim();
+        document.getElementById('modalEditarDuvida').classList.add('visible');
+      }
+
+      function saveEditarDuvida() {
+        if (!_duvidaEditarId) return;
+        var texto = document.getElementById('modalEditarDuvidaTexto').value.trim();
+        if (!texto) { alert('Escreva o texto da dúvida.'); return; }
+        fetch(API + '/duvidas-pendentes/' + _duvidaEditarId, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ texto: texto }),
+        })
+          .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+          .then(function () {
+            document.getElementById('modalEditarDuvida').classList.remove('visible');
+            _duvidaEditarId = null;
+            loadDuvidasPendentes();
+          })
+          .catch(function (err) { alert(err.message || 'Erro ao guardar.'); });
+      }
+
       function openResponderDuvida(duvidaId) {
         _duvidaModalId = duvidaId;
         fetch(API + '/duvidas-pendentes', { credentials: 'include' })
@@ -1278,6 +1328,8 @@
       document.getElementById('modalPerguntaSave').addEventListener('click', saveRespostaPergunta);
       document.getElementById('modalPerguntaClose').addEventListener('click', function () { document.getElementById('modalPergunta').classList.remove('visible'); });
       document.getElementById('modalVerDuvidaFechar').addEventListener('click', function () { document.getElementById('modalVerDuvida').classList.remove('visible'); });
+      document.getElementById('modalEditarDuvidaCancel').addEventListener('click', function () { document.getElementById('modalEditarDuvida').classList.remove('visible'); _duvidaEditarId = null; });
+      document.getElementById('modalEditarDuvidaSave').addEventListener('click', saveEditarDuvida);
       document.getElementById('modalDuvidaResponderCancel').addEventListener('click', function () { document.getElementById('modalDuvidaResponder').classList.remove('visible'); });
       document.getElementById('modalDuvidaResponderSubmit').addEventListener('click', submitResponderDuvida);
 

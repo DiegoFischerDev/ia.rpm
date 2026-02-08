@@ -57,10 +57,11 @@ const {
   listDuvidasPendentes,
   getDuvidasPendentesCount,
   createDuvidaPendente,
-  getDuvidaPendenteById,
+getDuvidaPendenteById,
   markDuvidaRespondida,
+  updateDuvidaPendenteTexto,
   deleteDuvidaPendente,
-  } = require('./db');
+} = require('./db');
 const {
   saveDocument,
   listDocuments,
@@ -1026,6 +1027,20 @@ app.post('/api/dashboard/duvidas-pendentes', requireDashboardAuth, requireAdminA
   } catch (err) {
     logStartup(`createDuvidaPendente (admin) error: ${err.message}`);
     res.status(500).json({ message: err.message || 'Erro ao criar.' });
+  }
+});
+
+app.patch('/api/dashboard/duvidas-pendentes/:id', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  const texto = req.body && req.body.texto != null ? String(req.body.texto).trim() : '';
+  if (!texto) return res.status(400).json({ message: 'texto é obrigatório.' });
+  try {
+    await updateDuvidaPendenteTexto(id, texto);
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`updateDuvidaPendenteTexto error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao atualizar.' });
   }
 });
 
