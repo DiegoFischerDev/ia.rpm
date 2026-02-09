@@ -532,7 +532,6 @@
               <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem;">
                 <img id="profileFotoPreview" src="" alt="Foto de perfil" style="max-height:64px;height:auto;border-radius:999px;display:none;">
                 <div class="actions" style="margin:0;">
-                  <button type="button" id="profileFotoVer" class="btn btn-outline">Ver</button>
                   <button type="button" id="profileFotoSubstituir" class="btn btn-outline">Substituir</button>
                 </div>
               </div>
@@ -1196,13 +1195,7 @@
         var preview = document.getElementById('profileFotoPreview');
         var fotoEnviada = document.getElementById('profileFotoEnviada');
         var fotoNaoEnviada = document.getElementById('profileFotoNaoEnviada');
-        var btnVer = document.getElementById('profileFotoVer');
         var btnSub = document.getElementById('profileFotoSubstituir');
-        if (btnVer && preview) {
-          btnVer.addEventListener('click', function () {
-            if (preview.src) window.open(preview.src, '_blank');
-          });
-        }
         if (btnSub && fotoEnviada && fotoNaoEnviada && input) {
           btnSub.addEventListener('click', function () {
             fotoEnviada.style.display = 'none';
