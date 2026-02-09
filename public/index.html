@@ -331,6 +331,7 @@
   <div id="dashboardApp" class="app screen">
     <nav class="sidebar">
       <a href="#leads" class="sidebar-logo" aria-label="Início"><img src="logo_bg_clara.png" alt=""></a>
+      <div class="sidebar-footer-version">versão 1.0</div>
       <a href="#leads" id="navLeads" class="sidebar-nav-item active">Leads</a>
       <a href="#rafa" id="navRafa" class="sidebar-nav-item">
         <span class="nav-label">Falar com Rafa</span>
@@ -352,7 +353,6 @@
         </div>
         <button type="button" id="btnLogout" class="sidebar-footer-sair">Sair</button>
       </div>
-      <div class="sidebar-footer-version">versão 1.0</div>
     </nav>
     <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
     <main class="main">
@@ -525,8 +525,8 @@
             <input type="text" id="profileFotoPerfil" placeholder="https://exemplo.com/foto.jpg">
             <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Esta imagem será mostrada aos leads atribuídos a si na página de envio de documentos.</p>
             <label>Mensagem de boas-vindas (curta)</label>
-            <textarea id="profileBoasVindas" rows="3" placeholder="Ex.: Olá, sou a sua gestora de crédito habitação e vou acompanhar o seu processo."></textarea>
-            <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Este texto curto será exibido como mensagem de boas-vindas para os leads atribuídos a si, após confirmarem o email.</p>
+            <textarea id="profileBoasVindas" rows="3" style="width:100%;" placeholder="Ex.: Olá, sou a sua gestora de crédito habitação e vou acompanhar o seu processo."></textarea>
+            <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Este texto curto será exibido como mensagem de boas-vindas para os leads atribuídos a si. Apresente-se brevemente.</p>
             <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;">
             <div id="profilePasswordSection">
               <button type="button" id="profileBtnAlterarPassword" class="btn btn-outline">Alterar palavra-passe</button>
