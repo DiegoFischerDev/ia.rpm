@@ -1115,7 +1115,32 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
     const evoSecret = process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET;
     if (evoUrl && duvida.contacto_whatsapp) {
       const num = String(duvida.contacto_whatsapp).replace(/\D/g, '');
-      const msg = `Olá! Uma gestora respondeu à sua dúvida:\n\n"${(duvida.texto || '').slice(0, 200)}${(duvida.texto || '').length > 200 ? '…' : ''}"\n\n*Resposta:*\n${texto}`;
+      // Buscar todas as respostas atuais para esta dúvida (já incluindo a resposta acabada de guardar)
+      let respostasTexto = '';
+      try {
+        const respostas = await listRespostasByPerguntaId(Number(id));
+        if (respostas && respostas.length) {
+          respostasTexto = respostas
+            .map((r) => {
+              const nomeGestora = (r.gestora_nome || '').trim() || 'Gestora';
+              return `- ${nomeGestora}: ${r.texto}`;
+            })
+            .join('\n\n');
+        } else {
+          const nomeGestora = (user && user.nome) || 'Gestora';
+          respostasTexto = `- ${nomeGestora}: ${texto}`;
+        }
+      } catch (_) {
+        const nomeGestora = (user && user.nome) || 'Gestora';
+        respostasTexto = `- ${nomeGestora}: ${texto}`;
+      }
+      const perguntaResumo = (duvida.texto || '').slice(0, 200);
+      const perguntaLabel = perguntaResumo + ((duvida.texto || '').length > 200 ? '…' : '');
+      const msg =
+        `Olá! Há novas respostas da equipa para a sua dúvida:\n\n` +
+        `"${perguntaLabel}"\n\n` +
+        `*Respostas das gestoras:*\n` +
+        `${respostasTexto}`;
       const headers = { 'Content-Type': 'application/json' };
       if (evoSecret) headers['X-Internal-Secret'] = evoSecret;
       try {
