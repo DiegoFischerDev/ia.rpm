@@ -1140,7 +1140,10 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
         `Olá! Há novas respostas da equipa para a sua dúvida:\n\n` +
         `"${perguntaLabel}"\n\n` +
         `*Respostas das gestoras:*\n` +
-        `${respostasTexto}`;
+        `${respostasTexto}\n\n` +
+        `— A tua questão foi esclarecida? Se não foi, podes reformular a pergunta ou escrever:\n\n` +
+        `*GESTORA* – se já queres falar com a gestora para iniciar a análise\n` +
+        `*FALAR COM RAFA* – se precisas falar diretamente com a Rafa`;
       const headers = { 'Content-Type': 'application/json' };
       if (evoSecret) headers['X-Internal-Secret'] = evoSecret;
       try {
