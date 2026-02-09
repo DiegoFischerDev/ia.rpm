@@ -121,6 +121,12 @@
     }
     .nav-badge.hidden { display: none; }
     .sidebar-footer-text { display: flex; align-items: center; justify-content: center; flex: 1; }
+    .sidebar-footer-name {
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .sidebar-footer-version {
       font-size: 0.7rem;
       color: rgba(148, 163, 184, 0.9);
@@ -330,8 +336,8 @@
 
   <div id="dashboardApp" class="app screen">
     <nav class="sidebar">
-      <a href="#leads" class="sidebar-logo" aria-label="Início"><img src="logo_bg_clara.png" alt=""></a>
       <div class="sidebar-footer-version">versão 1.0</div>
+      <a href="#leads" class="sidebar-logo" aria-label="Início"><img src="logo_bg_clara.png" alt=""></a>
       <a href="#leads" id="navLeads" class="sidebar-nav-item active">Leads</a>
       <a href="#rafa" id="navRafa" class="sidebar-nav-item">
         <span class="nav-label">Falar com Rafa</span>
@@ -521,8 +527,11 @@
             <label>WhatsApp (com indicativo, ex: 351912345678)</label>
             <input type="text" id="profileWhatsapp" placeholder="desabilitado">
             <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Os seus leads terão acesso a este número. Deixe em branco se não quiser ser contactada por WhatsApp.</p>
-            <label>Foto de perfil (URL da imagem, opcional)</label>
-            <input type="text" id="profileFotoPerfil" placeholder="https://exemplo.com/foto.jpg">
+            <label>Foto de perfil (opcional)</label>
+            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+              <img id="profileFotoPreview" src="" alt="Foto de perfil" style="max-height:64px;height:auto;border-radius:999px;display:none;">
+              <input type="file" id="profileFotoInput" accept="image/*">
+            </div>
             <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Esta imagem será mostrada aos leads atribuídos a si na página de envio de documentos.</p>
             <label>Mensagem de boas-vindas (curta)</label>
             <textarea id="profileBoasVindas" rows="3" style="width:100%;" placeholder="Ex.: Olá, sou a sua gestora de crédito habitação e vou acompanhar o seu processo."></textarea>
@@ -1174,6 +1183,19 @@
         });
       })();
 
+      (function initProfileFotoPreview() {
+        var input = document.getElementById('profileFotoInput');
+        var preview = document.getElementById('profileFotoPreview');
+        if (!input || !preview) return;
+        input.addEventListener('change', function () {
+          if (input.files && input.files[0]) {
+            var url = URL.createObjectURL(input.files[0]);
+            preview.src = url;
+            preview.style.display = 'block';
+          }
+        });
+      })();
+
       (function initLeadsGroups() {
         var groupButtons = document.querySelectorAll('.leads-group-btn');
         if (!groupButtons || !groupButtons.length) return;
@@ -1572,8 +1594,16 @@
             document.getElementById('profileEmail').value = data.email || '';
             document.getElementById('profileEmailParaLeads').value = data.email_para_leads || '';
             document.getElementById('profileWhatsapp').value = data.whatsapp || '';
-            var fotoInput = document.getElementById('profileFotoPerfil');
-            if (fotoInput) fotoInput.value = data.foto_perfil || '';
+            var fotoPrev = document.getElementById('profileFotoPreview');
+            if (fotoPrev) {
+              if (data.foto_perfil) {
+                fotoPrev.src = data.foto_perfil;
+                fotoPrev.style.display = 'block';
+              } else {
+                fotoPrev.src = '';
+                fotoPrev.style.display = 'none';
+              }
+            }
             var boasInput = document.getElementById('profileBoasVindas');
             if (boasInput) boasInput.value = data.boas_vindas || '';
             document.getElementById('profileCurrentPassword').value = '';
@@ -1623,8 +1653,10 @@
         var fd = new FormData();
         fd.append('whatsapp', document.getElementById('profileWhatsapp').value.trim());
         fd.append('email_para_leads', document.getElementById('profileEmailParaLeads').value.trim().toLowerCase());
-        var fotoInput = document.getElementById('profileFotoPerfil');
-        if (fotoInput) fd.append('foto_perfil', fotoInput.value.trim());
+        var fotoInput = document.getElementById('profileFotoInput');
+        if (fotoInput && fotoInput.files && fotoInput.files[0]) {
+          fd.append('foto_perfil', fotoInput.files[0]);
+        }
         var boasInput = document.getElementById('profileBoasVindas');
         if (boasInput) fd.append('boas_vindas', boasInput.value.trim());
         fd.append('currentPassword', document.getElementById('profileCurrentPassword').value);

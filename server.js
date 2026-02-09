@@ -1258,6 +1258,7 @@ const profileUpload = uploadMemory.fields([
   { name: 'currentPassword', maxCount: 1 },
   { name: 'newPassword', maxCount: 1 },
   { name: 'rgpd', maxCount: 1 },
+  { name: 'foto_perfil', maxCount: 1 },
 ]);
 
 app.post('/api/dashboard/profile', requireDashboardAuth, profileUpload, async (req, res) => {
@@ -1267,18 +1268,26 @@ app.post('/api/dashboard/profile', requireDashboardAuth, profileUpload, async (r
   const body = req.body || {};
   const whatsapp = (body.whatsapp !== undefined && body.whatsapp !== null ? String(body.whatsapp) : '').trim();
   const emailParaLeads = (body.email_para_leads !== undefined && body.email_para_leads !== null ? String(body.email_para_leads) : '').trim().toLowerCase();
-  const fotoPerfil = body.foto_perfil !== undefined && body.foto_perfil !== null ? String(body.foto_perfil).trim() : undefined;
   const boasVindas = body.boas_vindas !== undefined && body.boas_vindas !== null ? String(body.boas_vindas).trim() : undefined;
   const currentPassword = (body.currentPassword != null ? String(body.currentPassword) : '').trim();
   const newPassword = (body.newPassword != null ? String(body.newPassword) : '').trim();
   const rgpdFile = req.files && req.files.rgpd && req.files.rgpd[0] ? req.files.rgpd[0] : null;
+  const fotoFile = req.files && req.files.foto_perfil && req.files.foto_perfil[0] ? req.files.foto_perfil[0] : null;
 
   try {
     const updates = {};
     if (body.whatsapp !== undefined && body.whatsapp !== null) updates.whatsapp = whatsapp === '' ? '' : whatsapp.replace(/\D/g, '');
     if (emailParaLeads !== undefined) updates.email_para_leads = emailParaLeads === '' ? null : emailParaLeads;
-    if (fotoPerfil !== undefined) updates.foto_perfil = fotoPerfil === '' ? null : fotoPerfil;
     if (boasVindas !== undefined) updates.boas_vindas = boasVindas === '' ? null : boasVindas;
+    if (fotoFile && fotoFile.buffer && fotoFile.buffer.length) {
+      const mime = (fotoFile.mimetype || '').toLowerCase();
+      if (!mime.startsWith('image/')) {
+        return res.status(400).json({ message: 'A foto de perfil deve ser uma imagem.' });
+      }
+      const base64 = fotoFile.buffer.toString('base64');
+      const dataUrl = `data:${mime};base64,${base64}`;
+      updates.foto_perfil = dataUrl;
+    }
     if (Object.keys(updates).length) await updateGestora(gestoraId, updates);
 
     if (newPassword) {
