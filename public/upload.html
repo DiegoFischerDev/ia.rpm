@@ -459,6 +459,11 @@
       </div>
       <div id="stepDocsEnviados" class="card" style="display:none;">
         <h2>Documentos recebidos</h2>
+        <div id="gestoraWelcomeWrap" style="display:none;margin:0 0 1rem 0;text-align:center;">
+          <img id="gestoraFotoPerfil" src="" alt="Foto da gestora" style="width:80px;height:80px;border-radius:999px;object-fit:cover;display:none;margin:0 auto 0.5rem auto;">
+          <div id="gestoraWelcomeNome" style="font-weight:600;margin-bottom:0.25rem;"></div>
+          <p id="gestoraWelcomeTexto" style="margin:0;font-size:0.9rem;"></p>
+        </div>
         <p class="doc-hint">Os seus documentos foram enviados com sucesso. A gestora irá analisá-los e contactá-lo(a) por email.</p>
         <p class="doc-hint" id="gestoraNomeWrap" style="display:none;">A sua gestora de crédito: <strong id="gestoraNomeRef"></strong></p>
         <p class="doc-hint" id="gestoraEmailWrap" style="display:none;">Email de contacto da gestora: <a href="#" id="gestoraEmailRef" class="doc-link-inline"></a></p>
@@ -710,7 +715,33 @@
           wrap.style.display = 'block';
         } else if (wrap) wrap.style.display = 'none';
       }
+      function setGestoraWelcomeDisplay(nome, foto, boasVindas) {
+        var wrap = document.getElementById('gestoraWelcomeWrap');
+        if (!wrap) return;
+        var img = document.getElementById('gestoraFotoPerfil');
+        var nomeEl = document.getElementById('gestoraWelcomeNome');
+        var txtEl = document.getElementById('gestoraWelcomeTexto');
+        var hasFoto = foto && String(foto).trim().length > 0;
+        var hasTexto = boasVindas && String(boasVindas).trim().length > 0;
+        var hasConteudo = (nome && String(nome).trim()) || hasFoto || hasTexto;
+        if (!hasConteudo) {
+          wrap.style.display = 'none';
+          return;
+        }
+        if (img) {
+          if (hasFoto) {
+            img.src = foto;
+            img.style.display = 'block';
+          } else {
+            img.style.display = 'none';
+          }
+        }
+        if (nomeEl) nomeEl.textContent = nome || '';
+        if (txtEl) txtEl.textContent = hasTexto ? String(boasVindas).trim() : '';
+        wrap.style.display = 'block';
+      }
       function setDocsEnviadosDisplay(data) {
+        setGestoraWelcomeDisplay(data.gestoraNome, data.gestoraFotoPerfil, data.gestoraBoasVindas);
         setGestoraNomeDisplay(data.gestoraNome);
         setGestoraEmailDisplay(data.gestoraEmail);
         setGestoraWhatsappDisplay(data.gestoraWhatsapp, data.nome);

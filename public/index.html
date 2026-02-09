@@ -120,8 +120,13 @@
       animation: pulse-badge 2s ease-in-out infinite;
     }
     .nav-badge.hidden { display: none; }
-    .sidebar-footer-text { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
-    .sidebar-footer-version { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem; }
+    .sidebar-footer-text { display: flex; align-items: center; justify-content: center; flex: 1; }
+    .sidebar-footer-version {
+      font-size: 0.7rem;
+      color: rgba(148, 163, 184, 0.9);
+      text-align: center;
+      margin-top: 0.25rem;
+    }
     @keyframes pulse-badge {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.85; }
@@ -344,10 +349,10 @@
         </span>
         <div class="sidebar-footer-text">
           <span id="sidebarUserName" class="sidebar-footer-name" aria-live="polite"></span>
-          <span class="sidebar-footer-version">versão 1.0</span>
         </div>
         <button type="button" id="btnLogout" class="sidebar-footer-sair">Sair</button>
       </div>
+      <div class="sidebar-footer-version">versão 1.0</div>
     </nav>
     <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
     <main class="main">
@@ -516,6 +521,12 @@
             <label>WhatsApp (com indicativo, ex: 351912345678)</label>
             <input type="text" id="profileWhatsapp" placeholder="desabilitado">
             <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Os seus leads terão acesso a este número. Deixe em branco se não quiser ser contactada por WhatsApp.</p>
+            <label>Foto de perfil (URL da imagem, opcional)</label>
+            <input type="text" id="profileFotoPerfil" placeholder="https://exemplo.com/foto.jpg">
+            <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Esta imagem será mostrada aos leads atribuídos a si na página de envio de documentos.</p>
+            <label>Mensagem de boas-vindas (curta)</label>
+            <textarea id="profileBoasVindas" rows="3" placeholder="Ex.: Olá, sou a sua gestora de crédito habitação e vou acompanhar o seu processo."></textarea>
+            <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Este texto curto será exibido como mensagem de boas-vindas para os leads atribuídos a si, após confirmarem o email.</p>
             <hr style="border:none;border-top:1px solid var(--border);margin:1.25rem 0;">
             <div id="profilePasswordSection">
               <button type="button" id="profileBtnAlterarPassword" class="btn btn-outline">Alterar palavra-passe</button>
@@ -1561,6 +1572,10 @@
             document.getElementById('profileEmail').value = data.email || '';
             document.getElementById('profileEmailParaLeads').value = data.email_para_leads || '';
             document.getElementById('profileWhatsapp').value = data.whatsapp || '';
+            var fotoInput = document.getElementById('profileFotoPerfil');
+            if (fotoInput) fotoInput.value = data.foto_perfil || '';
+            var boasInput = document.getElementById('profileBoasVindas');
+            if (boasInput) boasInput.value = data.boas_vindas || '';
             document.getElementById('profileCurrentPassword').value = '';
             document.getElementById('profileNewPassword').value = '';
             document.getElementById('profileNewPasswordConfirm').value = '';
@@ -1608,6 +1623,10 @@
         var fd = new FormData();
         fd.append('whatsapp', document.getElementById('profileWhatsapp').value.trim());
         fd.append('email_para_leads', document.getElementById('profileEmailParaLeads').value.trim().toLowerCase());
+        var fotoInput = document.getElementById('profileFotoPerfil');
+        if (fotoInput) fd.append('foto_perfil', fotoInput.value.trim());
+        var boasInput = document.getElementById('profileBoasVindas');
+        if (boasInput) fd.append('boas_vindas', boasInput.value.trim());
         fd.append('currentPassword', document.getElementById('profileCurrentPassword').value);
         fd.append('newPassword', newP);
         var rgpdInput = document.getElementById('profileRgpdSubstituirInput');

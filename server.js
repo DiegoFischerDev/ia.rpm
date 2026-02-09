@@ -279,6 +279,8 @@ async function getGestoraContactForLead(lead) {
         gestoraNome: g.nome || '',
         gestoraEmail: (g.email_para_leads && g.email_para_leads.trim()) ? g.email_para_leads.trim() : (g.email || ''),
         gestoraWhatsapp: (g.whatsapp || '').replace(/\D/g, ''),
+        gestoraFotoPerfil: g.foto_perfil || '',
+        gestoraBoasVindas: g.boas_vindas || '',
       };
     }
   }
@@ -286,6 +288,8 @@ async function getGestoraContactForLead(lead) {
     gestoraNome: '',
     gestoraEmail: process.env.GESTORA_EMAIL || '',
     gestoraWhatsapp: (process.env.GESTORA_WHATSAPP || '').replace(/\D/g, ''),
+    gestoraFotoPerfil: '',
+    gestoraBoasVindas: '',
   };
 }
 
@@ -457,6 +461,8 @@ app.post('/api/leads/:leadId/access', async (req, res) => {
     gestoraNome: contact.gestoraNome,
     gestoraEmail: contact.gestoraEmail,
     gestoraWhatsapp: contact.gestoraWhatsapp,
+    gestoraFotoPerfil: contact.gestoraFotoPerfil,
+    gestoraBoasVindas: contact.gestoraBoasVindas,
     nome: lead.nome || '',
   });
 });
@@ -1217,7 +1223,15 @@ app.get('/api/dashboard/profile', requireDashboardAuth, async (req, res) => {
     const g = await getGestoraById(user.id);
     if (!g) return res.status(404).json({ message: 'Gestora não encontrada.' });
     const has_rgpd = await hasGestoraRgpd(user.id);
-    res.json({ nome: g.nome, email: g.email, email_para_leads: g.email_para_leads || g.email || '', whatsapp: g.whatsapp || '', has_rgpd });
+    res.json({
+      nome: g.nome,
+      email: g.email,
+      email_para_leads: g.email_para_leads || g.email || '',
+      whatsapp: g.whatsapp || '',
+      foto_perfil: g.foto_perfil || '',
+      boas_vindas: g.boas_vindas || '',
+      has_rgpd,
+    });
   } catch (err) {
     logStartup(`getProfile error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao carregar perfil.' });
@@ -1253,6 +1267,8 @@ app.post('/api/dashboard/profile', requireDashboardAuth, profileUpload, async (r
   const body = req.body || {};
   const whatsapp = (body.whatsapp !== undefined && body.whatsapp !== null ? String(body.whatsapp) : '').trim();
   const emailParaLeads = (body.email_para_leads !== undefined && body.email_para_leads !== null ? String(body.email_para_leads) : '').trim().toLowerCase();
+  const fotoPerfil = body.foto_perfil !== undefined && body.foto_perfil !== null ? String(body.foto_perfil).trim() : undefined;
+  const boasVindas = body.boas_vindas !== undefined && body.boas_vindas !== null ? String(body.boas_vindas).trim() : undefined;
   const currentPassword = (body.currentPassword != null ? String(body.currentPassword) : '').trim();
   const newPassword = (body.newPassword != null ? String(body.newPassword) : '').trim();
   const rgpdFile = req.files && req.files.rgpd && req.files.rgpd[0] ? req.files.rgpd[0] : null;
@@ -1261,6 +1277,8 @@ app.post('/api/dashboard/profile', requireDashboardAuth, profileUpload, async (r
     const updates = {};
     if (body.whatsapp !== undefined && body.whatsapp !== null) updates.whatsapp = whatsapp === '' ? '' : whatsapp.replace(/\D/g, '');
     if (emailParaLeads !== undefined) updates.email_para_leads = emailParaLeads === '' ? null : emailParaLeads;
+    if (fotoPerfil !== undefined) updates.foto_perfil = fotoPerfil === '' ? null : fotoPerfil;
+    if (boasVindas !== undefined) updates.boas_vindas = boasVindas === '' ? null : boasVindas;
     if (Object.keys(updates).length) await updateGestora(gestoraId, updates);
 
     if (newPassword) {

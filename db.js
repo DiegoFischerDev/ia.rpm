@@ -81,7 +81,7 @@ async function confirmEmailAndSetLead(id) {
 }
 
 async function getGestoraById(id) {
-  const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, ativo FROM ch_gestoras WHERE id = ?', [id]);
+  const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, foto_perfil, boas_vindas, ativo FROM ch_gestoras WHERE id = ?', [id]);
   return rows[0] || null;
 }
 
@@ -242,7 +242,7 @@ async function deleteLead(id) {
 
 /** Dashboard: lista todas as gestoras. */
 async function getAllGestoras() {
-  const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id ASC');
+  const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, foto_perfil, boas_vindas, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id ASC');
   return rows;
 }
 
@@ -276,24 +276,32 @@ async function getGestorasWithLeadCounts() {
 
 /** Dashboard: criar gestora. */
 async function createGestora(dados) {
-  const { nome, email, whatsapp, ativo, email_para_leads } = dados || {};
+  const { nome, email, whatsapp, ativo, email_para_leads, foto_perfil, boas_vindas } = dados || {};
   if (!nome || !email || !whatsapp) throw new Error('Nome, email e whatsapp são obrigatórios.');
   const emailVal = String(email).trim().toLowerCase();
   const emailLeads = (email_para_leads != null && String(email_para_leads).trim() !== '')
     ? String(email_para_leads).trim().toLowerCase()
     : emailVal;
   await query(
-    'INSERT INTO ch_gestoras (nome, email, email_para_leads, whatsapp, ativo) VALUES (?, ?, ?, ?, ?)',
-    [String(nome).trim(), emailVal, emailLeads, String(whatsapp).replace(/\D/g, ''), ativo ? 1 : 0]
+    'INSERT INTO ch_gestoras (nome, email, email_para_leads, whatsapp, foto_perfil, boas_vindas, ativo) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [
+      String(nome).trim(),
+      emailVal,
+      emailLeads,
+      String(whatsapp).replace(/\D/g, ''),
+      foto_perfil ? String(foto_perfil).trim() : null,
+      boas_vindas ? String(boas_vindas).trim() : null,
+      ativo ? 1 : 0,
+    ]
   );
-  const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id DESC LIMIT 1');
+  const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, foto_perfil, boas_vindas, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id DESC LIMIT 1');
   return rows[0] || null;
 }
 
 /** Dashboard: atualizar gestora. */
 async function updateGestora(id, dados) {
   if (!dados || typeof dados !== 'object') return;
-  const allowed = ['nome', 'email', 'email_para_leads', 'whatsapp', 'ativo'];
+  const allowed = ['nome', 'email', 'email_para_leads', 'whatsapp', 'foto_perfil', 'boas_vindas', 'ativo'];
   const set = [];
   const values = [];
   for (const key of allowed) {
@@ -301,7 +309,12 @@ async function updateGestora(id, dados) {
     let val = dados[key];
     if (key === 'ativo') val = val ? 1 : 0;
     else if (key === 'email_para_leads' && (val === '' || val === null)) val = null;
-    else if (typeof val === 'string') val = (key === 'email' || key === 'email_para_leads') ? val.trim().toLowerCase() : (key === 'whatsapp' ? val.replace(/\D/g, '') : val.trim());
+    else if ((key === 'foto_perfil' || key === 'boas_vindas') && (val === '' || val === null)) val = null;
+    else if (typeof val === 'string') {
+      if (key === 'email' || key === 'email_para_leads') val = val.trim().toLowerCase();
+      else if (key === 'whatsapp') val = val.replace(/\D/g, '');
+      else val = val.trim();
+    }
     set.push(`${key} = ?`);
     values.push(val);
   }
