@@ -193,6 +193,35 @@
     .leads-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
     .leads-toolbar .leads-filter-wrap { display: flex; gap: 0.5rem; align-items: center; }
     .leads-toolbar .leads-filter-wrap input { margin-bottom: 0; max-width: 220px; }
+    .leads-filter-wrap { display: flex; gap: 0.5rem; align-items: center; flex-wrap: nowrap; }
+    .leads-filter-wrap input { margin-bottom: 0; max-width: 220px; }
+    .filter-clear-btn {
+      padding: 0.25rem 0.4rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .filter-clear-btn:hover {
+      background: var(--accent-soft);
+      color: var(--text);
+      border-color: var(--accent-soft);
+    }
+    .leads-groups-wrap { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+    .leads-groups-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .leads-group-btn.active {
+      background: #f472b6;
+      border-color: #f472b6;
+      color: #fff;
+    }
+    .leads-group-btn.active:hover {
+      background: #ec4899;
+      border-color: #ec4899;
+      color: #fff;
+    }
     .leads-sort-th { white-space: nowrap; }
     .leads-sort-th .sort-icons { display: inline-flex; align-items: center; gap: 0.15rem; margin-left: 0.25rem; vertical-align: middle; }
     .leads-sort-th .sort-icons button { padding: 0.2rem; border: none; background: transparent; cursor: pointer; color: var(--text-muted); border-radius: 4px; }
@@ -322,6 +351,7 @@
           <div class="leads-filter-wrap">
             <input type="text" id="leadsFilterInput" placeholder="Filtrar por palavra...">
             <button type="button" class="btn btn-secondary btn-sm" id="leadsFilterBtn">Filtrar</button>
+            <button type="button" class="filter-clear-btn" id="leadsFilterClear" title="Limpar filtro">×</button>
           </div>
           <div class="leads-groups-wrap">
             <span class="leads-groups-label">Ver:</span>
@@ -376,6 +406,7 @@
           <div class="leads-filter-wrap">
             <input type="text" id="duvidasPendentesFilterInput" placeholder="Filtrar por palavra...">
             <button type="button" class="btn btn-secondary btn-sm" id="duvidasPendentesFilterBtn">Filtrar</button>
+            <button type="button" class="filter-clear-btn" id="duvidasPendentesFilterClear" title="Limpar filtro">×</button>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnNovaDuvida" style="display:none;">Nova pergunta</button>
         </div>
@@ -403,6 +434,7 @@
           <div class="leads-filter-wrap">
             <input type="text" id="faqFilterInput" placeholder="Filtrar por palavra...">
             <button type="button" class="btn btn-secondary btn-sm" id="faqFilterBtn">Filtrar</button>
+            <button type="button" class="filter-clear-btn" id="faqFilterClear" title="Limpar filtro">×</button>
           </div>
           <div></div>
         </div>
@@ -1063,13 +1095,20 @@
       (function initLeadsFilter() {
         var input = document.getElementById('leadsFilterInput');
         var btn = document.getElementById('leadsFilterBtn');
+        var clearBtn = document.getElementById('leadsFilterClear');
         if (btn) btn.addEventListener('click', function () { if (_leadsRows.length) renderLeads(); });
         if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); if (_leadsRows.length) renderLeads(); } });
+        if (clearBtn) clearBtn.addEventListener('click', function () {
+          if (!input) return;
+          input.value = '';
+          if (_leadsRows.length) renderLeads();
+        });
       })();
 
       (function initDuvidasPendentesFilter() {
         var input = document.getElementById('duvidasPendentesFilterInput');
         var btn = document.getElementById('duvidasPendentesFilterBtn');
+        var clearBtn = document.getElementById('duvidasPendentesFilterClear');
         if (!input || !btn) return;
         btn.addEventListener('click', function () {
           if (_duvidasPendentesRows.length) loadDuvidasPendentes();
@@ -1085,6 +1124,7 @@
       (function initFaqFilter() {
         var input = document.getElementById('faqFilterInput');
         var btn = document.getElementById('faqFilterBtn');
+        var clearBtn = document.getElementById('faqFilterClear');
         if (!input || !btn) return;
         btn.addEventListener('click', function () {
           if (_faqRows.length) loadDuvidasRespondidas();
