@@ -120,6 +120,8 @@
       animation: pulse-badge 2s ease-in-out infinite;
     }
     .nav-badge.hidden { display: none; }
+    .sidebar-footer-text { display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; }
+    .sidebar-footer-version { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.1rem; }
     @keyframes pulse-badge {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.85; }
@@ -195,6 +197,28 @@
     .leads-toolbar .leads-filter-wrap input { margin-bottom: 0; max-width: 220px; }
     .leads-filter-wrap { display: flex; gap: 0.5rem; align-items: center; flex-wrap: nowrap; }
     .leads-filter-wrap input { margin-bottom: 0; max-width: 220px; }
+    .filter-input-wrap { position: relative; display: inline-block; }
+    .filter-input-wrap input { padding-right: 1.75rem; }
+    .filter-clear-btn {
+      position: absolute;
+      right: 0.4rem;
+      top: 50%;
+      transform: translateY(-50%);
+      padding: 0;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 1rem;
+      line-height: 1;
+      width: 1.1rem;
+      height: 1.1rem;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+    .filter-clear-btn:hover {
+      background: var(--accent-soft);
+      color: var(--text);
+    }
     .leads-groups-wrap { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .leads-groups-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
     .leads-group-btn.active {
@@ -318,7 +342,10 @@
         <span class="sidebar-footer-icon" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
         </span>
-        <span id="sidebarUserName" class="sidebar-footer-name" aria-live="polite"></span>
+        <div class="sidebar-footer-text">
+          <span id="sidebarUserName" class="sidebar-footer-name" aria-live="polite"></span>
+          <span class="sidebar-footer-version">versão 1.0</span>
+        </div>
         <button type="button" id="btnLogout" class="sidebar-footer-sair">Sair</button>
       </div>
     </nav>
@@ -334,7 +361,10 @@
         <h2 class="page-title">Leads</h2>
         <div id="leadsToolbar" class="leads-toolbar" style="display:none;">
           <div class="leads-filter-wrap">
-            <input type="search" id="leadsFilterInput" placeholder="Filtrar por palavra...">
+            <div class="filter-input-wrap">
+              <input type="text" id="leadsFilterInput" placeholder="Filtrar por palavra...">
+              <button type="button" class="filter-clear-btn" id="leadsFilterClear" title="Limpar filtro">×</button>
+            </div>
             <button type="button" class="btn btn-secondary btn-sm" id="leadsFilterBtn">Filtrar</button>
           </div>
           <div class="leads-groups-wrap">
@@ -388,7 +418,10 @@
         <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
         <div class="section-toolbar">
           <div class="leads-filter-wrap">
-            <input type="search" id="duvidasPendentesFilterInput" placeholder="Filtrar por palavra...">
+            <div class="filter-input-wrap">
+              <input type="text" id="duvidasPendentesFilterInput" placeholder="Filtrar por palavra...">
+              <button type="button" class="filter-clear-btn" id="duvidasPendentesFilterClear" title="Limpar filtro">×</button>
+            </div>
             <button type="button" class="btn btn-secondary btn-sm" id="duvidasPendentesFilterBtn">Filtrar</button>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnNovaDuvida" style="display:none;">Nova pergunta</button>
@@ -415,7 +448,10 @@
         <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
         <div class="section-toolbar" style="margin-bottom:0.75rem;">
           <div class="leads-filter-wrap">
-            <input type="search" id="faqFilterInput" placeholder="Filtrar por palavra...">
+            <div class="filter-input-wrap">
+              <input type="text" id="faqFilterInput" placeholder="Filtrar por palavra...">
+              <button type="button" class="filter-clear-btn" id="faqFilterClear" title="Limpar filtro">×</button>
+            </div>
             <button type="button" class="btn btn-secondary btn-sm" id="faqFilterBtn">Filtrar</button>
           </div>
           <div></div>
@@ -1101,6 +1137,10 @@
             if (_duvidasPendentesRows.length) loadDuvidasPendentes();
           }
         });
+        if (clearBtn) clearBtn.addEventListener('click', function () {
+          input.value = '';
+          if (_duvidasPendentesRows.length) loadDuvidasPendentes();
+        });
       })();
 
       (function initFaqFilter() {
@@ -1116,6 +1156,10 @@
             e.preventDefault();
             if (_faqRows.length) loadDuvidasRespondidas();
           }
+        });
+        if (clearBtn) clearBtn.addEventListener('click', function () {
+          input.value = '';
+          if (_faqRows.length) loadDuvidasRespondidas();
         });
       })();
 
