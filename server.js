@@ -1137,7 +1137,7 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
       const perguntaResumo = (duvida.texto || '').slice(0, 200);
       const perguntaLabel = perguntaResumo + ((duvida.texto || '').length > 200 ? '…' : '');
       const msg =
-        `✨ Olá! Há novas respostas da equipa para a tua dúvida:\n\n` +
+        `✨ Olá! Há novas respostas das nossas parceiras para a tua dúvida:\n\n` +
         `❓ "${perguntaLabel}"\n\n` +
         `*💬 Respostas das gestoras:*\n` +
         `${respostasTexto}\n\n` +
