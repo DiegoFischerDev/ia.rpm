@@ -323,6 +323,13 @@
             <input type="text" id="leadsFilterInput" placeholder="Filtrar por palavra...">
             <button type="button" class="btn btn-secondary btn-sm" id="leadsFilterBtn">Filtrar</button>
           </div>
+          <div class="leads-groups-wrap">
+            <span class="leads-groups-label">Ver:</span>
+            <button type="button" class="btn btn-outline btn-sm leads-group-btn active" data-group="todos">Todos</button>
+            <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="sem_docs">Sem docs</button>
+            <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="com_docs">Com docs</button>
+            <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="aprovados">Aprovados</button>
+          </div>
         </div>
         <div class="table-wrap card">
           <table>
@@ -366,7 +373,10 @@
         <h2 class="page-title">Perguntas pendentes</h2>
         <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
         <div class="section-toolbar">
-          <div></div>
+          <div class="leads-filter-wrap">
+            <input type="text" id="duvidasPendentesFilterInput" placeholder="Filtrar por palavra...">
+            <button type="button" class="btn btn-secondary btn-sm" id="duvidasPendentesFilterBtn">Filtrar</button>
+          </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnNovaDuvida" style="display:none;">Nova pergunta</button>
         </div>
         <div class="card">
@@ -389,6 +399,13 @@
       <div id="screenDuvidasRespondidas" class="screen">
         <h2 class="page-title">FAQ</h2>
         <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
+        <div class="section-toolbar" style="margin-bottom:0.75rem;">
+          <div class="leads-filter-wrap">
+            <input type="text" id="faqFilterInput" placeholder="Filtrar por palavra...">
+            <button type="button" class="btn btn-secondary btn-sm" id="faqFilterBtn">Filtrar</button>
+          </div>
+          <div></div>
+        </div>
         <div class="card">
           <div class="table-wrap">
             <table id="tblPerguntasRespondidas">
@@ -886,6 +903,9 @@
       var ESTADO_DOCS_OPCOES = ['aguardando_docs', 'sem_docs', 'docs_enviados', 'inviavel', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
       var _leadsRows = [];
       var _leadsSort = '';
+      var _leadsGroup = 'todos'; // todos | sem_docs | com_docs | aprovados
+      var _duvidasPendentesRows = [];
+      var _faqRows = [];
 
       function leadBadgeClass(prefix, value) {
         if (!value || typeof value !== 'string') return 'lead-badge lead-badge--neutral';
@@ -899,6 +919,23 @@
         const isGestora = user && user.role === 'gestora';
         const colCount = isGestora ? 7 : 10;
         var rows = _leadsRows.slice();
+
+        // Agrupamento por estado_docs
+        if (_leadsGroup === 'sem_docs') {
+          rows = rows.filter(function (r) {
+            return r.estado_docs === 'sem_docs' || r.estado_docs === 'aguardando_docs';
+          });
+        } else if (_leadsGroup === 'com_docs') {
+          rows = rows.filter(function (r) {
+            return r.estado_docs === 'docs_enviados' || r.estado_docs === 'inviavel';
+          });
+        } else if (_leadsGroup === 'aprovados') {
+          rows = rows.filter(function (r) {
+            return r.estado_docs === 'credito_aprovado' ||
+              r.estado_docs === 'agendado_escritura' ||
+              r.estado_docs === 'escritura_realizada';
+          });
+        }
         var filterVal = (document.getElementById('leadsFilterInput') && document.getElementById('leadsFilterInput').value) ? document.getElementById('leadsFilterInput').value.trim().toLowerCase() : '';
         if (filterVal) {
           rows = rows.filter(function (r) {
@@ -986,7 +1023,8 @@
             ? '<th>ID</th><th>Atualizado</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Estado docs</th><th></th>'
             : '<th>ID</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Estado conversa</th><th>Estado docs</th><th>Docs enviados</th><th>Gestora</th>' + sortThHtml + '<th></th>';
         }
-        if (toolbarEl) toolbarEl.style.display = isGestora ? 'none' : 'flex';
+        // Toolbar (filtro + grupos) disponível para admin e gestora
+        if (toolbarEl) toolbarEl.style.display = 'flex';
         tbody.innerHTML = '<tr><td colspan="' + colCount + '">A carregar…</td></tr>';
         fetch(API + '/leads', { credentials: 'include' })
           .then((r) => r.json().then((data) => (r.ok ? data : Promise.reject(data))))
@@ -1029,6 +1067,51 @@
         if (input) input.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); if (_leadsRows.length) renderLeads(); } });
       })();
 
+      (function initDuvidasPendentesFilter() {
+        var input = document.getElementById('duvidasPendentesFilterInput');
+        var btn = document.getElementById('duvidasPendentesFilterBtn');
+        if (!input || !btn) return;
+        btn.addEventListener('click', function () {
+          if (_duvidasPendentesRows.length) loadDuvidasPendentes();
+        });
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (_duvidasPendentesRows.length) loadDuvidasPendentes();
+          }
+        });
+      })();
+
+      (function initFaqFilter() {
+        var input = document.getElementById('faqFilterInput');
+        var btn = document.getElementById('faqFilterBtn');
+        if (!input || !btn) return;
+        btn.addEventListener('click', function () {
+          if (_faqRows.length) loadDuvidasRespondidas();
+        });
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (_faqRows.length) loadDuvidasRespondidas();
+          }
+        });
+      })();
+
+      (function initLeadsGroups() {
+        var groupButtons = document.querySelectorAll('.leads-group-btn');
+        if (!groupButtons || !groupButtons.length) return;
+        groupButtons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            var group = this.getAttribute('data-group') || 'todos';
+            _leadsGroup = group;
+            groupButtons.forEach(function (b) {
+              b.classList.toggle('active', b === btn);
+            });
+            if (_leadsRows.length) renderLeads();
+          });
+        });
+      })();
+
       var _perguntaModalId = null;
       var _duvidaModalId = null;
 
@@ -1041,12 +1124,23 @@
         fetch(API + '/duvidas-pendentes', { credentials: 'include' })
           .then(function (r) { return r.ok ? r.json() : []; })
           .then(function (duvidas) {
+            _duvidasPendentesRows = duvidas || [];
+            var rows = _duvidasPendentesRows.slice();
+            var filterVal = (document.getElementById('duvidasPendentesFilterInput') && document.getElementById('duvidasPendentesFilterInput').value)
+              ? document.getElementById('duvidasPendentesFilterInput').value.trim().toLowerCase()
+              : '';
+            if (filterVal) {
+              rows = rows.filter(function (d) {
+                var text = [d.id, d.texto, d.contacto_whatsapp, d.lead_nome, formatDate(d.created_at)].join(' ').toLowerCase();
+                return text.indexOf(filterVal) !== -1;
+              });
+            }
             updateDuvidasPendentesBadge(duvidas.length);
             duvidasBody.innerHTML = '';
-            if (!duvidas.length) {
+            if (!rows.length) {
               duvidasBody.innerHTML = '<tr><td colspan="5">Nenhuma dúvida pendente.</td></tr>';
             } else {
-              duvidas.forEach(function (d) {
+              rows.forEach(function (d) {
                 const tr = document.createElement('tr');
                 const textoDuvida = (d.texto || '').trim();
                 const isAdmin = user && user.role === 'admin';
@@ -1069,14 +1163,14 @@
               duvidasBody.querySelectorAll('.btn-ver-duvida').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                   var id = parseInt(this.dataset.id, 10);
-                  var duvida = duvidas.find(function (x) { return x.id === id; });
+                  var duvida = _duvidasPendentesRows.find(function (x) { return x.id === id; });
                   if (duvida) openVerDuvida(duvida);
                 });
               });
               duvidasBody.querySelectorAll('.btn-editar-duvida').forEach(function (btn) {
                 btn.addEventListener('click', function () {
                   var id = parseInt(this.dataset.id, 10);
-                  var duvida = duvidas.find(function (x) { return x.id === id; });
+                  var duvida = _duvidasPendentesRows.find(function (x) { return x.id === id; });
                   if (duvida) openEditarDuvida(duvida);
                 });
               });
@@ -1123,11 +1217,22 @@
         fetch(API + '/perguntas', { credentials: 'include' })
           .then(function (r) { return r.ok ? r.json() : []; })
           .then(function (perguntas) {
+            _faqRows = perguntas || [];
+            var rows = _faqRows.slice();
+            var filterVal = (document.getElementById('faqFilterInput') && document.getElementById('faqFilterInput').value)
+              ? document.getElementById('faqFilterInput').value.trim().toLowerCase()
+              : '';
+            if (filterVal) {
+              rows = rows.filter(function (p) {
+                var text = [p.id, p.texto, p.frequencia, p.num_respostas].join(' ').toLowerCase();
+                return text.indexOf(filterVal) !== -1;
+              });
+            }
             perguntasBody.innerHTML = '';
-            if (!perguntas.length) {
+            if (!rows.length) {
               perguntasBody.innerHTML = '<tr><td colspan="5">Nenhuma pergunta no FAQ.</td></tr>';
             } else {
-              perguntas.forEach(function (p) {
+              rows.forEach(function (p) {
                 const tr = document.createElement('tr');
                 const textoPergunta = (p.texto || '').trim();
                 const jaRespondi = p.ja_respondi ? '<span class="text-muted" style="font-size:0.75rem;">✓ Respondi</span> ' : '';
