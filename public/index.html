@@ -528,8 +528,16 @@
             <input type="text" id="profileWhatsapp" placeholder="desabilitado">
             <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Os seus leads terão acesso a este número. Deixe em branco se não quiser ser contactada por WhatsApp.</p>
             <label>Foto de perfil (opcional)</label>
-            <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem;">
-              <img id="profileFotoPreview" src="" alt="Foto de perfil" style="max-height:64px;height:auto;border-radius:999px;display:none;">
+            <div id="profileFotoEnviada" style="display:none;">
+              <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:0.5rem;">
+                <img id="profileFotoPreview" src="" alt="Foto de perfil" style="max-height:64px;height:auto;border-radius:999px;display:none;">
+                <div class="actions" style="margin:0;">
+                  <button type="button" id="profileFotoVer" class="btn btn-outline">Ver</button>
+                  <button type="button" id="profileFotoSubstituir" class="btn btn-outline">Substituir</button>
+                </div>
+              </div>
+            </div>
+            <div id="profileFotoNaoEnviada" style="display:none;margin-bottom:0.5rem;">
               <input type="file" id="profileFotoInput" accept="image/*">
             </div>
             <p class="text-muted" style="font-size:0.8125rem;margin-top:-0.5rem;margin-bottom:1rem;">Esta imagem será mostrada aos leads atribuídos a si na página de envio de documentos.</p>
@@ -1186,12 +1194,30 @@
       (function initProfileFotoPreview() {
         var input = document.getElementById('profileFotoInput');
         var preview = document.getElementById('profileFotoPreview');
-        if (!input || !preview) return;
+        var fotoEnviada = document.getElementById('profileFotoEnviada');
+        var fotoNaoEnviada = document.getElementById('profileFotoNaoEnviada');
+        var btnVer = document.getElementById('profileFotoVer');
+        var btnSub = document.getElementById('profileFotoSubstituir');
+        if (btnVer && preview) {
+          btnVer.addEventListener('click', function () {
+            if (preview.src) window.open(preview.src, '_blank');
+          });
+        }
+        if (btnSub && fotoEnviada && fotoNaoEnviada && input) {
+          btnSub.addEventListener('click', function () {
+            fotoEnviada.style.display = 'none';
+            fotoNaoEnviada.style.display = 'block';
+            input.value = '';
+          });
+        }
+        if (!input || !preview || !fotoEnviada || !fotoNaoEnviada) return;
         input.addEventListener('change', function () {
           if (input.files && input.files[0]) {
             var url = URL.createObjectURL(input.files[0]);
             preview.src = url;
             preview.style.display = 'block';
+            fotoEnviada.style.display = 'block';
+            fotoNaoEnviada.style.display = 'none';
           }
         });
       })();
