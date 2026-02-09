@@ -1105,9 +1105,12 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
   try {
     const duvida = await getDuvidaPendenteById(id);
     if (!duvida) return res.status(404).json({ message: 'Dúvida não encontrada.' });
-    if (!duvida.eh_pendente) return res.status(400).json({ message: 'Esta dúvida já foi respondida.' });
     await upsertResposta(Number(id), user.id, texto);
-    await markDuvidaRespondida(Number(id));
+    // Se for a primeira resposta, marca como não pendente (passa a FAQ),
+    // mas continua a permitir novas respostas de outras gestoras.
+    if (duvida.eh_pendente) {
+      await markDuvidaRespondida(Number(id));
+    }
     const evoUrl = (process.env.EVO_URL || '').replace(/\/$/, '');
     const evoSecret = process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET;
     if (evoUrl && duvida.contacto_whatsapp) {
