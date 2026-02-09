@@ -197,7 +197,7 @@ async function getLeadsForRafaCount() {
 /** Dashboard: lista todos os leads. */
 async function getAllLeads() {
   const rows = await query(
-    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, created_at, updated_at FROM ch_leads ORDER BY updated_at DESC'
+    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, created_at, updated_at FROM ch_leads ORDER BY updated_at DESC'
   );
   return rows;
 }
@@ -205,7 +205,7 @@ async function getAllLeads() {
 /** Dashboard: atualizar lead (admin). */
 async function updateLeadAdmin(id, dados) {
   if (!dados || typeof dados !== 'object') return;
-  const allowed = ['nome', 'email', 'estado_conversa', 'estado_docs', 'gestora_id', 'gestora_nome'];
+  const allowed = ['nome', 'email', 'estado_conversa', 'estado_docs', 'gestora_id', 'gestora_nome', 'comentario'];
   const set = [];
   const values = [];
   for (const key of allowed) {

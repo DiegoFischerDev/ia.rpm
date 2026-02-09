@@ -630,6 +630,8 @@
       <input type="text" id="editLeadNome">
       <label>Email</label>
       <input type="email" id="editLeadEmail">
+      <label>Comentário interno</label>
+      <textarea id="editLeadComentario" rows="3" placeholder="Notas internas sobre este lead (visível apenas no dashboard)" style="width:100%;box-sizing:border-box;"></textarea>
       <label>Estado conversa</label>
       <select id="editLeadEstadoConversa">
         <option value="aguardando_escolha">aguardando_escolha</option>
@@ -1805,6 +1807,7 @@
         document.getElementById('editLeadId').value = lead.id;
         document.getElementById('editLeadNome').value = lead.nome || '';
         document.getElementById('editLeadEmail').value = lead.email || '';
+        document.getElementById('editLeadComentario').value = lead.comentario || '';
         document.getElementById('editLeadEstadoConversa').value = lead.estado_conversa || 'aguardando_escolha';
         document.getElementById('editLeadEstadoDocs').value = lead.estado_docs || 'aguardando_docs';
         document.getElementById('editLeadGestoraId').value = lead.gestora_id != null ? lead.gestora_id : '';
@@ -1820,6 +1823,7 @@
         const payload = {
           nome: document.getElementById('editLeadNome').value.trim() || null,
           email: document.getElementById('editLeadEmail').value.trim() || null,
+          comentario: document.getElementById('editLeadComentario').value.trim() || null,
           estado_conversa: document.getElementById('editLeadEstadoConversa').value,
           estado_docs: document.getElementById('editLeadEstadoDocs').value,
           gestora_id: document.getElementById('editLeadGestoraId').value.trim() ? parseInt(document.getElementById('editLeadGestoraId').value, 10) : null,
