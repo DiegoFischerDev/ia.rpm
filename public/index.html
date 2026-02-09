@@ -120,9 +120,16 @@
       animation: pulse-badge 2s ease-in-out infinite;
     }
     .nav-badge.hidden { display: none; }
-    .sidebar-footer-text { display: flex; align-items: center; justify-content: center; flex: 1; }
+    .sidebar-footer-text { display: flex; align-items: center; justify-content: center; flex: 1; gap: 0.5rem; }
+    .sidebar-footer-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      object-fit: cover;
+      display: none;
+    }
     .sidebar-footer-name {
-      max-width: 100%;
+      max-width: 120px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
@@ -355,6 +362,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
         </span>
         <div class="sidebar-footer-text">
+          <img id="sidebarUserAvatar" class="sidebar-footer-avatar" src="" alt="Foto de perfil">
           <span id="sidebarUserName" class="sidebar-footer-name" aria-live="polite"></span>
         </div>
         <button type="button" id="btnLogout" class="sidebar-footer-sair">Sair</button>
@@ -798,6 +806,16 @@
             user = data.user;
             var nameEl = document.getElementById('sidebarUserName');
             if (nameEl) nameEl.textContent = (user.nome && user.nome.trim()) ? user.nome.trim() : (user.email || '');
+            // Foto de perfil no menu (gestora)
+            var avatarEl = document.getElementById('sidebarUserAvatar');
+            if (avatarEl && user.role === 'gestora') {
+              if (user.foto_perfil) {
+                avatarEl.src = user.foto_perfil;
+                avatarEl.style.display = 'block';
+              } else {
+                avatarEl.style.display = 'none';
+              }
+            }
             document.getElementById('loginScreen').classList.remove('visible');
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('resetPasswordScreen').style.display = 'none';
