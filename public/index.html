@@ -609,18 +609,20 @@
     </main>
   </div>
 
-  <div id="modalLeadEstadoDocs" class="modal-overlay">
-    <div class="modal">
-      <h3>Alterar estado docs</h3>
-      <input type="hidden" id="editLeadEstadoDocsLeadId">
-      <label for="editLeadEstadoDocsSelect">Estado docs</label>
-      <select id="editLeadEstadoDocsSelect"></select>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" id="modalLeadEstadoDocsCancel">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="modalLeadEstadoDocsSave">Guardar</button>
+      <div id="modalLeadEstadoDocs" class="modal-overlay">
+        <div class="modal">
+          <h3>Editar lead</h3>
+          <input type="hidden" id="editLeadEstadoDocsLeadId">
+          <label for="editLeadEstadoDocsSelect">Estado docs</label>
+          <select id="editLeadEstadoDocsSelect"></select>
+          <label for="editLeadEstadoDocsComentario">Comentário interno</label>
+          <textarea id="editLeadEstadoDocsComentario" rows="3" placeholder="Notas internas sobre este lead (visível apenas no dashboard)" style="width:100%;box-sizing:border-box;"></textarea>
+          <div class="modal-actions">
+            <button type="button" class="btn btn-secondary" id="modalLeadEstadoDocsCancel">Cancelar</button>
+            <button type="button" class="btn btn-primary" id="modalLeadEstadoDocsSave">Guardar</button>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
   <div id="modalLead" class="modal-overlay">
     <div class="modal">
@@ -1021,7 +1023,7 @@
       function renderLeads() {
         const tbody = document.getElementById('leadsBody');
         const isGestora = user && user.role === 'gestora';
-        const colCount = isGestora ? 7 : 10;
+        const colCount = isGestora ? 8 : 10;
         var rows = _leadsRows.slice();
 
         // Agrupamento por estado_docs
@@ -1068,11 +1070,14 @@
             var editBtn = '<button type="button" class="btn btn-secondary btn-sm btn-edit-lead-estado-docs" data-id="' + r.id + '">Editar</button>';
             var docsVal = r.estado_docs || '';
             var docsBadge = '<span class="' + leadBadgeClass('docs', docsVal) + '">' + escapeHtml(docsVal || '—') + '</span>';
+            var comentario = (r.comentario || '').trim();
+            var comentarioCell = comentario ? '<span title="' + escapeHtml(comentario) + '">' + escapeHtml(comentario) + '</span>' : '<span class="text-muted">—</span>';
             tr.innerHTML =
               '<td>' + r.id + '</td><td>' + escapeHtml(formatDate(r.updated_at)) +
               '</td><td>' + escapeHtml(r.whatsapp_number || '') +
               '</td><td>' + escapeHtml(r.nome || '') +
               '</td><td>' + escapeHtml(r.email || '') +
+              '</td><td>' + comentarioCell +
               '</td><td>' + docsBadge + '</td><td class="actions">' + waBtn + ' ' + editBtn + '</td>';
           } else {
             var convVal = r.estado_conversa || '';
@@ -1118,13 +1123,13 @@
       function loadLeads() {
         const tbody = document.getElementById('leadsBody');
         const isGestora = user && user.role === 'gestora';
-        const colCount = isGestora ? 7 : 10;
+        const colCount = isGestora ? 8 : 10;
         const headRow = document.getElementById('leadsHeadRow');
         const toolbarEl = document.getElementById('leadsToolbar');
         var sortThHtml = '<th class="leads-sort-th">Atualizado <span class="sort-icons"><button type="button" id="leadsSortAsc" title="Mais antigo primeiro"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg></button><button type="button" id="leadsSortDesc" title="Mais recente primeiro"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button></span></th>';
         if (headRow) {
           headRow.innerHTML = isGestora
-            ? '<th>ID</th><th>Atualizado</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Estado docs</th><th></th>'
+            ? '<th>ID</th><th>Atualizado</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Comentário</th><th>Estado docs</th><th></th>'
             : '<th>ID</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Estado conversa</th><th>Estado docs</th><th>Docs enviados</th><th>Gestora</th>' + sortThHtml + '<th></th>';
         }
         // Toolbar (filtro + grupos) disponível para admin e gestora
@@ -1780,6 +1785,7 @@
           if ((lead.estado_docs || '') === v) opt.selected = true;
           sel.appendChild(opt);
         });
+        document.getElementById('editLeadEstadoDocsComentario').value = lead.comentario || '';
         document.getElementById('modalLeadEstadoDocs').classList.add('visible');
       }
 
@@ -1789,11 +1795,12 @@
       document.getElementById('modalLeadEstadoDocsSave').addEventListener('click', function () {
         var id = document.getElementById('editLeadEstadoDocsLeadId').value;
         var val = document.getElementById('editLeadEstadoDocsSelect').value;
+        var comentario = document.getElementById('editLeadEstadoDocsComentario').value.trim() || null;
         fetch(API + '/leads/' + id, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ estado_docs: val }),
+          body: JSON.stringify({ estado_docs: val, comentario: comentario }),
         })
           .then(function (r) { return r.ok ? undefined : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
           .then(function () {

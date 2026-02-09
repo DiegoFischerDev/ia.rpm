@@ -818,7 +818,12 @@ app.patch('/api/dashboard/leads/:id', requireDashboardAuth, async (req, res) => 
     if (!lead || lead.gestora_id !== user.id) {
       return res.status(403).json({ message: 'Só pode editar leads que lhe estão atribuídos.' });
     }
-    body = { estado_docs: req.body && req.body.estado_docs != null ? String(req.body.estado_docs).trim() : undefined };
+    body = {
+      estado_docs: req.body && req.body.estado_docs != null ? String(req.body.estado_docs).trim() : undefined,
+      comentario: req.body && typeof req.body.comentario === 'string'
+        ? req.body.comentario.trim()
+        : (req.body && req.body.comentario === null ? null : undefined),
+    };
   }
   try {
     await updateLeadAdmin(id, body);

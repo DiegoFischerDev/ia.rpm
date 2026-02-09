@@ -99,7 +99,7 @@ async function getGestoraByEmail(email) {
 /** Lista leads atribuídos a uma gestora (dashboard gestora). */
 async function getLeadsByGestoraId(gestoraId) {
   const rows = await query(
-    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, created_at, updated_at FROM ch_leads WHERE gestora_id = ? ORDER BY updated_at DESC',
+    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, created_at, updated_at FROM ch_leads WHERE gestora_id = ? ORDER BY updated_at DESC',
     [gestoraId]
   );
   return rows;
