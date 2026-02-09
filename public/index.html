@@ -1621,8 +1621,11 @@
             document.getElementById('profileEmailParaLeads').value = data.email_para_leads || '';
             document.getElementById('profileWhatsapp').value = data.whatsapp || '';
             var fotoPrev = document.getElementById('profileFotoPreview');
+            var fotoEnviada = document.getElementById('profileFotoEnviada');
+            var fotoNaoEnviada = document.getElementById('profileFotoNaoEnviada');
+            var hasFoto = !!data.foto_perfil;
             if (fotoPrev) {
-              if (data.foto_perfil) {
+              if (hasFoto) {
                 fotoPrev.src = data.foto_perfil;
                 fotoPrev.style.display = 'block';
               } else {
@@ -1630,6 +1633,8 @@
                 fotoPrev.style.display = 'none';
               }
             }
+            if (fotoEnviada) fotoEnviada.style.display = hasFoto ? 'block' : 'none';
+            if (fotoNaoEnviada) fotoNaoEnviada.style.display = hasFoto ? 'none' : 'block';
             var boasInput = document.getElementById('profileBoasVindas');
             if (boasInput) boasInput.value = data.boas_vindas || '';
             document.getElementById('profileCurrentPassword').value = '';
