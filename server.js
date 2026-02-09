@@ -732,7 +732,9 @@ app.post('/api/dashboard/forgot-password', async (req, res) => {
   const email = (req.body && req.body.email || '').trim().toLowerCase();
   if (!email) return res.status(400).json({ message: 'Indique o seu email.' });
   const gestora = await getGestoraByEmail(email).catch(() => null);
-  if (gestora && gestora.ativo) {
+  // Mesmo gestoras inativas devem poder redefinir/definir senha;
+  // o estado "ativo" só controla receção de novos leads.
+  if (gestora) {
     const token = crypto.randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
     await setGestoraPasswordResetToken(gestora.id, token, expiresAt);
