@@ -1013,7 +1013,11 @@ app.get('/api/dashboard/duvidas-pendentes/count', requireDashboardAuth, async (r
   }
 });
 
-app.post('/api/dashboard/duvidas-pendentes', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+app.post('/api/dashboard/duvidas-pendentes', requireDashboardAuth, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (!user || (user.role !== 'admin' && user.role !== 'gestora')) {
+    return res.status(403).json({ message: 'Acesso reservado ao administrador ou gestora.' });
+  }
   const texto = (req.body && req.body.texto) ? String(req.body.texto).trim() : '';
   if (!texto) return res.status(400).json({ message: 'texto é obrigatório.' });
   try {
@@ -1021,7 +1025,7 @@ app.post('/api/dashboard/duvidas-pendentes', requireDashboardAuth, requireAdminA
       contactoWhatsapp: '0',
       leadId: null,
       texto,
-      origem: 'admin',
+      origem: user.role === 'gestora' ? 'gestora' : 'admin',
     });
     if (!row) return res.status(500).json({ message: 'Erro ao criar dúvida.' });
     const evoUrl = (process.env.EVO_URL || '').replace(/\/$/, '');

@@ -195,32 +195,17 @@
     .leads-toolbar .leads-filter-wrap input { margin-bottom: 0; max-width: 220px; }
     .leads-filter-wrap { display: flex; gap: 0.5rem; align-items: center; flex-wrap: nowrap; }
     .leads-filter-wrap input { margin-bottom: 0; max-width: 220px; }
-    .filter-clear-btn {
-      padding: 0.25rem 0.4rem;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text-muted);
-      font-size: 0.75rem;
-      line-height: 1;
-      cursor: pointer;
-    }
-    .filter-clear-btn:hover {
-      background: var(--accent-soft);
-      color: var(--text);
-      border-color: var(--accent-soft);
-    }
     .leads-groups-wrap { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
     .leads-groups-label { font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
     .leads-group-btn.active {
-      background: #f472b6;
-      border-color: #f472b6;
-      color: #fff;
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #000;
     }
     .leads-group-btn.active:hover {
-      background: #ec4899;
-      border-color: #ec4899;
-      color: #fff;
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      color: #000;
     }
     .leads-sort-th { white-space: nowrap; }
     .leads-sort-th .sort-icons { display: inline-flex; align-items: center; gap: 0.15rem; margin-left: 0.25rem; vertical-align: middle; }
@@ -349,9 +334,8 @@
         <h2 class="page-title">Leads</h2>
         <div id="leadsToolbar" class="leads-toolbar" style="display:none;">
           <div class="leads-filter-wrap">
-            <input type="text" id="leadsFilterInput" placeholder="Filtrar por palavra...">
+            <input type="search" id="leadsFilterInput" placeholder="Filtrar por palavra...">
             <button type="button" class="btn btn-secondary btn-sm" id="leadsFilterBtn">Filtrar</button>
-            <button type="button" class="filter-clear-btn" id="leadsFilterClear" title="Limpar filtro">×</button>
           </div>
           <div class="leads-groups-wrap">
             <span class="leads-groups-label">Ver:</span>
@@ -404,9 +388,8 @@
         <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
         <div class="section-toolbar">
           <div class="leads-filter-wrap">
-            <input type="text" id="duvidasPendentesFilterInput" placeholder="Filtrar por palavra...">
+            <input type="search" id="duvidasPendentesFilterInput" placeholder="Filtrar por palavra...">
             <button type="button" class="btn btn-secondary btn-sm" id="duvidasPendentesFilterBtn">Filtrar</button>
-            <button type="button" class="filter-clear-btn" id="duvidasPendentesFilterClear" title="Limpar filtro">×</button>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnNovaDuvida" style="display:none;">Nova pergunta</button>
         </div>
@@ -432,9 +415,8 @@
         <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
         <div class="section-toolbar" style="margin-bottom:0.75rem;">
           <div class="leads-filter-wrap">
-            <input type="text" id="faqFilterInput" placeholder="Filtrar por palavra...">
+            <input type="search" id="faqFilterInput" placeholder="Filtrar por palavra...">
             <button type="button" class="btn btn-secondary btn-sm" id="faqFilterBtn">Filtrar</button>
-            <button type="button" class="filter-clear-btn" id="faqFilterClear" title="Limpar filtro">×</button>
           </div>
           <div></div>
         </div>
@@ -1227,7 +1209,7 @@
             }
             var btnNovaDuvida = document.getElementById('btnNovaDuvida');
             if (btnNovaDuvida) {
-              btnNovaDuvida.style.display = user && user.role === 'admin' ? '' : 'none';
+              btnNovaDuvida.style.display = user && (user.role === 'admin' || user.role === 'gestora') ? '' : 'none';
               btnNovaDuvida.onclick = function () {
                 var texto = prompt('Texto da nova pergunta (será adicionada às dúvidas pendentes para as gestoras responderem):');
                 if (texto == null || !texto.trim()) return;
