@@ -283,6 +283,7 @@ async function getGestoraContactForLead(lead) {
         gestoraWhatsapp: (g.whatsapp || '').replace(/\D/g, ''),
         gestoraFotoPerfil: g.foto_perfil || '',
         gestoraBoasVindas: g.boas_vindas || '',
+        gestoraFotoVersion: g.updated_at || null,
       };
     }
   }
@@ -292,6 +293,7 @@ async function getGestoraContactForLead(lead) {
     gestoraWhatsapp: (process.env.GESTORA_WHATSAPP || '').replace(/\D/g, ''),
     gestoraFotoPerfil: '',
     gestoraBoasVindas: '',
+    gestoraFotoVersion: null,
   };
 }
 
@@ -337,6 +339,8 @@ app.get('/api/leads/:leadId/foto-gestora', async (req, res) => {
   if (!g || !g.foto_perfil) return res.status(404).send();
   const raw = String(g.foto_perfil).trim();
   try {
+    res.setHeader('Cache-Control', 'no-store, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
     if (raw.startsWith('data:')) {
       // dataURL: data:image/...;base64,XXXX
       const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(raw);
@@ -503,7 +507,11 @@ app.post('/api/leads/:leadId/access', async (req, res) => {
   // Em vez de devolver a imagem (potencialmente grande) diretamente, devolvemos apenas um URL leve.
   let gestoraFotoPerfilUrl = '';
   if (lead.gestora_id && contact.gestoraFotoPerfil) {
-    gestoraFotoPerfilUrl = `/api/leads/${lead.id}/foto-gestora`;
+    const v =
+      contact.gestoraFotoVersion
+        ? `?v=${encodeURIComponent(new Date(contact.gestoraFotoVersion).getTime())}`
+        : '';
+    gestoraFotoPerfilUrl = `/api/leads/${lead.id}/foto-gestora${v}`;
   }
   res.json({
     ok: true,

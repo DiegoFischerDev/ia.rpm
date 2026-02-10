@@ -81,7 +81,7 @@ async function confirmEmailAndSetLead(id) {
 }
 
 async function getGestoraById(id) {
-  const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, foto_perfil, boas_vindas, ativo FROM ch_gestoras WHERE id = ?', [id]);
+  const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, foto_perfil, boas_vindas, ativo, updated_at FROM ch_gestoras WHERE id = ?', [id]);
   return rows[0] || null;
 }
 
