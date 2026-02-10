@@ -218,6 +218,7 @@ app.get('/upload/:leadId', async (req, res) => {
   }
 });
 
+// Lead em fase de preparação de documentos: aceitamos tanto 'aguardando_docs' como 'sem_docs'
 async function validateLeadAguardandoDocs(leadId) {
   if (!/^\d+$/.test(leadId)) return { error: 400, message: 'ID de lead inválido.' };
   let lead;
@@ -228,7 +229,7 @@ async function validateLeadAguardandoDocs(leadId) {
     return { error: 500, message: 'Erro ao verificar dados.' };
   }
   if (!lead) return { error: 404, message: 'Link não encontrado.' };
-  if (lead.estado_docs !== 'aguardando_docs') {
+  if (lead.estado_docs !== 'aguardando_docs' && lead.estado_docs !== 'sem_docs') {
     return { error: 403, message: 'Este link já não aceita envio de documentos.' };
   }
   return { lead };
@@ -421,6 +422,8 @@ app.post('/api/leads/:leadId/confirm-email', async (req, res) => {
   const ok = await confirmEmailAndSetLead(leadId);
   if (!ok) return res.status(400).json({ message: 'Código inválido ou expirado.' });
   try {
+    // Depois de confirmar o email, passamos o processo para "aguardando_docs"
+    await updateLeadEstadoDocs(leadId, 'aguardando_docs');
     const leadAfter = await getLeadById(leadId);
     const hasGestora = leadAfter && (leadAfter.gestora_id != null && leadAfter.gestora_id !== '');
     if (!hasGestora) {

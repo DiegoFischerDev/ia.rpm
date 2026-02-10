@@ -206,7 +206,7 @@
     .lead-estado-docs-select { margin-bottom: 0; }
     .lead-badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
     .lead-badge--conv-aguardando_escolha { background: #e2e8f0; color: #475569; }
-    .lead-badge--conv-com_joana { background: #dbeafe; color: #1e40af; }
+    .lead-badge--conv-com_duvida { background: #dbeafe; color: #1e40af; }
     .lead-badge--conv-com_gestora { background: #d1fae5; color: #065f46; }
     .lead-badge--conv-com_rafa { background: #ede9fe; color: #5b21b6; }
     .lead-badge--docs-aguardando_docs { background: #ffedd5; color: #c2410c; }
@@ -637,7 +637,7 @@
       <label>Estado conversa</label>
       <select id="editLeadEstadoConversa">
         <option value="aguardando_escolha">aguardando_escolha</option>
-        <option value="com_joana">com_joana</option>
+        <option value="com_duvida">com_duvida</option>
         <option value="com_gestora">com_gestora</option>
         <option value="com_rafa">com_rafa</option>
       </select>
@@ -1812,7 +1812,7 @@
         document.getElementById('editLeadEmail').value = lead.email || '';
         document.getElementById('editLeadComentario').value = lead.comentario || '';
         document.getElementById('editLeadEstadoConversa').value = lead.estado_conversa || 'aguardando_escolha';
-        document.getElementById('editLeadEstadoDocs').value = lead.estado_docs || 'aguardando_docs';
+        document.getElementById('editLeadEstadoDocs').value = lead.estado_docs || 'sem_docs';
         document.getElementById('modalLead').classList.add('visible');
       }
 
