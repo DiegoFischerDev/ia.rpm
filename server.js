@@ -15,6 +15,7 @@ const MySQLStore = require('express-mysql-session')(session);
 const fs = require('fs');
 const multer = require('multer');
 const bcrypt = require('bcryptjs');
+const sharp = require('sharp');
 const { Resend } = require('resend');
 const {
   getLeadById,
@@ -1372,8 +1373,21 @@ app.post('/api/dashboard/profile', requireDashboardAuth, profileUpload, async (r
       if (!mime.startsWith('image/')) {
         return res.status(400).json({ message: 'A foto de perfil deve ser uma imagem.' });
       }
-      const base64 = fotoFile.buffer.toString('base64');
-      const dataUrl = `data:${mime};base64,${base64}`;
+      // Otimizar imagem: redimensionar e comprimir antes de guardar
+      const maxSize = 600;
+      let pipeline = sharp(fotoFile.buffer).rotate();
+      const meta = await pipeline.metadata();
+      if ((meta.width && meta.width > maxSize) || (meta.height && meta.height > maxSize)) {
+        pipeline = pipeline.resize({
+          width: maxSize,
+          height: maxSize,
+          fit: 'inside',
+          withoutEnlargement: true,
+        });
+      }
+      const optimized = await pipeline.jpeg({ quality: 82 }).toBuffer();
+      const base64 = optimized.toString('base64');
+      const dataUrl = `data:image/jpeg;base64,${base64}`;
       updates.foto_perfil = dataUrl;
     }
     if (Object.keys(updates).length) await updateGestora(gestoraId, updates);
