@@ -326,6 +326,39 @@ app.get('/api/leads/:leadId/rgpd', async (req, res) => {
   res.status(404).json({ message: 'Documento RGPD ainda não disponível para este lead.' });
 });
 
+// Foto de perfil da gestora do lead (para a página de upload) — devolve imagem leve via endpoint dedicado
+app.get('/api/leads/:leadId/foto-gestora', async (req, res) => {
+  const leadId = req.params.leadId;
+  if (!/^\d+$/.test(leadId)) return res.status(400).send();
+  const lead = await getLeadById(leadId).catch(() => null);
+  if (!lead || !lead.gestora_id) return res.status(404).send();
+  const g = await getGestoraById(lead.gestora_id).catch(() => null);
+  if (!g || !g.foto_perfil) return res.status(404).send();
+  const raw = String(g.foto_perfil).trim();
+  try {
+    if (raw.startsWith('data:')) {
+      // dataURL: data:image/...;base64,XXXX
+      const m = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/.exec(raw);
+      if (!m) return res.status(400).send();
+      const mime = m[1] || 'image/jpeg';
+      const buf = Buffer.from(m[2], 'base64');
+      res.type(mime).send(buf);
+      return;
+    }
+    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+      // URL externa
+      res.redirect(raw);
+      return;
+    }
+    // Caso seja apenas base64 sem prefixo
+    const buf = Buffer.from(raw, 'base64');
+    res.type('image/jpeg').send(buf);
+  } catch (err) {
+    logStartup(`foto-gestora error: ${err.message}`);
+    res.status(500).send();
+  }
+});
+
 // Estado do lead: tem email? docs já enviados? (para o front saber que ecrã mostrar)
 // Quando docsEnviados, não devolvemos contactos da gestora; o lead tem de confirmar email via POST /access
 app.get('/api/leads/:leadId/status', async (req, res) => {
@@ -466,6 +499,11 @@ app.post('/api/leads/:leadId/access', async (req, res) => {
   const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1) || estadosVerMensagemEnviados.includes(lead.estado_docs);
   const semDocs = lead.estado_docs === 'sem_docs';
   const contact = await getGestoraContactForLead(lead);
+  // Em vez de devolver a imagem (potencialmente grande) diretamente, devolvemos apenas um URL leve.
+  let gestoraFotoPerfilUrl = '';
+  if (lead.gestora_id && contact.gestoraFotoPerfil) {
+    gestoraFotoPerfilUrl = `/api/leads/${lead.id}/foto-gestora`;
+  }
   res.json({
     ok: true,
     docsEnviados,
@@ -473,7 +511,7 @@ app.post('/api/leads/:leadId/access', async (req, res) => {
     gestoraNome: contact.gestoraNome,
     gestoraEmail: contact.gestoraEmail,
     gestoraWhatsapp: contact.gestoraWhatsapp,
-    gestoraFotoPerfil: contact.gestoraFotoPerfil,
+    gestoraFotoPerfil: gestoraFotoPerfilUrl,
     gestoraBoasVindas: contact.gestoraBoasVindas,
     nome: lead.nome || '',
   });
