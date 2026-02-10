@@ -775,7 +775,7 @@ app.post('/api/dashboard/logout', (req, res) => {
 
 app.get('/api/dashboard/me', (req, res) => {
   if (!req.session || !req.session.dashboardUser) return res.status(401).json({ message: 'Não autenticado.' });
-  res.json({ user: req.session.dashboardUser });
+  res.json({ user: req.session.dashboardUser, impersonated: !!req.session.impersonateOriginalUser });
 });
 
 // Perdi a senha (gestoras): envia link por email
@@ -905,6 +905,38 @@ app.get('/api/dashboard/gestoras', requireDashboardAuth, requireAdminAuth, async
     logStartup(`getGestorasWithLeadCounts error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar gestoras.' });
   }
+});
+
+// Admin: impersonar / ver dashboard como gestora
+app.post('/api/dashboard/impersonate', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  const gestoraId = req.body && req.body.gestoraId;
+  if (!gestoraId || !/^\d+$/.test(String(gestoraId))) {
+    return res.status(400).json({ message: 'ID de gestora inválido.' });
+  }
+  try {
+    const g = await getGestoraById(Number(gestoraId));
+    if (!g) return res.status(404).json({ message: 'Gestora não encontrada.' });
+    if (!g.ativo) return res.status(400).json({ message: 'Gestora inativa.' });
+    // Guarda utilizador original na sessão, se ainda não estiver guardado
+    if (!req.session.impersonateOriginalUser) {
+      req.session.impersonateOriginalUser = req.session.dashboardUser;
+    }
+    req.session.dashboardUser = { role: 'gestora', id: g.id, email: g.email, nome: g.nome || '' };
+    res.json({ ok: true, user: req.session.dashboardUser });
+  } catch (err) {
+    logStartup(`impersonate error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao trocar de utilizador.' });
+  }
+});
+
+// Sair do modo de impersonação (voltar ao admin original)
+app.post('/api/dashboard/impersonate/stop', requireDashboardAuth, async (req, res) => {
+  if (!req.session.impersonateOriginalUser) {
+    return res.status(400).json({ message: 'Não está em modo de impersonação.' });
+  }
+  req.session.dashboardUser = req.session.impersonateOriginalUser;
+  delete req.session.impersonateOriginalUser;
+  res.json({ ok: true, user: req.session.dashboardUser });
 });
 
 app.post('/api/dashboard/gestoras', requireDashboardAuth, requireAdminAuth, async (req, res) => {

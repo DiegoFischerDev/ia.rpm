@@ -372,6 +372,7 @@
           <img id="sidebarUserAvatar" class="sidebar-footer-avatar" src="" alt="Foto de perfil">
           <span id="sidebarUserName" class="sidebar-footer-name" aria-live="polite"></span>
         </div>
+        <button type="button" id="btnImpersonateExit" class="sidebar-footer-sair" style="display:none;margin-right:0.5rem;">Sair do modo gestora</button>
         <button type="button" id="btnLogout" class="sidebar-footer-sair">Sair</button>
       </div>
     </nav>
@@ -823,6 +824,11 @@
                 avatarEl.style.display = 'none';
               }
             }
+            // Mostrar/ocultar botão "Sair do modo gestora" (impersonação)
+            var btnImpersonateExit = document.getElementById('btnImpersonateExit');
+            if (btnImpersonateExit) {
+              btnImpersonateExit.style.display = (user.role === 'gestora' && data.impersonated) ? 'inline-flex' : 'none';
+            }
             document.getElementById('loginScreen').classList.remove('visible');
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('resetPasswordScreen').style.display = 'none';
@@ -983,6 +989,19 @@
           window.location.href = '/';
         });
       });
+      var btnImpersonateExit = document.getElementById('btnImpersonateExit');
+      if (btnImpersonateExit) {
+        btnImpersonateExit.addEventListener('click', function () {
+          fetch(API + '/impersonate/stop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+          })
+            .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+            .then(function () { init(); })
+            .catch(function () { window.location.reload(); });
+        });
+      }
 
       var dashboardApp = document.getElementById('dashboardApp');
       document.getElementById('btnMenuToggle').addEventListener('click', function () {
@@ -1880,6 +1899,8 @@
                 '<td>' + (r.escritura_realizada != null ? r.escritura_realizada : '0') + '</td>' +
                 '<td>' + (r.inviavel != null ? r.inviavel : '0') + '</td>' +
                 '<td class="actions">' +
+                '<button type="button" class="btn btn-secondary btn-sm btn-icon btn-impersonate-gestora" data-id="' + r.id + '" title="Ver como esta gestora">' +
+                '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20v-6"/><path d="M8 20v-4"/><path d="M16 20v-4"/><path d="M4 4h16"/><path d="M4 8h16"/><path d="M4 12h16"/></svg></button>' +
                 '<button type="button" class="btn btn-secondary btn-sm btn-icon btn-edit-gestora" data-id="' + r.id + '" title="Editar">' +
                 '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' +
                 '<button type="button" class="btn btn-danger btn-sm btn-icon btn-delete-gestora" data-id="' + r.id + '" title="Apagar">' +
@@ -1890,6 +1911,25 @@
             tbody.querySelectorAll('.btn-edit-gestora').forEach((b) =>
               b.addEventListener('click', function () {
                 openEditGestora(rows.find((x) => x.id === parseInt(this.dataset.id, 10)));
+              })
+            );
+            tbody.querySelectorAll('.btn-impersonate-gestora').forEach((b) =>
+              b.addEventListener('click', function () {
+                var id = this.dataset.id;
+                if (!id) return;
+                if (!confirm('Entrar no modo \"ver como gestora\"?')) return;
+                fetch(API + '/impersonate', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ gestoraId: id }),
+                })
+                  .then(function (r) { return r.ok ? r.json() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                  .then(function () {
+                    window.location.hash = '#leads';
+                    init();
+                  })
+                  .catch(function (err) { alert(err.message || 'Erro ao mudar de utilizador.'); });
               })
             );
             tbody.querySelectorAll('.btn-delete-gestora').forEach((b) =>
