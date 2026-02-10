@@ -805,6 +805,7 @@
       };
 
       let docsState = {};
+      let hasRgpdTemplate = false; // se a gestora tiver RGPD disponível
       const required100 = DOCS_100.map((d) => d.field);
 
       function getRequiredBaseFields() {
@@ -815,7 +816,7 @@
           if (d.field) fields.push(d.field);
           if (d.fields) d.fields.forEach((f) => fields.push(f));
         });
-        fields.push('rgpd_assinado');
+        if (hasRgpdTemplate) fields.push('rgpd_assinado');
         return fields;
       }
 
@@ -1119,7 +1120,9 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
 
         const rgpdEl = document.getElementById('docRgpd');
         rgpdEl.innerHTML = '';
-        renderRgpdBlock(rgpdEl);
+        if (hasRgpdTemplate) {
+          renderRgpdBlock(rgpdEl);
+        }
 
         document.getElementById('financiamento_100').addEventListener('change', () => {
           document.getElementById('docs_100').classList.toggle('visible', document.getElementById('financiamento_100').checked);
@@ -1230,6 +1233,7 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
       fetch('/api/leads/' + leadId + '/status')
         .then((r) => { if (!r.ok) throw new Error(); return r.json(); })
         .then((data) => {
+          hasRgpdTemplate = !!data.hasRgpd;
           if (data.docsEnviados) {
             var savedEmail = getVerifiedEmail();
             if (savedEmail) {

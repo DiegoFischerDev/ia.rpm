@@ -335,11 +335,20 @@ app.get('/api/leads/:leadId/status', async (req, res) => {
   const estadosVerMensagemEnviados = ['docs_enviados', 'inviavel', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
   const docsEnviados = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1) || estadosVerMensagemEnviados.includes(lead.estado_docs);
   const semDocs = lead.estado_docs === 'sem_docs';
+  let hasRgpd = false;
+  if (lead.gestora_id != null && lead.gestora_id !== '') {
+    try {
+      hasRgpd = await hasGestoraRgpd(lead.gestora_id);
+    } catch (err) {
+      logStartup(`status hasGestoraRgpd error: ${err.message}`);
+    }
+  }
   const payload = {
     hasEmail: !!(lead.email && lead.email.trim()),
     nome: '', // só devolvido após confirmação de email (POST /access)
     docsEnviados,
     semDocs,
+    hasRgpd,
   };
   if (!docsEnviados && !semDocs) {
     const contact = await getGestoraContactForLead(lead);
