@@ -924,7 +924,6 @@ app.post('/api/dashboard/impersonate', requireDashboardAuth, requireAdminAuth, a
   try {
     const g = await getGestoraById(Number(gestoraId));
     if (!g) return res.status(404).json({ message: 'Gestora não encontrada.' });
-    if (!g.ativo) return res.status(400).json({ message: 'Gestora inativa.' });
     // Guarda utilizador original na sessão, se ainda não estiver guardado
     if (!req.session.impersonateOriginalUser) {
       req.session.impersonateOriginalUser = req.session.dashboardUser;
