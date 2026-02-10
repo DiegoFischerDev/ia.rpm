@@ -1413,22 +1413,27 @@ app.post('/api/dashboard/profile', requireDashboardAuth, profileUpload, async (r
       if (!mime.startsWith('image/')) {
         return res.status(400).json({ message: 'A foto de perfil deve ser uma imagem.' });
       }
-      // Otimizar imagem: redimensionar e comprimir antes de guardar
-      const maxSize = 600;
-      let pipeline = sharp(fotoFile.buffer).rotate();
-      const meta = await pipeline.metadata();
-      if ((meta.width && meta.width > maxSize) || (meta.height && meta.height > maxSize)) {
-        pipeline = pipeline.resize({
-          width: maxSize,
-          height: maxSize,
-          fit: 'inside',
-          withoutEnlargement: true,
-        });
+      try {
+        // Otimizar imagem: redimensionar e comprimir antes de guardar
+        const maxSize = 600;
+        let pipeline = sharp(fotoFile.buffer, { failOnError: false }).rotate();
+        const meta = await pipeline.metadata();
+        if ((meta.width && meta.width > maxSize) || (meta.height && meta.height > maxSize)) {
+          pipeline = pipeline.resize({
+            width: maxSize,
+            height: maxSize,
+            fit: 'inside',
+            withoutEnlargement: true,
+          });
+        }
+        const optimized = await pipeline.jpeg({ quality: 82 }).toBuffer();
+        const base64 = optimized.toString('base64');
+        const dataUrl = `data:image/jpeg;base64,${base64}`;
+        updates.foto_perfil = dataUrl;
+      } catch (e) {
+        logStartup(`updateProfile foto_perfil sharp error: ${e.message}`);
+        return res.status(400).json({ message: 'Não foi possível processar esta imagem. Por favor, tente com um ficheiro JPG ou PNG diferente.' });
       }
-      const optimized = await pipeline.jpeg({ quality: 82 }).toBuffer();
-      const base64 = optimized.toString('base64');
-      const dataUrl = `data:image/jpeg;base64,${base64}`;
-      updates.foto_perfil = dataUrl;
     }
     if (Object.keys(updates).length) await updateGestora(gestoraId, updates);
 
