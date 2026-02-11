@@ -511,8 +511,6 @@
               <tr>
                 <th>ID</th>
                 <th>Nome</th>
-                <th>Email (pessoal)</th>
-                <th>Email para leads</th>
                 <th>WhatsApp</th>
                 <th>Ativo</th>
                 <th>Total</th>
@@ -1873,13 +1871,13 @@
 
       function loadGestoras() {
         const tbody = document.getElementById('gestorasBody');
-        tbody.innerHTML = '<tr><td colspan="13">A carregar…</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12">A carregar…</td></tr>';
         fetch(API + '/gestoras', { credentials: 'include' })
           .then((r) => (r.ok ? r.json() : Promise.reject()))
           .then((rows) => {
             tbody.innerHTML = '';
             if (!rows.length) {
-              tbody.innerHTML = '<tr><td colspan="13">Nenhuma gestora.</td></tr>';
+              tbody.innerHTML = '<tr><td colspan="12">Nenhuma gestora.</td></tr>';
               return;
             }
             rows.forEach((r) => {
@@ -1887,8 +1885,6 @@
               tr.innerHTML =
                 '<td>' + r.id + '</td><td>' +
                 escapeHtml(r.nome || '') + '</td><td>' +
-                escapeHtml(r.email || '') + '</td><td>' +
-                escapeHtml(r.email_para_leads || r.email || '—') + '</td><td>' +
                 escapeHtml(r.whatsapp || '') + '</td><td>' +
                 (r.ativo ? 'Sim' : 'Não') +
                 '</td><td>' + (r.total_leads != null ? r.total_leads : '0') + '</td>' +
