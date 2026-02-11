@@ -498,7 +498,7 @@ app.post('/api/leads/:leadId/confirm-email', async (req, res) => {
   res.json({ ok: true });
 });
 
-// "Não recebi o código" — coloca o lead em falar_com_rafa para a equipa contactar
+// "Não recebi o código" — coloca o lead em com_rafa para a equipa contactar
 app.post('/api/leads/:leadId/no-code', async (req, res) => {
   const leadId = req.params.leadId;
   if (!/^\d+$/.test(leadId)) return res.status(400).json({ message: 'ID inválido.' });
@@ -509,7 +509,7 @@ app.post('/api/leads/:leadId/no-code', async (req, res) => {
     return res.status(400).json({ message: 'Este lead já tem email confirmado.' });
   }
   try {
-    await updateLeadAdmin(Number(leadId), { estado_conversa: 'falar_com_rafa' });
+    await updateLeadAdmin(Number(leadId), { estado_conversa: 'com_rafa' });
     res.json({ ok: true });
   } catch (err) {
     logStartup(`no-code updateLeadAdmin error: ${err.message}`);
