@@ -498,6 +498,25 @@ app.post('/api/leads/:leadId/confirm-email', async (req, res) => {
   res.json({ ok: true });
 });
 
+// "Não recebi o código" — coloca o lead em falar_com_rafa para a equipa contactar
+app.post('/api/leads/:leadId/no-code', async (req, res) => {
+  const leadId = req.params.leadId;
+  if (!/^\d+$/.test(leadId)) return res.status(400).json({ message: 'ID inválido.' });
+  const v = await validateLeadAguardandoDocs(leadId);
+  if (v.error) return res.status(v.error).json({ message: v.message });
+  const lead = v.lead;
+  if (lead.email && lead.email.trim()) {
+    return res.status(400).json({ message: 'Este lead já tem email confirmado.' });
+  }
+  try {
+    await updateLeadAdmin(Number(leadId), { estado_conversa: 'falar_com_rafa' });
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`no-code updateLeadAdmin error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao registar. Tente novamente.' });
+  }
+});
+
 // Acesso quando o lead já tem email: verificar que o email introduzido é o do lead
 app.post('/api/leads/:leadId/access', async (req, res) => {
   const email = normalizeEmail(req.body && req.body.email);

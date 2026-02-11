@@ -59,6 +59,9 @@
     .doc-step ol { margin: 0.25rem 0 0 1rem; padding: 0; }
     .doc-link-inline { color: var(--accent); text-decoration: none; }
     .doc-link-inline:hover { text-decoration: underline; }
+    .btn-text-link { background: none; border: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: none; }
+    .btn-text-link:hover { text-decoration: underline; }
+    .btn-text-link:disabled { opacity: 0.7; cursor: not-allowed; }
     .rgpd-download-wrap { margin-top: 0.25rem; margin-bottom: 0.5rem; }
     .btn-download-rgpd {
       display: inline-flex;
@@ -449,11 +452,21 @@
       </div>
       <div id="stepCode" class="card" style="display:none;">
         <h2>Código de confirmação</h2>
-        <p class="doc-hint">Enviamos um código de 6 algarismos para o seu email. Introduza-o abaixo.</p>
+        <p class="doc-hint" id="stepCodeEmailSent">Enviamos um código de 6 algarismos para <strong id="stepCodeEmailValue"></strong>. Introduza-o abaixo.</p>
+        <p class="doc-hint">Verifique também a caixa de spam.</p>
         <label for="gate_code">Código *</label>
         <input type="text" id="gate_code" placeholder="000000" maxlength="6" pattern="[0-9]*" inputmode="numeric" autocomplete="one-time-code">
         <div id="gateError2" class="error-msg" style="display:none;"></div>
         <button type="button" class="btn btn-primary" id="btnConfirmar">Confirmar</button>
+        <p class="doc-hint" style="margin-top:1rem;">
+          <a href="#" id="linkCorrigirEmail" class="doc-link-inline">Corrigir email e reenviar código</a>
+        </p>
+        <p class="doc-hint">
+          <button type="button" class="btn btn-secondary btn-text-link" id="btnNaoRecebi">Não recebi o código</button>
+        </p>
+        <div id="stepCodeNoCodeFeedback" class="doc-hint" style="display:none; margin-top:1rem; padding:0.75rem; background:rgba(0,0,0,.04); border-radius:6px;">
+          Um membro da nossa equipe vai entrar em contato para te auxiliar a confirmar teu email em breve.
+        </div>
       </div>
       <div id="stepEnterEmail" class="card" style="display:none;">
         <h2>Continuar</h2>
@@ -686,6 +699,12 @@
           var el = document.getElementById(id);
           if (el) el.style.display = id === stepId ? 'block' : 'none';
         });
+        if (stepId === 'stepCode') {
+          var feedbackBlock = document.getElementById('stepCodeNoCodeFeedback');
+          var emailVal = document.getElementById('stepCodeEmailValue');
+          if (feedbackBlock) feedbackBlock.style.display = 'none';
+          if (emailVal && typeof pendingEmailForConfirm !== 'undefined') emailVal.textContent = pendingEmailForConfirm || '';
+        }
         var intro = document.getElementById('pageIntro');
         if (intro) {
           if (stepId === 'stepNomeEmail' || stepId === 'stepCode' || stepId === 'stepEnterEmail') {
@@ -1369,6 +1388,31 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
             errEl.style.display = 'block';
           })
           .finally(function () { document.getElementById('btnConfirmar').disabled = false; });
+      });
+
+      document.getElementById('linkCorrigirEmail').addEventListener('click', function (e) {
+        e.preventDefault();
+        document.getElementById('gateError2').style.display = 'none';
+        showStep('stepNomeEmail');
+      });
+
+      document.getElementById('btnNaoRecebi').addEventListener('click', function () {
+        var btn = this;
+        btn.disabled = true;
+        fetch('/api/leads/' + leadId + '/no-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+          .then(function (r) {
+            if (r.ok) {
+              var feedback = document.getElementById('stepCodeNoCodeFeedback');
+              if (feedback) feedback.style.display = 'block';
+              return;
+            }
+            return r.json().then(function (d) { throw new Error(d.message || 'Erro'); });
+          })
+          .catch(function (err) {
+            var errEl = document.getElementById('gateError2');
+            if (errEl) { errEl.textContent = err.message || 'Erro. Tente novamente.'; errEl.style.display = 'block'; }
+          })
+          .finally(function () { btn.disabled = false; });
       });
 
       document.getElementById('btnContinuar').addEventListener('click', function () {
