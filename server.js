@@ -32,6 +32,7 @@ const {
   clearGestoraPasswordReset,
   getNextGestoraForLead,
   updateLeadGestora,
+  getGestoraFromLegacyMap,
   updateLeadEstadoDocs,
   getLeadsForRafa,
   getLeadsForRafaCount,
@@ -476,12 +477,19 @@ app.post('/api/leads/:leadId/confirm-email', async (req, res) => {
     const leadAfter = await getLeadById(leadId);
     const hasGestora = leadAfter && (leadAfter.gestora_id != null && leadAfter.gestora_id !== '');
     if (!hasGestora) {
-      const next = await getNextGestoraForLead();
-      if (next && next.id) {
-        await updateLeadGestora(Number(leadId), next.id);
-        logStartup(`confirm-email: gestora ${next.id} atribuída ao lead ${leadId}`);
+      const email = leadAfter && leadAfter.email ? String(leadAfter.email).trim().toLowerCase() : '';
+      const legacy = email ? await getGestoraFromLegacyMap(leadAfter.email) : null;
+      if (legacy && legacy.id) {
+        await updateLeadGestora(Number(leadId), legacy.id);
+        logStartup(`confirm-email: gestora ${legacy.id} (legacy) atribuída ao lead ${leadId}`);
       } else {
-        logStartup(`confirm-email: nenhuma gestora ativa para atribuir ao lead ${leadId}`);
+        const next = await getNextGestoraForLead();
+        if (next && next.id) {
+          await updateLeadGestora(Number(leadId), next.id);
+          logStartup(`confirm-email: gestora ${next.id} atribuída ao lead ${leadId}`);
+        } else {
+          logStartup(`confirm-email: nenhuma gestora ativa para atribuir ao lead ${leadId}`);
+        }
       }
     }
   } catch (err) {
@@ -643,10 +651,17 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
     const g = await getGestoraById(lead.gestora_id);
     if (g) toEmail = (g.email_para_leads && g.email_para_leads.trim()) ? g.email_para_leads.trim() : (g.email || '');
   } else {
-    const next = await getNextGestoraForLead();
-    if (next) {
-      await updateLeadGestora(leadId, next.id);
-      toEmail = (next.email_para_leads && next.email_para_leads.trim()) ? next.email_para_leads.trim() : (next.email || '');
+    const legacy = lead.email ? await getGestoraFromLegacyMap(lead.email) : null;
+    if (legacy && legacy.id) {
+      await updateLeadGestora(leadId, legacy.id);
+      const g = await getGestoraById(legacy.id);
+      if (g) toEmail = (g.email_para_leads && g.email_para_leads.trim()) ? g.email_para_leads.trim() : (g.email || '');
+    } else {
+      const next = await getNextGestoraForLead();
+      if (next) {
+        await updateLeadGestora(leadId, next.id);
+        toEmail = (next.email_para_leads && next.email_para_leads.trim()) ? next.email_para_leads.trim() : (next.email || '');
+      }
     }
   }
   if (!toEmail) {

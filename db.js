@@ -167,6 +167,20 @@ async function updateLeadGestora(leadId, gestoraId) {
   );
 }
 
+/** Devolve a gestora mapeada no sistema antigo para o email do lead, ou null. */
+async function getGestoraFromLegacyMap(email) {
+  if (!email || typeof email !== 'string') return null;
+  const normalized = String(email).trim().toLowerCase();
+  if (!normalized) return null;
+  const rows = await query(
+    'SELECT gestora_id, gestora_nome FROM ch_leads_legacy_gestora_map WHERE LOWER(TRIM(email)) = ? LIMIT 1',
+    [normalized]
+  );
+  const row = rows[0];
+  if (!row || row.gestora_id == null) return null;
+  return { id: row.gestora_id, nome: row.gestora_nome || null };
+}
+
 /** Atualiza estado_docs (ex.: sem_docs). */
 async function updateLeadEstadoDocs(leadId, estadoDocs) {
   await query(
@@ -514,6 +528,7 @@ module.exports = {
   getActiveGestoras,
   getNextGestoraForLead,
   updateLeadGestora,
+  getGestoraFromLegacyMap,
   updateLeadEstadoDocs,
   getLeadsForRafa,
   getLeadsForRafaCount,
