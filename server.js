@@ -103,6 +103,8 @@ const sessionStore = (process.env.DB_HOST && process.env.DB_USER)
     })
   : undefined;
 
+const SESSION_MAX_AGE_DAYS = Number(process.env.SESSION_MAX_AGE_DAYS || 60); // por defeito ~2 meses
+
 app.use(
   session({
     store: sessionStore,
@@ -112,7 +114,7 @@ app.use(
     cookie: {
       secure: process.env.NODE_ENV === 'production',
       httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: SESSION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
       sameSite: 'lax',
     },
   })
