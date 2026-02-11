@@ -763,7 +763,7 @@ app.post('/api/dashboard/login', async (req, res) => {
   }
   // 2) Tentar gestora
   const gestora = await getGestoraByEmail(email).catch(() => null);
-  if (gestora && gestora.ativo) {
+  if (gestora) {
     if (!gestora.password) {
       return res.status(401).json({ message: 'Use «Perdi a senha» para definir a sua palavra-passe pela primeira vez.' });
     }
