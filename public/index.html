@@ -1106,7 +1106,6 @@
             var convVal = r.estado_conversa || '';
             var docsVal = r.estado_docs || '';
             var convBadge = '<span class="' + leadBadgeClass('conv', convVal) + '">' + escapeHtml(convVal || '—') + '</span>';
-            if (r.quer_falar_com_rafa) convBadge += ' <span class="lead-badge lead-badge--conv-com_rafa">Rafa</span>';
             var docsBadge = '<span class="' + leadBadgeClass('docs', docsVal) + '">' + escapeHtml(docsVal || '—') + '</span>';
             tr.innerHTML =
               '<td>' + r.id + '</td><td>' +
@@ -1970,7 +1969,7 @@
                   method: 'PATCH',
                   headers: { 'Content-Type': 'application/json' },
                   credentials: 'include',
-                  body: JSON.stringify({ estado_conversa: 'aguardando_escolha' }),
+                  body: JSON.stringify({ estado_conversa: 'aguardando_escolha', quer_falar_com_rafa: 0 }),
                 })
                   .then((res) => (res.ok ? loadRafa() : res.json().then((d) => Promise.reject(new Error(d.message || 'Erro')))))
                   .catch((err) => alert(err.message || 'Erro ao atualizar'));
