@@ -92,6 +92,10 @@ app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Ficheiros de áudio de respostas das gestoras (FAQ) – servidos como estáticos
+const faqAudioDir = path.join(__dirname, 'storage', 'faq-audio');
+app.use('/faq-audio', express.static(faqAudioDir));
+
 // Store de sessões em MySQL para persistir entre vários processos Node (ex.: Hostinger)
 const sessionStore = (process.env.DB_HOST && process.env.DB_USER)
   ? new MySQLStore({
@@ -1329,12 +1333,17 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
         });
         // Se tiver respostas em áudio, enviar também os áudios imediatamente
         if (respostasComAudio.length > 0) {
-          const baseUrl = (process.env.IA_APP_BASE_URL || process.env.IA_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+          const baseUrlRaw = (process.env.IA_APP_BASE_URL || process.env.IA_PUBLIC_BASE_URL || '').trim();
+          const baseUrl = baseUrlRaw ? baseUrlRaw.replace(/\/$/, '') : '';
+          if (!baseUrl) {
+            logStartup('WARN: IA_APP_BASE_URL/IA_PUBLIC_BASE_URL não configurado – não é possível enviar áudio por WhatsApp.');
+          }
           for (const r of respostasComAudio) {
             const rawUrl = String(r.audio_url || '').trim();
             if (!rawUrl) continue;
-            const fullAudioUrl = rawUrl.startsWith('http') ? rawUrl : baseUrl ? baseUrl + rawUrl : rawUrl;
-            if (!fullAudioUrl) continue;
+            if (!baseUrl) continue;
+            const fullAudioUrl = rawUrl.startsWith('http') ? rawUrl : baseUrl + rawUrl;
+            if (!fullAudioUrl || !fullAudioUrl.startsWith('http')) continue;
             try {
               await fetch(evoUrl + '/api/internal/send-audio', {
                 method: 'POST',
