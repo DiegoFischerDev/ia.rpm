@@ -735,9 +735,7 @@
     <div class="modal" style="max-width:520px;">
       <h3>Responder dúvida pendente</h3>
       <p id="modalDuvidaTexto" class="text-muted" style="white-space:pre-wrap;margin-bottom:1rem;"></p>
-      <label for="modalDuvidaRespostaTexto">A sua resposta (será enviada ao lead e criará a pergunta no FAQ)</label>
-      <textarea id="modalDuvidaRespostaTexto" rows="5" placeholder="Escreva a resposta..." style="width:100%; box-sizing:border-box;"></textarea>
-      <label class="text-muted" style="margin-top:1rem; display:block;">Ou, se preferir, grave uma resposta em áudio</label>
+      <p class="text-muted" style="margin-bottom:0.5rem;">Grave a sua resposta em áudio (será enviada ao lead e criará a pergunta no FAQ).</p>
       <div id="duvidaAudioControls" class="audio-recorder">
         <button type="button" class="btn btn-secondary btn-sm" id="btnStartRecording">🎙️ Gravar áudio</button>
         <button type="button" class="btn btn-secondary btn-sm" id="btnStopRecording" style="display:none;">Parar</button>
@@ -748,9 +746,6 @@
         </span>
         <audio id="duvidaAudioPreview" controls style="display:none; margin-top:0.5rem;"></audio>
       </div>
-      <p class="text-muted" style="font-size:0.85rem;">
-        Respostas preferencialmente em áudio, pois isso cria mais conexão com os leads 🙂
-      </p>
       <div class="modal-actions" style="margin-top:1rem;">
         <button type="button" class="btn btn-secondary" id="modalDuvidaResponderCancel">Cancelar</button>
         <button type="button" class="btn btn-primary" id="modalDuvidaResponderSubmit">Enviar resposta</button>
@@ -1621,7 +1616,6 @@
             const d = list.find(function (x) { return x.id === duvidaId; });
             if (!d) { alert('Dúvida não encontrada.'); return; }
             document.getElementById('modalDuvidaTexto').textContent = d.texto || '';
-            document.getElementById('modalDuvidaRespostaTexto').value = '';
             if (typeof resetDuvidaAudioState === 'function') resetDuvidaAudioState();
             document.getElementById('modalDuvidaResponder').classList.add('visible');
           })
@@ -1630,10 +1624,9 @@
 
       function submitResponderDuvida() {
         if (!_duvidaModalId) return;
-        const texto = document.getElementById('modalDuvidaRespostaTexto').value.trim();
-        if (!texto && !duvidaAudioBlob) { alert('Escreva a resposta ou grave um áudio.'); return; }
+        if (!duvidaAudioBlob) { alert('Grave uma resposta em áudio.'); return; }
         const fd = new FormData();
-        fd.append('texto', texto);
+        fd.append('texto', ''); // texto não é usado para o lead; áudio é obrigatório
         if (duvidaAudioBlob) {
           fd.append('audio', duvidaAudioBlob, 'resposta.webm');
         }
