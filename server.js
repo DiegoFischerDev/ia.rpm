@@ -1073,6 +1073,45 @@ app.post('/api/dashboard/perguntas', requireDashboardAuth, requireAdminAuth, asy
   }
 });
 
+// Gestora: atualizar/substituir o áudio da sua resposta a uma pergunta (FAQ) — não altera eh_pendente
+const perguntaAudioUpload = uploadMemory.single('audio');
+app.post('/api/dashboard/perguntas/:id/minha-resposta-audio', requireDashboardAuth, perguntaAudioUpload, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (user.role !== 'gestora') return res.status(403).json({ message: 'Acesso reservado à gestora.' });
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  const audioFile = req.file && req.file.buffer && req.file.buffer.length ? req.file : null;
+  if (!audioFile) return res.status(400).json({ message: 'Áudio é obrigatório.' });
+
+  try {
+    const pergunta = await getPerguntaById(id);
+    if (!pergunta) return res.status(404).json({ message: 'Pergunta não encontrada.' });
+
+    // Guardar ficheiro de áudio em disco (pasta compartilhada com as outras respostas FAQ)
+    const baseDir = path.join(__dirname, 'storage', 'faq-audio');
+    try {
+      await fs.promises.mkdir(baseDir, { recursive: true });
+    } catch (_) {}
+    const ext = (audioFile.mimetype || '').toLowerCase().includes('ogg') ? '.ogg' : '.webm';
+    const baseName = `pergunta_${id}_gestora_${user.id}_${Date.now()}${ext}`;
+    const fullPath = path.join(baseDir, baseName);
+    await fs.promises.writeFile(fullPath, audioFile.buffer);
+    const audioUrl = '/faq-audio/' + baseName;
+
+    // Substitui/atualiza a resposta desta gestora para esta pergunta, mantendo eh_pendente como está (já é FAQ)
+    await upsertRespostaComAudio(Number(id), user.id, {
+      texto: '',
+      audioUrl,
+      audioTranscricao: null,
+    });
+
+    res.json({ ok: true, audio_url: audioUrl });
+  } catch (err) {
+    logStartup(`updateMinhaRespostaAudio error: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao atualizar áudio.' });
+  }
+});
+
 // Gestora: remover a sua própria resposta em áudio a uma pergunta (volta a ser pendente)
 app.delete('/api/dashboard/perguntas/:id/minha-resposta', requireDashboardAuth, async (req, res) => {
   const user = req.session.dashboardUser;

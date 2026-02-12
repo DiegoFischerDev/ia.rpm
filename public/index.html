@@ -1520,21 +1520,151 @@
                 subBtn.className = 'btn btn-secondary btn-sm';
                 subBtn.textContent = 'Substituir áudio';
                 subBtn.addEventListener('click', function () {
-                  if (!confirm('Substituir o áudio atual por um novo? Esta pergunta voltará para as perguntas pendentes e poderá gravar novamente.')) return;
-                  fetch(API + '/perguntas/' + perguntaId + '/minha-resposta', {
-                    method: 'DELETE',
-                    credentials: 'include',
-                  })
-                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                    .then(function () {
-                      document.getElementById('modalPergunta').classList.remove('visible');
-                      loadDuvidasPendentes();
-                      loadDuvidasRespondidas();
-                      // mudar para a tab de Perguntas pendentes para a gestora poder gravar o novo áudio
-                      window.location.hash = '#duvidas-pendentes';
-                      alert('Áudio removido. A pergunta voltou para Perguntas pendentes para gravares um novo áudio.');
-                    })
-                    .catch(function (err) { alert(err.message || 'Erro ao substituir áudio.'); });
+                  // Abrir UI inline para gravar e enviar um novo áudio diretamente deste modal (sem voltar a pendentes)
+                  if (document.getElementById('faqReplaceAudioControls')) return; // já aberto
+                  const wrap = document.createElement('div');
+                  wrap.id = 'faqReplaceAudioControls';
+                  wrap.style.marginTop = '0.75rem';
+
+                  let faqBlob = null;
+                  let faqRecorder = null;
+                  let faqChunks = [];
+                  let faqStopResolvers = [];
+
+                  const recBtn = document.createElement('button');
+                  recBtn.type = 'button';
+                  recBtn.className = 'btn btn-secondary btn-sm';
+                  recBtn.textContent = '🎙️ Gravar novo áudio';
+
+                  const stopBtn = document.createElement('button');
+                  stopBtn.type = 'button';
+                  stopBtn.className = 'btn btn-secondary btn-sm';
+                  stopBtn.textContent = 'Parar';
+                  stopBtn.style.display = 'none';
+
+                  const playBtn = document.createElement('button');
+                  playBtn.type = 'button';
+                  playBtn.className = 'btn btn-secondary btn-sm';
+                  playBtn.textContent = 'Reproduzir';
+                  playBtn.style.display = 'none';
+
+                  const saveBtn = document.createElement('button');
+                  saveBtn.type = 'button';
+                  saveBtn.className = 'btn btn-primary btn-sm';
+                  saveBtn.textContent = 'Guardar novo áudio';
+                  saveBtn.style.display = 'none';
+
+                  const cancelBtn = document.createElement('button');
+                  cancelBtn.type = 'button';
+                  cancelBtn.className = 'btn btn-outline btn-sm';
+                  cancelBtn.textContent = 'Cancelar';
+                  cancelBtn.style.marginLeft = '0.5rem';
+
+                  const preview = document.createElement('audio');
+                  preview.controls = true;
+                  preview.style.display = 'none';
+                  preview.style.marginTop = '0.5rem';
+
+                  wrap.appendChild(recBtn);
+                  wrap.appendChild(stopBtn);
+                  wrap.appendChild(playBtn);
+                  wrap.appendChild(saveBtn);
+                  wrap.appendChild(cancelBtn);
+                  wrap.appendChild(preview);
+                  respDiv.appendChild(wrap);
+
+                  function resetFaqRecorder() {
+                    faqBlob = null;
+                    faqChunks = [];
+                    if (preview) {
+                      preview.src = '';
+                      preview.style.display = 'none';
+                    }
+                    recBtn.style.display = 'inline-block';
+                    stopBtn.style.display = 'none';
+                    playBtn.style.display = 'none';
+                    saveBtn.style.display = 'none';
+                  }
+
+                  recBtn.addEventListener('click', function () {
+                    resetFaqRecorder();
+                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                      alert('Não foi possível aceder ao microfone.');
+                      return;
+                    }
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                      .then(function (stream) {
+                        faqChunks = [];
+                        faqRecorder = new MediaRecorder(stream);
+                        faqRecorder.ondataavailable = function (e) {
+                          if (e.data && e.data.size > 0) faqChunks.push(e.data);
+                        };
+                        faqRecorder.onstop = function () {
+                          faqBlob = new Blob(faqChunks, { type: 'audio/webm' });
+                          preview.src = URL.createObjectURL(faqBlob);
+                          preview.style.display = 'block';
+                          playBtn.style.display = 'inline-block';
+                          saveBtn.style.display = 'inline-block';
+                          const resolvers = faqStopResolvers.slice();
+                          faqStopResolvers = [];
+                          resolvers.forEach(function (fn) { try { fn(); } catch (_) {} });
+                        };
+                        faqRecorder.start();
+                        recBtn.style.display = 'none';
+                        stopBtn.style.display = 'inline-block';
+                      })
+                      .catch(function () {
+                        alert('Não foi possível aceder ao microfone.');
+                      });
+                  });
+
+                  stopBtn.addEventListener('click', function () {
+                    if (faqRecorder && faqRecorder.state === 'recording') {
+                      faqRecorder.stop();
+                      stopBtn.style.display = 'none';
+                      recBtn.style.display = 'inline-block';
+                    }
+                  });
+
+                  playBtn.addEventListener('click', function () {
+                    if (preview && preview.src) preview.play();
+                  });
+
+                  cancelBtn.addEventListener('click', function () {
+                    if (faqRecorder && faqRecorder.state === 'recording') {
+                      try { faqRecorder.stop(); } catch (_) {}
+                    }
+                    wrap.remove();
+                  });
+
+                  saveBtn.addEventListener('click', function () {
+                    (async function () {
+                      if (faqRecorder && faqRecorder.state === 'recording') {
+                        await new Promise(function (resolve) {
+                          faqStopResolvers.push(resolve);
+                          try { faqRecorder.stop(); } catch (e) { resolve(); }
+                        });
+                      }
+                      if (!faqBlob) {
+                        alert('Grave um novo áudio primeiro.');
+                        return;
+                      }
+                      const fd = new FormData();
+                      fd.append('audio', faqBlob, 'resposta.webm');
+                      fetch(API + '/perguntas/' + perguntaId + '/minha-resposta-audio', {
+                        method: 'POST',
+                        credentials: 'include',
+                        body: fd,
+                      })
+                        .then(function (r) { return r.ok ? r.json() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro ao atualizar áudio.')); }); })
+                        .then(function () {
+                          document.getElementById('modalPergunta').classList.remove('visible');
+                          loadDuvidasRespondidas();
+                          alert('Áudio atualizado com sucesso.');
+                        })
+                        .catch(function (err) { alert(err.message || 'Erro ao atualizar áudio.'); });
+                    })();
+                  });
                 });
 
                 const delBtn = document.createElement('button');
