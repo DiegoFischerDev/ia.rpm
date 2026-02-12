@@ -1354,7 +1354,7 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
                 body: JSON.stringify({ number: num, audio_url: fullAudioUrl }),
               });
             } catch (err) {
-              logStartup(`Enviar resposta em áudio ao lead (WhatsApp) falhou: ${err.message}`);
+              logStartup(`Enviar resposta em áudio ao lead (WhatsApp) falhou: ${err.response?.data || err.message}`);
             }
           }
           // Depois de enviar os áudios, aguardar ~5 segundos e enviar o complemento
