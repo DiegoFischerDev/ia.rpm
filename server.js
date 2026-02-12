@@ -66,6 +66,7 @@ const {
   deleteDuvidaPendente,
   upsertRespostaComAudio,
   getRespostaAudioData,
+  getFirstGestoraIdWithAudio,
   deleteRespostaByPerguntaAndGestora,
   setDuvidaEhPendente,
 } = require('./db');
@@ -1097,6 +1098,25 @@ app.get('/api/dashboard/faq-audio/:perguntaId', requireDashboardAuth, async (req
     res.send(row.data);
   } catch (err) {
     logStartup(`faq-audio dashboard error: ${err.message}`);
+    res.status(500).end();
+  }
+});
+
+// Áudio da resposta salva para uma pergunta — apenas admin (ouvir resposta do FAQ)
+app.get('/api/dashboard/faq-audio-admin/:perguntaId', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  const perguntaId = req.params.perguntaId;
+  if (!/^\d+$/.test(perguntaId)) return res.status(400).end();
+  try {
+    const gestoraId = await getFirstGestoraIdWithAudio(Number(perguntaId));
+    if (gestoraId == null) return res.status(404).end();
+    const row = await getRespostaAudioData(Number(perguntaId), gestoraId);
+    if (!row || !row.data) return res.status(404).end();
+    res.setHeader('Content-Type', row.mimetype || 'audio/webm');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.send(row.data);
+  } catch (err) {
+    logStartup(`faq-audio-admin error: ${err.message}`);
     res.status(500).end();
   }
 });

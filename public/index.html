@@ -487,7 +487,7 @@
           <div class="table-wrap">
             <table id="tblPerguntasRespondidas">
               <thead>
-                <tr>
+                <tr id="tblPerguntasRespondidasHead">
                   <th>#</th>
                   <th>Pergunta</th>
                   <th>Frequencia</th>
@@ -714,6 +714,17 @@
       <p id="modalVerDuvidaTexto" class="text-muted" style="white-space:pre-wrap;margin-bottom:1rem;"></p>
       <div class="modal-actions">
         <button type="button" class="btn btn-secondary" id="modalVerDuvidaFechar">Fechar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modalOuvirResposta" class="modal-overlay">
+    <div class="modal" style="max-width:400px;">
+      <h3 id="modalOuvirRespostaTitle">Ouvir resposta</h3>
+      <audio id="modalOuvirRespostaAudio" controls style="width:100%; margin:0.75rem 0;"></audio>
+      <p id="modalOuvirRespostaSemAudio" class="text-warning" style="display:none; margin-bottom:1rem;">Sem áudio gravado para esta pergunta.</p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" id="modalOuvirRespostaFechar">Fechar</button>
       </div>
     </div>
   </div>
@@ -1384,9 +1395,22 @@
       function loadDuvidasRespondidas() {
         const perguntasBody = document.getElementById('perguntasBody');
         if (!perguntasBody) return;
-        perguntasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
+        const isAdmin = user && user.role === 'admin';
+        const colCount = isAdmin ? 4 : 5;
         var tblPerguntas = document.getElementById('tblPerguntasRespondidas');
-        if (tblPerguntas) { tblPerguntas.classList.remove('role-admin', 'role-gestora'); tblPerguntas.classList.add(user && user.role === 'admin' ? 'role-admin' : 'role-gestora'); }
+        if (tblPerguntas) {
+          tblPerguntas.classList.remove('role-admin', 'role-gestora');
+          tblPerguntas.classList.add(isAdmin ? 'role-admin' : 'role-gestora');
+          var headRow = document.getElementById('tblPerguntasRespondidasHead');
+          if (headRow) {
+            if (isAdmin) {
+              headRow.innerHTML = '<th>#</th><th>Pergunta</th><th>Frequencia</th><th class="th-acoes-admin">Ações (admin)</th>';
+            } else {
+              headRow.innerHTML = '<th>#</th><th>Pergunta</th><th>Frequencia</th><th>Resposta</th><th class="th-acoes-admin">Ações (admin)</th>';
+            }
+          }
+        }
+        perguntasBody.innerHTML = '<tr><td colspan="' + colCount + '">A carregar…</td></tr>';
         fetch(API + '/perguntas', { credentials: 'include' })
           .then(function (r) { return r.ok ? r.json() : []; })
           .then(function (perguntas) {
@@ -1397,31 +1421,36 @@
               : '';
             if (filterVal) {
               rows = rows.filter(function (p) {
-                var text = [p.id, p.texto, p.frequencia, p.num_respostas].join(' ').toLowerCase();
+                var text = [p.id, p.texto, p.frequencia].join(' ').toLowerCase();
                 return text.indexOf(filterVal) !== -1;
               });
             }
             perguntasBody.innerHTML = '';
             if (!rows.length) {
-              perguntasBody.innerHTML = '<tr><td colspan="5">Nenhuma pergunta no FAQ.</td></tr>';
+              perguntasBody.innerHTML = '<tr><td colspan="' + colCount + '">Nenhuma pergunta no FAQ.</td></tr>';
             } else {
               rows.forEach(function (p) {
                 const tr = document.createElement('tr');
                 const textoPergunta = (p.texto || '').trim();
-                const numRespostas = p.num_respostas != null ? Number(p.num_respostas) : 0;
-                const isAdmin = user && user.role === 'admin';
-                const respostasCell = isAdmin ? String(numRespostas) : '<button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>';
                 const acoes = isAdmin
-                  ? '<button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button> ' +
+                  ? '<button type="button" class="btn btn-secondary btn-sm btn-ouvir-pergunta" data-id="' + p.id + '">Ouvir</button> ' +
                     '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta" data-id="' + p.id + '">Editar</button> ' +
                     '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta" data-id="' + p.id + '">Excluir</button>'
-                  : '';
-                tr.innerHTML =
-                  '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td><td>' + (p.frequencia || 0) + '</td><td>' + respostasCell + '</td><td class="td-acoes-admin">' + acoes + '</td>';
+                  : '<button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>';
+                if (isAdmin) {
+                  tr.innerHTML =
+                    '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td><td>' + (p.frequencia || 0) + '</td><td class="td-acoes-admin">' + acoes + '</td>';
+                } else {
+                  tr.innerHTML =
+                    '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td><td>' + (p.frequencia || 0) + '</td><td>' + acoes + '</td><td class="td-acoes-admin"></td>';
+                }
                 perguntasBody.appendChild(tr);
               });
               perguntasBody.querySelectorAll('.btn-ver-pergunta').forEach(function (btn) {
                 btn.addEventListener('click', function () { openPerguntaDetail(parseInt(this.dataset.id, 10)); });
+              });
+              perguntasBody.querySelectorAll('.btn-ouvir-pergunta').forEach(function (btn) {
+                btn.addEventListener('click', function () { openOuvirResposta(parseInt(this.dataset.id, 10)); });
               });
               perguntasBody.querySelectorAll('.btn-editar-pergunta').forEach(function (btn) {
                 btn.addEventListener('click', function () { openEditarPergunta(parseInt(this.dataset.id, 10)); });
@@ -1439,7 +1468,7 @@
             }
           })
           .catch(function () {
-            perguntasBody.innerHTML = '<tr><td colspan="5" class="error-msg">Erro ao carregar.</td></tr>';
+            perguntasBody.innerHTML = '<tr><td colspan="' + colCount + '" class="error-msg">Erro ao carregar.</td></tr>';
           });
       }
 
@@ -1476,6 +1505,27 @@
             loadDuvidasRespondidas();
           })
           .catch(function (err) { alert(err.message || 'Erro ao guardar.'); });
+      }
+
+      function openOuvirResposta(perguntaId) {
+        var titleEl = document.getElementById('modalOuvirRespostaTitle');
+        var audioEl = document.getElementById('modalOuvirRespostaAudio');
+        var semAudioEl = document.getElementById('modalOuvirRespostaSemAudio');
+        if (titleEl) titleEl.textContent = 'Ouvir resposta #' + perguntaId;
+        if (semAudioEl) semAudioEl.style.display = 'none';
+        if (audioEl) {
+          audioEl.src = API + '/faq-audio-admin/' + perguntaId + '?t=' + Date.now();
+          audioEl.onerror = function () {
+            audioEl.style.display = 'none';
+            if (semAudioEl) semAudioEl.style.display = 'block';
+          };
+          audioEl.onloadeddata = function () {
+            audioEl.style.display = 'block';
+            if (semAudioEl) semAudioEl.style.display = 'none';
+          };
+          audioEl.style.display = 'block';
+        }
+        document.getElementById('modalOuvirResposta').classList.add('visible');
       }
 
       function openPerguntaDetail(perguntaId) {
@@ -1844,6 +1894,11 @@
       document.getElementById('modalPerguntaSave').addEventListener('click', saveRespostaPergunta);
       document.getElementById('modalPerguntaClose').addEventListener('click', function () { document.getElementById('modalPergunta').classList.remove('visible'); });
       document.getElementById('modalVerDuvidaFechar').addEventListener('click', function () { document.getElementById('modalVerDuvida').classList.remove('visible'); });
+      document.getElementById('modalOuvirRespostaFechar').addEventListener('click', function () {
+        document.getElementById('modalOuvirResposta').classList.remove('visible');
+        var a = document.getElementById('modalOuvirRespostaAudio');
+        if (a) { a.pause(); a.src = ''; }
+      });
       document.getElementById('modalEditarDuvidaCancel').addEventListener('click', function () { document.getElementById('modalEditarDuvida').classList.remove('visible'); _duvidaEditarId = null; });
       document.getElementById('modalEditarDuvidaSave').addEventListener('click', saveEditarDuvida);
       document.getElementById('modalDuvidaResponderCancel').addEventListener('click', function () {

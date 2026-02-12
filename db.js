@@ -441,6 +441,15 @@ async function getRespostaAudioData(perguntaId, gestoraId) {
   return { data: r.audio_data, mimetype: r.audio_mimetype || 'audio/webm' };
 }
 
+/** Primeira resposta com áudio para uma pergunta (para admin ouvir). */
+async function getFirstGestoraIdWithAudio(perguntaId) {
+  const rows = await query(
+    'SELECT gestora_id FROM ch_pergunta_respostas WHERE pergunta_id = ? AND audio_data IS NOT NULL AND LENGTH(audio_data) > 0 ORDER BY updated_at ASC LIMIT 1',
+    [perguntaId]
+  );
+  return rows[0] ? rows[0].gestora_id : null;
+}
+
 async function deleteRespostaByPerguntaAndGestora(perguntaId, gestoraId) {
   await query('DELETE FROM ch_pergunta_respostas WHERE pergunta_id = ? AND gestora_id = ?', [perguntaId, gestoraId]);
 }
@@ -609,5 +618,6 @@ module.exports = {
   deleteDuvidaPendente,
   upsertRespostaComAudio,
   getRespostaAudioData,
+  getFirstGestoraIdWithAudio,
   setDuvidaEhPendente,
 };
