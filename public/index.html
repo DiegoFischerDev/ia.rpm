@@ -1507,13 +1507,39 @@
                 audio.style.display = 'block';
                 audio.style.marginTop = '0.5rem';
                 respDiv.appendChild(audio);
+                const actionsDiv = document.createElement('div');
+                actionsDiv.style.marginTop = '0.75rem';
+                actionsDiv.style.display = 'flex';
+                actionsDiv.style.gap = '0.5rem';
+
+                const subBtn = document.createElement('button');
+                subBtn.type = 'button';
+                subBtn.className = 'btn btn-secondary btn-sm';
+                subBtn.textContent = 'Substituir áudio';
+                subBtn.addEventListener('click', function () {
+                  if (!confirm('Substituir o áudio atual por um novo? Esta pergunta voltará para as perguntas pendentes e poderá gravar novamente.')) return;
+                  fetch(API + '/perguntas/' + perguntaId + '/minha-resposta', {
+                    method: 'DELETE',
+                    credentials: 'include',
+                  })
+                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                    .then(function () {
+                      document.getElementById('modalPergunta').classList.remove('visible');
+                      loadDuvidasPendentes();
+                      loadDuvidasRespondidas();
+                      // mudar para a tab de Perguntas pendentes para a gestora poder gravar o novo áudio
+                      window.location.hash = '#duvidas-pendentes';
+                      alert('Áudio removido. A pergunta voltou para Perguntas pendentes para gravares um novo áudio.');
+                    })
+                    .catch(function (err) { alert(err.message || 'Erro ao substituir áudio.'); });
+                });
+
                 const delBtn = document.createElement('button');
                 delBtn.type = 'button';
                 delBtn.className = 'btn btn-danger btn-sm';
-                delBtn.style.marginTop = '0.75rem';
-                delBtn.textContent = 'Excluir resposta em áudio';
+                delBtn.textContent = 'Excluir áudio';
                 delBtn.addEventListener('click', function () {
-                  if (!confirm('Excluir a sua resposta em áudio? Esta pergunta voltará para as perguntas pendentes.')) return;
+                  if (!confirm('Excluir o áudio definitivamente? Esta pergunta voltará para as perguntas pendentes.')) return;
                   fetch(API + '/perguntas/' + perguntaId + '/minha-resposta', {
                     method: 'DELETE',
                     credentials: 'include',
@@ -1524,9 +1550,12 @@
                       loadDuvidasPendentes();
                       loadDuvidasRespondidas();
                     })
-                    .catch(function (err) { alert(err.message || 'Erro ao excluir resposta.'); });
+                    .catch(function (err) { alert(err.message || 'Erro ao excluir áudio.'); });
                 });
-                respDiv.appendChild(delBtn);
+
+                actionsDiv.appendChild(subBtn);
+                actionsDiv.appendChild(delBtn);
+                respDiv.appendChild(actionsDiv);
               } else {
                 respDiv.innerHTML = '<p class="text-muted">Ainda não tens resposta em áudio para esta pergunta.</p>';
               }
