@@ -1491,8 +1491,16 @@
             if (user && user.role === 'gestora') {
               // Gestora: vê apenas a própria resposta em áudio (se existir)
               minhaWrap.style.display = 'none';
-              adminActions.style.display = 'block';
-              const minha = data.minha_resposta;
+              adminActions.style.display = 'block'; // mantém botão Fechar
+              const myId = user && user.id;
+              // Primeiro tenta encontrar a resposta desta gestora no array completo (garante que apanhamos audio_url)
+              var minha = null;
+              if (Array.isArray(data.respostas) && myId != null) {
+                minha = data.respostas.find(function (r) { return r.gestora_id === myId; }) || null;
+              }
+              // Fallback para minha_resposta vindo do backend, se necessário
+              if (!minha && data.minha_resposta) minha = data.minha_resposta;
+
               if (minha && minha.audio_url) {
                 const p = document.createElement('p');
                 p.className = 'text-muted';
