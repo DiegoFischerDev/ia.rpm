@@ -1504,12 +1504,24 @@
               if (!minha && data.minha_resposta) minha = data.minha_resposta;
 
               if (minha && minha.audio_url) {
+                const audioWrap = document.createElement('div');
                 const audio = document.createElement('audio');
                 audio.controls = true;
                 audio.src = minha.audio_url;
                 audio.style.display = 'block';
                 audio.style.marginTop = '0.5rem';
-                respDiv.appendChild(audio);
+                const audioUnavailableMsg = document.createElement('p');
+                audioUnavailableMsg.className = 'text-warning';
+                audioUnavailableMsg.style.display = 'none';
+                audioUnavailableMsg.style.marginTop = '0.5rem';
+                audioUnavailableMsg.textContent = 'Áudio não disponível (perdido após atualização). Usa "Substituir áudio" para gravar um novo.';
+                audio.addEventListener('error', function () {
+                  audio.style.display = 'none';
+                  audioUnavailableMsg.style.display = 'block';
+                });
+                audioWrap.appendChild(audio);
+                audioWrap.appendChild(audioUnavailableMsg);
+                respDiv.appendChild(audioWrap);
                 const actionsDiv = document.createElement('div');
                 actionsDiv.style.marginTop = '0.75rem';
                 actionsDiv.style.display = 'flex';

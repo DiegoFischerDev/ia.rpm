@@ -94,9 +94,26 @@ app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Ficheiros de áudio de respostas das gestoras (FAQ) – servidos como estáticos
+// Ficheiros de áudio de respostas das gestoras (FAQ) – rota customizada para servir ficheiro ou 404 JSON
+// (após deploy os ficheiros podem não existir; 404 em JSON permite ao dashboard mostrar mensagem e "Substituir áudio")
 const faqAudioDir = path.join(__dirname, 'storage', 'faq-audio');
-app.use('/faq-audio', express.static(faqAudioDir));
+app.get('/faq-audio/:filename', function (req, res) {
+  const filename = req.params.filename;
+  if (!filename || filename.includes('..') || path.isAbsolute(filename)) {
+    return res.status(400).json({ error: 'invalid_filename' });
+  }
+  const filePath = path.join(faqAudioDir, filename);
+  fs.promises.access(filePath, fs.constants.R_OK)
+    .then(function () {
+      const ext = path.extname(filename).toLowerCase();
+      const mime = ext === '.ogg' ? 'audio/ogg' : 'audio/webm';
+      res.setHeader('Content-Type', mime);
+      res.sendFile(filePath);
+    })
+    .catch(function () {
+      res.status(404).json({ error: 'file_not_found', message: 'Áudio não disponível (perdido após atualização). Podes gravar um novo.' });
+    });
+});
 
 // Store de sessões em MySQL para persistir entre vários processos Node (ex.: Hostinger)
 const sessionStore = (process.env.DB_HOST && process.env.DB_USER)
