@@ -1502,6 +1502,7 @@ app.get('/api/faq/perguntas/:id', (req, res) => {
     })
     .catch((err) => {
       logStartup(`faq/perguntas/:id error: ${err.message}`);
+      logStartup(`faq/perguntas/:id stack: ${err.stack || ''}`);
       res.status(500).json({ message: 'Erro.' });
     });
 });
