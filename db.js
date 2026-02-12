@@ -99,7 +99,7 @@ async function getGestoraByEmail(email) {
 /** Lista leads atribuídos a uma gestora (dashboard gestora). */
 async function getLeadsByGestoraId(gestoraId) {
   const rows = await query(
-    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, created_at, updated_at FROM ch_leads WHERE gestora_id = ? ORDER BY updated_at DESC',
+    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, quer_falar_com_rafa, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, created_at, updated_at FROM ch_leads WHERE gestora_id = ? ORDER BY updated_at DESC',
     [gestoraId]
   );
   return rows;
@@ -189,21 +189,18 @@ async function updateLeadEstadoDocs(leadId, estadoDocs) {
   );
 }
 
-/** Lista para Rafa: por estado_conversa (ex.: com_rafa). */
-async function getLeadsForRafa(estadoConversa) {
-  if (!estadoConversa || typeof estadoConversa !== 'string') return [];
+/** Lista leads que querem falar com a Rafa (flag quer_falar_com_rafa = 1). */
+async function getLeadsForRafa() {
   const rows = await query(
-    'SELECT id, nome, email, whatsapp_number, estado_conversa, estado_docs, updated_at FROM ch_leads WHERE estado_conversa = ? ORDER BY updated_at DESC',
-    [estadoConversa.trim()]
+    'SELECT id, nome, email, whatsapp_number, estado_conversa, estado_docs, quer_falar_com_rafa, updated_at FROM ch_leads WHERE quer_falar_com_rafa = 1 ORDER BY updated_at DESC'
   );
   return rows;
 }
 
-/** Conta leads em estado_conversa = com_rafa (para badge no menu). */
+/** Conta leads com quer_falar_com_rafa = 1 (para badge no menu). */
 async function getLeadsForRafaCount() {
   const rows = await query(
-    'SELECT COUNT(*) AS n FROM ch_leads WHERE estado_conversa = ?',
-    ['com_rafa']
+    'SELECT COUNT(*) AS n FROM ch_leads WHERE quer_falar_com_rafa = 1'
   );
   return (rows[0] && rows[0].n) ? Number(rows[0].n) : 0;
 }
@@ -211,7 +208,7 @@ async function getLeadsForRafaCount() {
 /** Dashboard: lista todos os leads. */
 async function getAllLeads() {
   const rows = await query(
-    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, created_at, updated_at FROM ch_leads ORDER BY updated_at DESC'
+    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, quer_falar_com_rafa, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, created_at, updated_at FROM ch_leads ORDER BY updated_at DESC'
   );
   return rows;
 }
@@ -219,7 +216,7 @@ async function getAllLeads() {
 /** Dashboard: atualizar lead (admin). */
 async function updateLeadAdmin(id, dados) {
   if (!dados || typeof dados !== 'object') return;
-  const allowed = ['nome', 'email', 'estado_conversa', 'estado_docs', 'gestora_id', 'gestora_nome', 'comentario'];
+  const allowed = ['nome', 'email', 'estado_conversa', 'estado_docs', 'gestora_id', 'gestora_nome', 'comentario', 'quer_falar_com_rafa'];
   const set = [];
   const values = [];
   for (const key of allowed) {
@@ -228,6 +225,7 @@ async function updateLeadAdmin(id, dados) {
     if (typeof val === 'string') val = val.trim() || null;
     else if (key === 'gestora_id' && (val === '' || val === null)) val = null;
     else if (key === 'gestora_id') val = parseInt(val, 10) || null;
+    else if (key === 'quer_falar_com_rafa') val = val ? 1 : 0;
     set.push(`${key} = ?`);
     values.push(val);
   }

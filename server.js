@@ -328,12 +328,11 @@ async function getGestoraContactForLead(lead) {
 // Lista para Rafa: apenas nome, email e whatsapp (sem dados sensíveis como estado civil, vínculo, etc.)
 app.get('/api/leads', async (req, res) => {
   const estadoConversa = (req.query && req.query.estado) || (req.query && req.query.estado_conversa) || '';
-  const filter = estadoConversa === 'falar_com_rafa' ? 'com_rafa' : estadoConversa;
-  if (filter !== 'com_rafa') {
-    return res.status(400).json({ message: 'Parâmetro estado inválido (use estado=falar_com_rafa ou estado_conversa=com_rafa).' });
+  if (estadoConversa !== 'falar_com_rafa') {
+    return res.status(400).json({ message: 'Parâmetro estado inválido (use estado=falar_com_rafa).' });
   }
   try {
-    const leads = await getLeadsForRafa('com_rafa');
+    const leads = await getLeadsForRafa();
     res.json(leads);
   } catch (err) {
     logStartup(`getLeadsForRafa error: ${err.message}`);
@@ -523,7 +522,7 @@ app.post('/api/leads/:leadId/confirm-email', async (req, res) => {
   res.json({ ok: true });
 });
 
-// "Não recebi o código" — coloca o lead em com_rafa para a equipa contactar
+// "Não recebi o código" — marca que o lead quer falar com a Rafa (equipa contacta)
 app.post('/api/leads/:leadId/no-code', async (req, res) => {
   const leadId = req.params.leadId;
   if (!/^\d+$/.test(leadId)) return res.status(400).json({ message: 'ID inválido.' });
@@ -534,7 +533,7 @@ app.post('/api/leads/:leadId/no-code', async (req, res) => {
     return res.status(400).json({ message: 'Este lead já tem email confirmado.' });
   }
   try {
-    await updateLeadAdmin(Number(leadId), { estado_conversa: 'com_rafa' });
+    await updateLeadAdmin(Number(leadId), { quer_falar_com_rafa: 1, estado_conversa: 'aguardando_escolha' });
     res.json({ ok: true });
   } catch (err) {
     logStartup(`no-code updateLeadAdmin error: ${err.message}`);
@@ -910,7 +909,7 @@ app.get('/api/dashboard/leads', requireDashboardAuth, async (req, res) => {
 
 app.get('/api/dashboard/leads/rafa', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   try {
-    const rows = await getLeadsForRafa('com_rafa');
+    const rows = await getLeadsForRafa();
     res.json(rows);
   } catch (err) {
     logStartup(`getLeadsForRafa error: ${err.message}`);

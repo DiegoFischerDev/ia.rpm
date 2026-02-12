@@ -637,8 +637,8 @@
         <option value="aguardando_escolha">aguardando_escolha</option>
         <option value="com_duvida">com_duvida</option>
         <option value="com_gestora">com_gestora</option>
-        <option value="com_rafa">com_rafa</option>
       </select>
+      <label style="display:block; margin-top:0.75rem;"><input type="checkbox" id="editLeadQuerFalarComRafa"> Quer falar com Rafa</label>
       <label>Estado docs</label>
       <select id="editLeadEstadoDocs">
         <option value="aguardando_docs">aguardando_docs</option>
@@ -1106,6 +1106,7 @@
             var convVal = r.estado_conversa || '';
             var docsVal = r.estado_docs || '';
             var convBadge = '<span class="' + leadBadgeClass('conv', convVal) + '">' + escapeHtml(convVal || '—') + '</span>';
+            if (r.quer_falar_com_rafa) convBadge += ' <span class="lead-badge lead-badge--conv-com_rafa">Rafa</span>';
             var docsBadge = '<span class="' + leadBadgeClass('docs', docsVal) + '">' + escapeHtml(docsVal || '—') + '</span>';
             tr.innerHTML =
               '<td>' + r.id + '</td><td>' +
@@ -2163,6 +2164,7 @@
         document.getElementById('editLeadComentario').value = lead.comentario || '';
         document.getElementById('editLeadEstadoConversa').value = lead.estado_conversa || 'aguardando_escolha';
         document.getElementById('editLeadEstadoDocs').value = lead.estado_docs || 'sem_docs';
+        document.getElementById('editLeadQuerFalarComRafa').checked = !!lead.quer_falar_com_rafa;
         document.getElementById('modalLead').classList.add('visible');
       }
 
@@ -2177,6 +2179,7 @@
           comentario: document.getElementById('editLeadComentario').value.trim() || null,
           estado_conversa: document.getElementById('editLeadEstadoConversa').value,
           estado_docs: document.getElementById('editLeadEstadoDocs').value,
+          quer_falar_com_rafa: document.getElementById('editLeadQuerFalarComRafa').checked ? 1 : 0,
         };
         fetch(API + '/leads/' + id, {
           method: 'PATCH',
