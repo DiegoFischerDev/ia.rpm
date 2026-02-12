@@ -735,7 +735,6 @@
     <div class="modal" style="max-width:520px;">
       <h3>Responder dúvida pendente</h3>
       <p id="modalDuvidaTexto" class="text-muted" style="white-space:pre-wrap;margin-bottom:1rem;"></p>
-      <p class="text-muted" style="margin-bottom:0.5rem;">Grave a sua resposta em áudio (será enviada ao lead e criará a pergunta no FAQ).</p>
       <div id="duvidaAudioControls" class="audio-recorder">
         <button type="button" class="btn btn-secondary btn-sm" id="btnStartRecording">🎙️ Gravar áudio</button>
         <button type="button" class="btn btn-secondary btn-sm" id="btnStopRecording" style="display:none;">Parar</button>
@@ -1492,7 +1491,7 @@
             if (user && user.role === 'gestora') {
               // Gestora: vê apenas a própria resposta em áudio (se existir)
               minhaWrap.style.display = 'none';
-              adminActions.style.display = 'none';
+              adminActions.style.display = 'block';
               const minha = data.minha_resposta;
               if (minha && minha.audio_url) {
                 const p = document.createElement('p');
@@ -1625,6 +1624,12 @@
       function submitResponderDuvida() {
         if (!_duvidaModalId) return;
         if (!duvidaAudioBlob) { alert('Grave uma resposta em áudio.'); return; }
+        const submitBtn = document.getElementById('modalDuvidaResponderSubmit');
+        const originalText = submitBtn ? submitBtn.textContent : '';
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Enviando...';
+        }
         const fd = new FormData();
         fd.append('texto', ''); // texto não é usado para o lead; áudio é obrigatório
         if (duvidaAudioBlob) {
@@ -1644,7 +1649,13 @@
             const nome = user && user.nome && user.nome.trim() ? user.nome.trim() : 'Gestora';
             alert('Obrigado pela ajuda, ' + nome + ' 😊👍');
           })
-          .catch(function (err) { alert(err.message || 'Erro ao responder.'); });
+          .catch(function (err) { alert(err.message || 'Erro ao responder.'); })
+          .finally(function () {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = originalText || 'Enviar resposta';
+            }
+          });
       }
 
       document.getElementById('modalEditarPerguntaCancel').addEventListener('click', function () { document.getElementById('modalEditarPergunta').classList.remove('visible'); _perguntaEditarId = null; });

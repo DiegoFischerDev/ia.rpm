@@ -417,7 +417,7 @@ async function listRespostasByPerguntaId(perguntaId) {
 
 async function getRespostaByPerguntaAndGestora(perguntaId, gestoraId) {
   const rows = await query(
-    'SELECT id, pergunta_id, gestora_id, texto, created_at, updated_at FROM ch_pergunta_respostas WHERE pergunta_id = ? AND gestora_id = ?',
+    'SELECT id, pergunta_id, gestora_id, texto, audio_url, audio_transcricao, created_at, updated_at FROM ch_pergunta_respostas WHERE pergunta_id = ? AND gestora_id = ?',
     [perguntaId, gestoraId]
   );
   return rows[0] || null;
