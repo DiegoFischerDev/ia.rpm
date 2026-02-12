@@ -406,7 +406,7 @@ async function deletePergunta(id) {
 /** Respostas de uma pergunta (com nome da gestora). pergunta_id referencia ch_duvidas.id */
 async function listRespostasByPerguntaId(perguntaId) {
   return query(
-    `SELECT r.id, r.pergunta_id, r.gestora_id, r.texto, r.created_at, r.updated_at, g.nome AS gestora_nome
+    `SELECT r.id, r.pergunta_id, r.gestora_id, r.texto, r.audio_url, r.audio_transcricao, r.created_at, r.updated_at, g.nome AS gestora_nome
      FROM ch_pergunta_respostas r
      JOIN ch_gestoras g ON g.id = r.gestora_id
      WHERE r.pergunta_id = ?
@@ -431,6 +431,24 @@ async function upsertResposta(perguntaId, gestoraId, texto) {
     `INSERT INTO ch_pergunta_respostas (pergunta_id, gestora_id, texto) VALUES (?, ?, ?)
      ON DUPLICATE KEY UPDATE texto = VALUES(texto), updated_at = NOW()`,
     [perguntaId, gestoraId, t]
+  );
+}
+
+/** Cria ou atualiza resposta (texto/áudio) de uma gestora a uma pergunta */
+async function upsertRespostaComAudio(perguntaId, gestoraId, { texto, audioUrl, audioTranscricao }) {
+  const t = typeof texto === 'string' ? texto.trim() : '';
+  const aUrl = audioUrl ? String(audioUrl).trim() : null;
+  const aTxt = typeof audioTranscricao === 'string' ? audioTranscricao.trim() : null;
+  if (!t && !aUrl && !aTxt) return;
+  await query(
+    `INSERT INTO ch_pergunta_respostas (pergunta_id, gestora_id, texto, audio_url, audio_transcricao)
+     VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       texto = VALUES(texto),
+       audio_url = VALUES(audio_url),
+       audio_transcricao = VALUES(audio_transcricao),
+       updated_at = NOW()`,
+    [perguntaId, gestoraId, t || aTxt || null, aUrl, aTxt]
   );
 }
 
@@ -560,4 +578,5 @@ module.exports = {
   markDuvidaRespondida,
   updateDuvidaPendenteTexto,
   deleteDuvidaPendente,
+  upsertRespostaComAudio,
 };

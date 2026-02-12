@@ -737,6 +737,17 @@
       <p id="modalDuvidaTexto" class="text-muted" style="white-space:pre-wrap;margin-bottom:1rem;"></p>
       <label for="modalDuvidaRespostaTexto">A sua resposta (será enviada ao lead e criará a pergunta no FAQ)</label>
       <textarea id="modalDuvidaRespostaTexto" rows="5" placeholder="Escreva a resposta..." style="width:100%; box-sizing:border-box;"></textarea>
+      <label class="text-muted" style="margin-top:1rem; display:block;">Ou, se preferir, grave uma resposta em áudio</label>
+      <div id="duvidaAudioControls" class="audio-recorder">
+        <button type="button" class="btn btn-secondary btn-sm" id="btnStartRecording">Gravar áudio</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnStopRecording" disabled>Parar</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnPlayRecording" disabled>Reproduzir</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnClearRecording" disabled>Apagar</button>
+        <audio id="duvidaAudioPreview" controls style="display:none; margin-top:0.5rem;"></audio>
+      </div>
+      <p class="text-muted" style="font-size:0.85rem;">
+        Pode responder em texto, em áudio, ou ambos. Se responder em áudio, o sistema transcreve automaticamente a resposta para melhorar o FAQ.
+      </p>
       <div class="modal-actions" style="margin-top:1rem;">
         <button type="button" class="btn btn-secondary" id="modalDuvidaResponderCancel">Cancelar</button>
         <button type="button" class="btn btn-primary" id="modalDuvidaResponderSubmit">Enviar resposta</button>
@@ -748,6 +759,7 @@
     (function () {
       const API = '/api/dashboard';
       let user = null;
+      let duvidaAudioBlob = null;
 
       function hashToScreenId(hash) {
         var map = { gestoras: 'gestoras', rafa: 'rafa', perfil: 'perfil', 'duvidas-pendentes': 'duvidasPendentes', 'duvidas-respondidas': 'duvidasRespondidas' };
@@ -1571,16 +1583,21 @@
       function submitResponderDuvida() {
         if (!_duvidaModalId) return;
         const texto = document.getElementById('modalDuvidaRespostaTexto').value.trim();
-        if (!texto) { alert('Escreva a resposta.'); return; }
+        if (!texto && !duvidaAudioBlob) { alert('Escreva a resposta ou grave um áudio.'); return; }
+        const fd = new FormData();
+        fd.append('texto', texto);
+        if (duvidaAudioBlob) {
+          fd.append('audio', duvidaAudioBlob, 'resposta.webm');
+        }
         fetch(API + '/duvidas-pendentes/' + _duvidaModalId + '/responder', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ texto: texto }),
+          body: fd,
         })
           .then((r) => (r.ok ? Promise.resolve() : r.json().then((d) => Promise.reject(new Error(d.message || 'Erro')))))
           .then(function () {
             document.getElementById('modalDuvidaResponder').classList.remove('visible');
+            duvidaAudioBlob = null;
             loadDuvidasPendentes();
             loadDuvidasRespondidas();
             const nome = user && user.nome && user.nome.trim() ? user.nome.trim() : 'Gestora';
@@ -1599,6 +1616,61 @@
       document.getElementById('modalEditarDuvidaSave').addEventListener('click', saveEditarDuvida);
       document.getElementById('modalDuvidaResponderCancel').addEventListener('click', function () { document.getElementById('modalDuvidaResponder').classList.remove('visible'); });
       document.getElementById('modalDuvidaResponderSubmit').addEventListener('click', submitResponderDuvida);
+
+      // Áudio na resposta de dúvida (dashboard gestora)
+      (function initDuvidaAudioRecorder() {
+        const recBtn = document.getElementById('btnStartRecording');
+        const stopBtn = document.getElementById('btnStopRecording');
+        const playBtn = document.getElementById('btnPlayRecording');
+        const clearBtn = document.getElementById('btnClearRecording');
+        const audioEl = document.getElementById('duvidaAudioPreview');
+        if (!recBtn || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          if (recBtn) recBtn.disabled = true;
+          return;
+        }
+        let mediaRecorder = null;
+        let chunks = [];
+        recBtn.addEventListener('click', function () {
+          navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function (stream) {
+              chunks = [];
+              mediaRecorder = new MediaRecorder(stream);
+              mediaRecorder.ondataavailable = function (e) {
+                if (e.data && e.data.size > 0) chunks.push(e.data);
+              };
+              mediaRecorder.onstop = function () {
+                duvidaAudioBlob = new Blob(chunks, { type: 'audio/webm' });
+                audioEl.src = URL.createObjectURL(duvidaAudioBlob);
+                audioEl.style.display = 'block';
+                playBtn.disabled = false;
+                clearBtn.disabled = false;
+              };
+              mediaRecorder.start();
+              recBtn.disabled = true;
+              stopBtn.disabled = false;
+            })
+            .catch(function () {
+              alert('Não foi possível aceder ao microfone.');
+            });
+        });
+        stopBtn.addEventListener('click', function () {
+          if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+            stopBtn.disabled = true;
+            recBtn.disabled = false;
+          }
+        });
+        playBtn.addEventListener('click', function () {
+          if (audioEl.src) audioEl.play();
+        });
+        clearBtn.addEventListener('click', function () {
+          duvidaAudioBlob = null;
+          audioEl.src = '';
+          audioEl.style.display = 'none';
+          playBtn.disabled = true;
+          clearBtn.disabled = true;
+        });
+      })();
 
       function loadRafa() {
         const tbody = document.getElementById('rafaBody');

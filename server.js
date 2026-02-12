@@ -14,6 +14,7 @@ const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const fs = require('fs');
 const multer = require('multer');
+const OpenAI = require('openai');
 const bcrypt = require('bcryptjs');
 const sharp = require('sharp');
 const { Resend } = require('resend');
@@ -64,6 +65,7 @@ const {
   markDuvidaRespondida,
   updateDuvidaPendenteTexto,
   deleteDuvidaPendente,
+  upsertRespostaComAudio,
 } = require('./db');
 const {
   saveDocument,
@@ -1228,17 +1230,61 @@ app.delete('/api/dashboard/duvidas-pendentes/:id', requireDashboardAuth, require
   }
 });
 
-app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth, async (req, res) => {
+const duvidaAudioUpload = uploadMemory.single('audio');
+
+app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth, duvidaAudioUpload, async (req, res) => {
   const user = req.session.dashboardUser;
   if (user.role !== 'gestora') return res.status(403).json({ message: 'Acesso reservado à gestora.' });
   const id = req.params.id;
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
-  const texto = (req.body && req.body.texto) != null ? String(req.body.texto).trim() : '';
-  if (!texto) return res.status(400).json({ message: 'Texto da resposta é obrigatório.' });
+  const body = req.body || {};
+  const texto = body.texto != null ? String(body.texto).trim() : '';
+  const audioFile = req.file && req.file.buffer && req.file.buffer.length ? req.file : null;
+  if (!texto && !audioFile) return res.status(400).json({ message: 'Texto ou áudio são obrigatórios.' });
   try {
     const duvida = await getDuvidaPendenteById(id);
     if (!duvida) return res.status(404).json({ message: 'Dúvida não encontrada.' });
-    await upsertResposta(Number(id), user.id, texto);
+
+    let audioUrl = null;
+    let audioTranscricao = null;
+
+    if (audioFile) {
+      // Guardar ficheiro de áudio numa pasta pública simples (ex.: /storage/faq-audio)
+      const baseDir = path.join(__dirname, 'storage', 'faq-audio');
+      try {
+        await fs.promises.mkdir(baseDir, { recursive: true });
+      } catch (_) {}
+      const ext = (audioFile.mimetype || '').toLowerCase().includes('ogg') ? '.ogg' : '.webm';
+      const baseName = `duvida_${id}_gestora_${user.id}_${Date.now()}${ext}`;
+      const fullPath = path.join(baseDir, baseName);
+      await fs.promises.writeFile(fullPath, audioFile.buffer);
+      audioUrl = '/faq-audio/' + baseName;
+
+      // Transcrição opcional para melhorar embeddings (texto não é usado como resposta principal)
+      if (process.env.OPENAI_API_KEY) {
+        try {
+          const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+          const resp = await openaiClient.audio.transcriptions.create({
+            file: audioFile.buffer,
+            model: process.env.OPENAI_WHISPER_MODEL || 'gpt-4o-transcribe',
+          });
+          audioTranscricao = (resp.text || '').trim() || null;
+        } catch (err) {
+          logStartup(`transcricao audio duvida ${id}: ${err.message}`);
+        }
+      }
+    }
+
+    const textoFinal = texto || audioTranscricao || '';
+    if (!textoFinal && !audioUrl) {
+      return res.status(400).json({ message: 'Não foi possível obter conteúdo da resposta.' });
+    }
+
+    await upsertRespostaComAudio(Number(id), user.id, {
+      texto: textoFinal,
+      audioUrl,
+      audioTranscricao,
+    });
     // Se for a primeira resposta, marca como não pendente (passa a FAQ),
     // mas continua a permitir novas respostas de outras gestoras.
     if (duvida.eh_pendente) {
@@ -1250,22 +1296,29 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
       const num = String(duvida.contacto_whatsapp).replace(/\D/g, '');
       // Buscar todas as respostas atuais para esta dúvida (já incluindo a resposta acabada de guardar)
       let respostasTexto = '';
+      let respostasComAudio = [];
       try {
         const respostas = await listRespostasByPerguntaId(Number(id));
         if (respostas && respostas.length) {
+          respostasComAudio = respostas.filter(
+            (r) => r && r.audio_url && String(r.audio_url).trim().length > 0
+          );
           respostasTexto = respostas
             .map((r) => {
               const nomeGestora = (r.gestora_nome || '').trim() || 'Gestora';
+              if (r.audio_url && String(r.audio_url).trim().length > 0) {
+                return `- ${nomeGestora}: (resposta em áudio)`;
+              }
               return `- ${nomeGestora}: ${r.texto}`;
             })
             .join('\n\n');
         } else {
           const nomeGestora = (user && user.nome) || 'Gestora';
-          respostasTexto = `- ${nomeGestora}: ${texto}`;
+          respostasTexto = `- ${nomeGestora}: ${textoFinal}`;
         }
       } catch (_) {
         const nomeGestora = (user && user.nome) || 'Gestora';
-        respostasTexto = `- ${nomeGestora}: ${texto}`;
+        respostasTexto = `- ${nomeGestora}: ${textoFinal}`;
       }
       const perguntaResumo = (duvida.texto || '').slice(0, 200);
       const perguntaLabel = perguntaResumo + ((duvida.texto || '').length > 200 ? '…' : '');
@@ -1285,6 +1338,25 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
           headers,
           body: JSON.stringify({ number: num, text: msg }),
         });
+        // Se tiver respostas em áudio, enviar também os áudios imediatamente
+        if (respostasComAudio.length > 0) {
+          const baseUrl = (process.env.IA_APP_BASE_URL || process.env.IA_PUBLIC_BASE_URL || '').replace(/\/$/, '');
+          for (const r of respostasComAudio) {
+            const rawUrl = String(r.audio_url || '').trim();
+            if (!rawUrl) continue;
+            const fullAudioUrl = rawUrl.startsWith('http') ? rawUrl : baseUrl ? baseUrl + rawUrl : rawUrl;
+            if (!fullAudioUrl) continue;
+            try {
+              await fetch(evoUrl + '/api/internal/send-audio', {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ number: num, audio_url: fullAudioUrl }),
+              });
+            } catch (err) {
+              logStartup(`Enviar resposta em áudio ao lead (WhatsApp) falhou: ${err.message}`);
+            }
+          }
+        }
       } catch (err) {
         logStartup(`Enviar resposta ao lead (WhatsApp) falhou: ${err.message}`);
       }
