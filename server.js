@@ -14,7 +14,6 @@ const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const fs = require('fs');
 const multer = require('multer');
-const OpenAI = require('openai');
 const bcrypt = require('bcryptjs');
 const sharp = require('sharp');
 const { Resend } = require('resend');
@@ -1260,19 +1259,9 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
       await fs.promises.writeFile(fullPath, audioFile.buffer);
       audioUrl = '/faq-audio/' + baseName;
 
-      // Transcrição opcional para melhorar embeddings (texto não é usado como resposta principal)
-      if (process.env.OPENAI_API_KEY) {
-        try {
-          const openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-          const resp = await openaiClient.audio.transcriptions.create({
-            file: audioFile.buffer,
-            model: process.env.OPENAI_WHISPER_MODEL || 'gpt-4o-transcribe',
-          });
-          audioTranscricao = (resp.text || '').trim() || null;
-        } catch (err) {
-          logStartup(`transcricao audio duvida ${id}: ${err.message}`);
-        }
-      }
+      // (Opcional) Aqui no futuro podemos chamar a API da OpenAI via HTTP para obter transcrição,
+      // mas neste momento não usamos o SDK para evitar dependências extra.
+      audioTranscricao = null;
     }
 
     const textoFinal = texto || audioTranscricao || '';

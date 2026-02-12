@@ -440,6 +440,7 @@ async function upsertRespostaComAudio(perguntaId, gestoraId, { texto, audioUrl, 
   const aUrl = audioUrl ? String(audioUrl).trim() : null;
   const aTxt = typeof audioTranscricao === 'string' ? audioTranscricao.trim() : null;
   if (!t && !aUrl && !aTxt) return;
+  const textToStore = t || aTxt || '';
   await query(
     `INSERT INTO ch_pergunta_respostas (pergunta_id, gestora_id, texto, audio_url, audio_transcricao)
      VALUES (?, ?, ?, ?, ?)
@@ -448,7 +449,7 @@ async function upsertRespostaComAudio(perguntaId, gestoraId, { texto, audioUrl, 
        audio_url = VALUES(audio_url),
        audio_transcricao = VALUES(audio_transcricao),
        updated_at = NOW()`,
-    [perguntaId, gestoraId, t || aTxt || null, aUrl, aTxt]
+    [perguntaId, gestoraId, textToStore, aUrl, aTxt]
   );
 }
 
