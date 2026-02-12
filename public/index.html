@@ -693,7 +693,6 @@
     <div class="modal" style="max-width:560px;">
       <h3 id="modalPerguntaTitle">Pergunta</h3>
       <p id="modalPerguntaTexto" class="text-muted" style="white-space:pre-wrap;margin-bottom:1rem;"></p>
-      <p class="text-muted" style="font-size:0.8125rem;margin-bottom:0.5rem;"><strong>Respostas das gestoras:</strong></p>
       <div id="modalPerguntaRespostas" style="margin-bottom:1rem;"></div>
       <div id="modalPerguntaMinhaRespostaWrap" style="display:none;">
         <label for="modalPerguntaMinhaResposta">A sua resposta</label>
@@ -1502,15 +1501,11 @@
               if (!minha && data.minha_resposta) minha = data.minha_resposta;
 
               if (minha && minha.audio_url) {
-                const p = document.createElement('p');
-                p.className = 'text-muted';
-                p.textContent = 'A sua resposta em áudio:';
                 const audio = document.createElement('audio');
                 audio.controls = true;
                 audio.src = minha.audio_url;
                 audio.style.display = 'block';
                 audio.style.marginTop = '0.5rem';
-                respDiv.appendChild(p);
                 respDiv.appendChild(audio);
                 const delBtn = document.createElement('button');
                 delBtn.type = 'button';
