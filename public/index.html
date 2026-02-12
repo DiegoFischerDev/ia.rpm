@@ -739,14 +739,17 @@
       <textarea id="modalDuvidaRespostaTexto" rows="5" placeholder="Escreva a resposta..." style="width:100%; box-sizing:border-box;"></textarea>
       <label class="text-muted" style="margin-top:1rem; display:block;">Ou, se preferir, grave uma resposta em áudio</label>
       <div id="duvidaAudioControls" class="audio-recorder">
-        <button type="button" class="btn btn-secondary btn-sm" id="btnStartRecording">Gravar áudio</button>
-        <button type="button" class="btn btn-secondary btn-sm" id="btnStopRecording" disabled>Parar</button>
-        <button type="button" class="btn btn-secondary btn-sm" id="btnPlayRecording" disabled>Reproduzir</button>
-        <button type="button" class="btn btn-outline btn-sm" id="btnClearRecording" disabled>Apagar</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnStartRecording">🎙️ Gravar áudio</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnStopRecording" style="display:none;">Parar</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btnPlayRecording" style="display:none;">Reproduzir</button>
+        <button type="button" class="btn btn-outline btn-sm" id="btnClearRecording" style="display:none;">Apagar</button>
+        <span id="duvidaRecordingIndicator" class="recording-indicator" style="display:none; margin-left:0.5rem; font-size:0.85rem;">
+          Gravando áudio...
+        </span>
         <audio id="duvidaAudioPreview" controls style="display:none; margin-top:0.5rem;"></audio>
       </div>
       <p class="text-muted" style="font-size:0.85rem;">
-        Pode responder em texto, em áudio, ou ambos. Se responder em áudio, o sistema transcreve automaticamente a resposta para melhorar o FAQ.
+        Respostas preferencialmente em áudio, pois isso cria mais conexão com os leads 🙂
       </p>
       <div class="modal-actions" style="margin-top:1rem;">
         <button type="button" class="btn btn-secondary" id="modalDuvidaResponderCancel">Cancelar</button>
@@ -1624,6 +1627,7 @@
         const playBtn = document.getElementById('btnPlayRecording');
         const clearBtn = document.getElementById('btnClearRecording');
         const audioEl = document.getElementById('duvidaAudioPreview');
+        const indicator = document.getElementById('duvidaRecordingIndicator');
         if (!recBtn || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           if (recBtn) recBtn.disabled = true;
           return;
@@ -1642,12 +1646,18 @@
                 duvidaAudioBlob = new Blob(chunks, { type: 'audio/webm' });
                 audioEl.src = URL.createObjectURL(duvidaAudioBlob);
                 audioEl.style.display = 'block';
-                playBtn.disabled = false;
-                clearBtn.disabled = false;
+                playBtn.style.display = 'inline-block';
+                clearBtn.style.display = 'inline-block';
+                if (indicator) indicator.style.display = 'none';
               };
               mediaRecorder.start();
-              recBtn.disabled = true;
-              stopBtn.disabled = false;
+              recBtn.style.display = 'none';
+              stopBtn.style.display = 'inline-block';
+              playBtn.style.display = 'none';
+              clearBtn.style.display = 'none';
+              audioEl.style.display = 'none';
+              duvidaAudioBlob = null;
+              if (indicator) indicator.style.display = 'inline-block';
             })
             .catch(function () {
               alert('Não foi possível aceder ao microfone.');
@@ -1656,8 +1666,8 @@
         stopBtn.addEventListener('click', function () {
           if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
-            stopBtn.disabled = true;
-            recBtn.disabled = false;
+            stopBtn.style.display = 'none';
+            recBtn.style.display = 'inline-block';
           }
         });
         playBtn.addEventListener('click', function () {
@@ -1667,8 +1677,11 @@
           duvidaAudioBlob = null;
           audioEl.src = '';
           audioEl.style.display = 'none';
-          playBtn.disabled = true;
-          clearBtn.disabled = true;
+          playBtn.style.display = 'none';
+          clearBtn.style.display = 'none';
+          recBtn.style.display = 'inline-block';
+          stopBtn.style.display = 'none';
+          if (indicator) indicator.style.display = 'none';
         });
       })();
 
