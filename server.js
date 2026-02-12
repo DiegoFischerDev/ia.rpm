@@ -65,6 +65,8 @@ const {
   updateDuvidaPendenteTexto,
   deleteDuvidaPendente,
   upsertRespostaComAudio,
+  deleteRespostaByPerguntaAndGestora,
+  setDuvidaEhPendente,
 } = require('./db');
 const {
   saveDocument,
@@ -1034,8 +1036,9 @@ app.get('/api/dashboard/perguntas', requireDashboardAuth, async (req, res) => {
         return { ...p, ja_respondi: !!minha };
       })
     );
-    withFlags.sort((a, b) => (a.ja_respondi === b.ja_respondi ? 0 : a.ja_respondi ? 1 : -1));
-    res.json(withFlags);
+    // Para gestoras, mostrar apenas perguntas que elas próprias responderam
+    const onlyMine = withFlags.filter((p) => p.ja_respondi);
+    res.json(onlyMine);
   } catch (err) {
     logStartup(`listPerguntas error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar perguntas.' });
@@ -1048,9 +1051,9 @@ app.get('/api/dashboard/perguntas/:id', requireDashboardAuth, async (req, res) =
   try {
     const pergunta = await getPerguntaById(id);
     if (!pergunta) return res.status(404).json({ message: 'Pergunta não encontrada.' });
-    const respostas = await listRespostasByPerguntaId(id);
     const user = req.session.dashboardUser;
     const minha = user && user.role === 'gestora' ? await getRespostaByPerguntaAndGestora(id, user.id) : null;
+    const respostas = await listRespostasByPerguntaId(id);
     res.json({ pergunta, respostas, minha_resposta: minha });
   } catch (err) {
     logStartup(`getPergunta error: ${err.message}`);
@@ -1067,6 +1070,28 @@ app.post('/api/dashboard/perguntas', requireDashboardAuth, requireAdminAuth, asy
   } catch (err) {
     logStartup(`createPergunta error: ${err.message}`);
     res.status(500).json({ message: err.message || 'Erro ao criar.' });
+  }
+});
+
+// Gestora: remover a sua própria resposta em áudio a uma pergunta (volta a ser pendente)
+app.delete('/api/dashboard/perguntas/:id/minha-resposta', requireDashboardAuth, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (user.role !== 'gestora') return res.status(403).json({ message: 'Acesso reservado à gestora.' });
+  const id = req.params.id;
+  if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  try {
+    const pergunta = await getPerguntaById(id);
+    if (!pergunta) return res.status(404).json({ message: 'Pergunta não encontrada.' });
+    const minha = await getRespostaByPerguntaAndGestora(id, user.id);
+    if (!minha) return res.status(404).json({ message: 'Resposta não encontrada para esta gestora.' });
+
+    await deleteRespostaByPerguntaAndGestora(Number(id), user.id);
+    await setDuvidaEhPendente(Number(id), true);
+
+    res.json({ ok: true });
+  } catch (err) {
+    logStartup(`deleteMinhaResposta error: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao remover resposta.' });
   }
 });
 

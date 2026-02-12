@@ -1492,23 +1492,67 @@
             document.getElementById('modalPerguntaTexto').textContent = data.pergunta ? data.pergunta.texto : '';
             const respDiv = document.getElementById('modalPerguntaRespostas');
             respDiv.innerHTML = '';
-            if (data.respostas && data.respostas.length) {
-              data.respostas.forEach(function (r) {
-                const p = document.createElement('p');
-                p.style.marginBottom = '0.75rem';
-                p.innerHTML = '<strong>' + escapeHtml(r.gestora_nome || 'Gestora') + ':</strong><br><span style="white-space:pre-wrap;">' + escapeHtml(r.texto || '') + '</span>';
-                respDiv.appendChild(p);
-              });
-            } else {
-              respDiv.innerHTML = '<p class="text-muted">Ainda sem respostas.</p>';
-            }
             const minhaWrap = document.getElementById('modalPerguntaMinhaRespostaWrap');
             const adminActions = document.getElementById('modalPerguntaAdminActions');
             if (user && user.role === 'gestora') {
-              minhaWrap.style.display = 'block';
+              // Gestora: vê apenas a própria resposta em áudio (se existir)
+              minhaWrap.style.display = 'none';
               adminActions.style.display = 'none';
-              document.getElementById('modalPerguntaMinhaResposta').value = data.minha_resposta ? data.minha_resposta.texto : '';
+              const minha = data.minha_resposta;
+              if (minha && minha.audio_url) {
+                const p = document.createElement('p');
+                p.className = 'text-muted';
+                p.textContent = 'A sua resposta em áudio:';
+                const audio = document.createElement('audio');
+                audio.controls = true;
+                audio.src = minha.audio_url;
+                audio.style.display = 'block';
+                audio.style.marginTop = '0.5rem';
+                respDiv.appendChild(p);
+                respDiv.appendChild(audio);
+                const delBtn = document.createElement('button');
+                delBtn.type = 'button';
+                delBtn.className = 'btn btn-danger btn-sm';
+                delBtn.style.marginTop = '0.75rem';
+                delBtn.textContent = 'Excluir resposta em áudio';
+                delBtn.addEventListener('click', function () {
+                  if (!confirm('Excluir a sua resposta em áudio? Esta pergunta voltará para as perguntas pendentes.')) return;
+                  fetch(API + '/perguntas/' + perguntaId + '/minha-resposta', {
+                    method: 'DELETE',
+                    credentials: 'include',
+                  })
+                    .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                    .then(function () {
+                      document.getElementById('modalPergunta').classList.remove('visible');
+                      loadDuvidasPendentes();
+                      loadDuvidasRespondidas();
+                    })
+                    .catch(function (err) { alert(err.message || 'Erro ao excluir resposta.'); });
+                });
+                respDiv.appendChild(delBtn);
+              } else {
+                respDiv.innerHTML = '<p class="text-muted">Ainda não tens resposta em áudio para esta pergunta.</p>';
+              }
             } else {
+              // Admin: vê todas as respostas (texto/áudio) e ações de gestão
+              if (data.respostas && data.respostas.length) {
+                data.respostas.forEach(function (r) {
+                  const p = document.createElement('p');
+                  p.style.marginBottom = '0.75rem';
+                  const label = '<strong>' + escapeHtml(r.gestora_nome || 'Gestora') + ':</strong><br>';
+                  let body = '';
+                  if (r.audio_url) {
+                    body += '<span class="text-muted">(resposta em áudio)</span>';
+                  }
+                  if (r.texto) {
+                    body += (body ? '<br>' : '') + '<span style="white-space:pre-wrap;">' + escapeHtml(r.texto || '') + '</span>';
+                  }
+                  p.innerHTML = label + body;
+                  respDiv.appendChild(p);
+                });
+              } else {
+                respDiv.innerHTML = '<p class="text-muted">Ainda sem respostas.</p>';
+              }
               minhaWrap.style.display = 'none';
               adminActions.style.display = 'block';
             }

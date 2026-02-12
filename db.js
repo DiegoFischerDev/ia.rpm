@@ -423,6 +423,10 @@ async function getRespostaByPerguntaAndGestora(perguntaId, gestoraId) {
   return rows[0] || null;
 }
 
+async function deleteRespostaByPerguntaAndGestora(perguntaId, gestoraId) {
+  await query('DELETE FROM ch_pergunta_respostas WHERE pergunta_id = ? AND gestora_id = ?', [perguntaId, gestoraId]);
+}
+
 /** Cria ou atualiza resposta de uma gestora a uma pergunta */
 async function upsertResposta(perguntaId, gestoraId, texto) {
   const t = typeof texto === 'string' ? texto.trim() : '';
@@ -453,25 +457,16 @@ async function upsertRespostaComAudio(perguntaId, gestoraId, { texto, audioUrl, 
   );
 }
 
-/** Dúvidas pendentes: eh_pendente=1 ou (eh_pendente=0 e gestora ainda não respondeu). */
+/** Dúvidas pendentes: apenas eh_pendente=1 (ainda sem resposta no FAQ). */
 async function listDuvidasPendentes(gestoraId) {
-  const subCount = '(SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id)';
-  const sql = gestoraId != null
-    ? `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.eh_pendente, d.created_at, d.updated_at,
-              l.nome AS lead_nome, ${subCount} AS num_respostas
-       FROM ch_duvidas d
-       LEFT JOIN ch_leads l ON l.id = d.lead_id
-       WHERE d.eh_pendente = 1 OR (d.eh_pendente = 0 AND NOT EXISTS (
-         SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id AND r.gestora_id = ?
-       ))
-       ORDER BY d.eh_pendente DESC, d.created_at DESC`
-    : `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.eh_pendente, d.created_at, d.updated_at,
-              l.nome AS lead_nome
-       FROM ch_duvidas d
-       LEFT JOIN ch_leads l ON l.id = d.lead_id
-       WHERE d.eh_pendente = 1
-       ORDER BY d.created_at DESC`;
-  return gestoraId != null ? query(sql, [gestoraId]) : query(sql);
+  const sql =
+    `SELECT d.id, d.contacto_whatsapp, d.lead_id, d.texto, d.origem, d.eh_pendente, d.created_at, d.updated_at,
+            l.nome AS lead_nome
+     FROM ch_duvidas d
+     LEFT JOIN ch_leads l ON l.id = d.lead_id
+     WHERE d.eh_pendente = 1
+     ORDER BY d.created_at DESC`;
+  return query(sql);
 }
 
 /** Listar id e texto das dúvidas pendentes (evo pode usar para duplicados). */
@@ -482,15 +477,10 @@ async function listDuvidasPendentesTextos() {
   return rows.map((r) => ({ id: r.id, texto: (r.texto || '').trim() })).filter((r) => r.texto);
 }
 
-/** Contagem de dúvidas pendentes (mesmo filtro que listDuvidasPendentes). */
+/** Contagem de dúvidas pendentes (mesmo filtro que listDuvidasPendentes: só eh_pendente=1). */
 async function getDuvidasPendentesCount(gestoraId) {
-  const sql = gestoraId != null
-    ? `SELECT COUNT(*) AS n FROM ch_duvidas d
-       WHERE d.eh_pendente = 1 OR (d.eh_pendente = 0 AND NOT EXISTS (
-         SELECT 1 FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id AND r.gestora_id = ?
-       ))`
-    : 'SELECT COUNT(*) AS n FROM ch_duvidas d WHERE d.eh_pendente = 1';
-  const rows = gestoraId != null ? await query(sql, [gestoraId]) : await query(sql);
+  const sql = 'SELECT COUNT(*) AS n FROM ch_duvidas d WHERE d.eh_pendente = 1';
+  const rows = await query(sql);
   return (rows[0] && rows[0].n != null) ? Number(rows[0].n) : 0;
 }
 
@@ -527,6 +517,10 @@ async function updateDuvidaPendenteTexto(id, texto) {
 
 async function deleteDuvidaPendente(id) {
   await query('DELETE FROM ch_duvidas WHERE id = ?', [id]);
+}
+
+async function setDuvidaEhPendente(id, ehPendente) {
+  await query('UPDATE ch_duvidas SET eh_pendente = ?, updated_at = NOW() WHERE id = ?', [ehPendente ? 1 : 0, id]);
 }
 
 module.exports = {
@@ -570,6 +564,7 @@ module.exports = {
   incrementPerguntaFrequencia,
   listRespostasByPerguntaId,
   getRespostaByPerguntaAndGestora,
+  deleteRespostaByPerguntaAndGestora,
   upsertResposta,
   listDuvidasPendentes,
   getDuvidasPendentesCount,
@@ -580,4 +575,5 @@ module.exports = {
   updateDuvidaPendenteTexto,
   deleteDuvidaPendente,
   upsertRespostaComAudio,
+  setDuvidaEhPendente,
 };
