@@ -216,6 +216,11 @@ async function getAllLeads() {
 /** Dashboard: atualizar lead (admin). */
 async function updateLeadAdmin(id, dados) {
   if (!dados || typeof dados !== 'object') return;
+  // Nunca persistir estado_conversa = 'com_rafa'; usar flag quer_falar_com_rafa
+  if (dados.estado_conversa === 'com_rafa') {
+    dados.estado_conversa = 'aguardando_escolha';
+    dados.quer_falar_com_rafa = 1;
+  }
   const allowed = ['nome', 'email', 'estado_conversa', 'estado_docs', 'gestora_id', 'gestora_nome', 'comentario', 'quer_falar_com_rafa'];
   const set = [];
   const values = [];
