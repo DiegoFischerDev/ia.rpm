@@ -718,17 +718,6 @@
     </div>
   </div>
 
-  <div id="modalOuvirResposta" class="modal-overlay">
-    <div class="modal" style="max-width:400px;">
-      <h3 id="modalOuvirRespostaTitle">Ouvir resposta</h3>
-      <audio id="modalOuvirRespostaAudio" controls style="width:100%; margin:0.75rem 0;"></audio>
-      <p id="modalOuvirRespostaSemAudio" class="text-warning" style="display:none; margin-bottom:1rem;">Sem áudio gravado para esta pergunta.</p>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" id="modalOuvirRespostaFechar">Fechar</button>
-      </div>
-    </div>
-  </div>
-
   <div id="modalEditarDuvida" class="modal-overlay">
     <div class="modal" style="max-width:560px;">
       <h3 id="modalEditarDuvidaTitle">Editar dúvida pendente</h3>
@@ -1436,7 +1425,8 @@
                   ? '<button type="button" class="btn btn-secondary btn-sm btn-ouvir-pergunta" data-id="' + p.id + '">Ouvir</button> ' +
                     '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta" data-id="' + p.id + '">Editar</button> ' +
                     '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta" data-id="' + p.id + '">Excluir</button>'
-                  : '<button type="button" class="btn btn-secondary btn-sm btn-ver-pergunta" data-id="' + p.id + '">Ver</button>';
+                  : '<button type="button" class="btn btn-secondary btn-sm btn-ouvir-pergunta" data-id="' + p.id + '">Ouvir</button> ' +
+                    '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta-gestora" data-id="' + p.id + '">Editar</button>';
                 if (isAdmin) {
                   tr.innerHTML =
                     '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td><td>' + (p.frequencia || 0) + '</td><td class="td-acoes-admin">' + acoes + '</td>';
@@ -1447,6 +1437,9 @@
                 perguntasBody.appendChild(tr);
               });
               perguntasBody.querySelectorAll('.btn-ver-pergunta').forEach(function (btn) {
+                btn.addEventListener('click', function () { openPerguntaDetail(parseInt(this.dataset.id, 10)); });
+              });
+              perguntasBody.querySelectorAll('.btn-editar-pergunta-gestora').forEach(function (btn) {
                 btn.addEventListener('click', function () { openPerguntaDetail(parseInt(this.dataset.id, 10)); });
               });
               perguntasBody.querySelectorAll('.btn-ouvir-pergunta').forEach(function (btn) {
@@ -1507,25 +1500,18 @@
           .catch(function (err) { alert(err.message || 'Erro ao guardar.'); });
       }
 
+      var _faqAudioEl = null;
       function openOuvirResposta(perguntaId) {
-        var titleEl = document.getElementById('modalOuvirRespostaTitle');
-        var audioEl = document.getElementById('modalOuvirRespostaAudio');
-        var semAudioEl = document.getElementById('modalOuvirRespostaSemAudio');
-        if (titleEl) titleEl.textContent = 'Ouvir resposta #' + perguntaId;
-        if (semAudioEl) semAudioEl.style.display = 'none';
-        if (audioEl) {
-          audioEl.src = API + '/faq-audio-admin/' + perguntaId + '?t=' + Date.now();
-          audioEl.onerror = function () {
-            audioEl.style.display = 'none';
-            if (semAudioEl) semAudioEl.style.display = 'block';
-          };
-          audioEl.onloadeddata = function () {
-            audioEl.style.display = 'block';
-            if (semAudioEl) semAudioEl.style.display = 'none';
-          };
-          audioEl.style.display = 'block';
+        if (!_faqAudioEl) {
+          _faqAudioEl = document.createElement('audio');
+          _faqAudioEl.style.display = 'none';
+          document.body.appendChild(_faqAudioEl);
         }
-        document.getElementById('modalOuvirResposta').classList.add('visible');
+        _faqAudioEl.pause();
+        var audioPath = (user && user.role === 'admin') ? '/faq-audio-admin/' : '/faq-audio/';
+        _faqAudioEl.src = API + audioPath + perguntaId + '?t=' + Date.now();
+        _faqAudioEl.onerror = function () { alert('Sem áudio gravado para esta pergunta.'); };
+        _faqAudioEl.play();
       }
 
       function openPerguntaDetail(perguntaId) {
@@ -1894,11 +1880,6 @@
       document.getElementById('modalPerguntaSave').addEventListener('click', saveRespostaPergunta);
       document.getElementById('modalPerguntaClose').addEventListener('click', function () { document.getElementById('modalPergunta').classList.remove('visible'); });
       document.getElementById('modalVerDuvidaFechar').addEventListener('click', function () { document.getElementById('modalVerDuvida').classList.remove('visible'); });
-      document.getElementById('modalOuvirRespostaFechar').addEventListener('click', function () {
-        document.getElementById('modalOuvirResposta').classList.remove('visible');
-        var a = document.getElementById('modalOuvirRespostaAudio');
-        if (a) { a.pause(); a.src = ''; }
-      });
       document.getElementById('modalEditarDuvidaCancel').addEventListener('click', function () { document.getElementById('modalEditarDuvida').classList.remove('visible'); _duvidaEditarId = null; });
       document.getElementById('modalEditarDuvidaSave').addEventListener('click', saveEditarDuvida);
       document.getElementById('modalDuvidaResponderCancel').addEventListener('click', function () {
