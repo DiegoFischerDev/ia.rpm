@@ -1833,7 +1833,7 @@
             const nome = user && user.nome && user.nome.trim() ? user.nome.trim() : 'Gestora';
             alert('Obrigado pela ajuda, ' + nome + ' 😊👍');
           })
-          .catch(function (err) { alert(err.message || 'Erro ao responder.'); })
+          .catch(function (err) { alert(err.message || 'Erro ao responder'); })
           .finally(function () {
             if (submitBtn) {
               submitBtn.disabled = false;
