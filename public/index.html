@@ -1578,6 +1578,7 @@
             if (!d) { alert('Dúvida não encontrada.'); return; }
             document.getElementById('modalDuvidaTexto').textContent = d.texto || '';
             document.getElementById('modalDuvidaRespostaTexto').value = '';
+            if (typeof resetDuvidaAudioState === 'function') resetDuvidaAudioState();
             document.getElementById('modalDuvidaResponder').classList.add('visible');
           })
           .catch(function () { alert('Erro ao carregar.'); });
@@ -1600,7 +1601,7 @@
           .then((r) => (r.ok ? Promise.resolve() : r.json().then((d) => Promise.reject(new Error(d.message || 'Erro')))))
           .then(function () {
             document.getElementById('modalDuvidaResponder').classList.remove('visible');
-            duvidaAudioBlob = null;
+            if (typeof resetDuvidaAudioState === 'function') resetDuvidaAudioState();
             loadDuvidasPendentes();
             loadDuvidasRespondidas();
             const nome = user && user.nome && user.nome.trim() ? user.nome.trim() : 'Gestora';
@@ -1617,10 +1618,33 @@
       document.getElementById('modalVerDuvidaFechar').addEventListener('click', function () { document.getElementById('modalVerDuvida').classList.remove('visible'); });
       document.getElementById('modalEditarDuvidaCancel').addEventListener('click', function () { document.getElementById('modalEditarDuvida').classList.remove('visible'); _duvidaEditarId = null; });
       document.getElementById('modalEditarDuvidaSave').addEventListener('click', saveEditarDuvida);
-      document.getElementById('modalDuvidaResponderCancel').addEventListener('click', function () { document.getElementById('modalDuvidaResponder').classList.remove('visible'); });
+      document.getElementById('modalDuvidaResponderCancel').addEventListener('click', function () {
+        document.getElementById('modalDuvidaResponder').classList.remove('visible');
+        // Limpar estado de áudio quando fecha o modal
+        if (typeof resetDuvidaAudioState === 'function') resetDuvidaAudioState();
+      });
       document.getElementById('modalDuvidaResponderSubmit').addEventListener('click', submitResponderDuvida);
 
       // Áudio na resposta de dúvida (dashboard gestora)
+      function resetDuvidaAudioState() {
+        const recBtn = document.getElementById('btnStartRecording');
+        const stopBtn = document.getElementById('btnStopRecording');
+        const playBtn = document.getElementById('btnPlayRecording');
+        const clearBtn = document.getElementById('btnClearRecording');
+        const audioEl = document.getElementById('duvidaAudioPreview');
+        const indicator = document.getElementById('duvidaRecordingIndicator');
+        duvidaAudioBlob = null;
+        if (audioEl) {
+          audioEl.src = '';
+          audioEl.style.display = 'none';
+        }
+        if (recBtn) recBtn.style.display = 'inline-block';
+        if (stopBtn) stopBtn.style.display = 'none';
+        if (playBtn) playBtn.style.display = 'none';
+        if (clearBtn) clearBtn.style.display = 'none';
+        if (indicator) indicator.style.display = 'none';
+      }
+
       (function initDuvidaAudioRecorder() {
         const recBtn = document.getElementById('btnStartRecording');
         const stopBtn = document.getElementById('btnStopRecording');
@@ -1635,6 +1659,8 @@
         let mediaRecorder = null;
         let chunks = [];
         recBtn.addEventListener('click', function () {
+          // Sempre que iniciar uma nova gravação, limpar qualquer estado anterior
+          resetDuvidaAudioState();
           navigator.mediaDevices.getUserMedia({ audio: true })
             .then(function (stream) {
               chunks = [];
@@ -1674,14 +1700,7 @@
           if (audioEl.src) audioEl.play();
         });
         clearBtn.addEventListener('click', function () {
-          duvidaAudioBlob = null;
-          audioEl.src = '';
-          audioEl.style.display = 'none';
-          playBtn.style.display = 'none';
-          clearBtn.style.display = 'none';
-          recBtn.style.display = 'inline-block';
-          stopBtn.style.display = 'none';
-          if (indicator) indicator.style.display = 'none';
+          resetDuvidaAudioState();
         });
       })();
 
