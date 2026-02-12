@@ -1503,11 +1503,11 @@
               // Fallback para minha_resposta vindo do backend, se necessário
               if (!minha && data.minha_resposta) minha = data.minha_resposta;
 
-              if (minha && minha.audio_url) {
+              if (minha && (minha.audio_url || minha.audio_in_db)) {
                 const audioWrap = document.createElement('div');
                 const audio = document.createElement('audio');
                 audio.controls = true;
-                audio.src = minha.audio_url;
+                audio.src = minha.audio_url || ('/api/dashboard/faq-audio/' + perguntaId);
                 audio.style.display = 'block';
                 audio.style.marginTop = '0.5rem';
                 const audioUnavailableMsg = document.createElement('p');
@@ -1712,7 +1712,7 @@
                   p.style.marginBottom = '0.75rem';
                   const label = '<strong>' + escapeHtml(r.gestora_nome || 'Gestora') + ':</strong><br>';
                   let body = '';
-                  if (r.audio_url) {
+                  if (r.audio_in_db === 1) {
                     body += '<span class="text-muted">(resposta em áudio)</span>';
                   }
                   if (r.texto) {

@@ -65,6 +65,7 @@ const {
   updateDuvidaPendenteTexto,
   deleteDuvidaPendente,
   upsertRespostaComAudio,
+  getRespostaAudioData,
   deleteRespostaByPerguntaAndGestora,
   setDuvidaEhPendente,
 } = require('./db');
@@ -1071,10 +1072,50 @@ app.get('/api/dashboard/perguntas/:id', requireDashboardAuth, async (req, res) =
     const user = req.session.dashboardUser;
     const minha = user && user.role === 'gestora' ? await getRespostaByPerguntaAndGestora(id, user.id) : null;
     const respostas = await listRespostasByPerguntaId(id);
-    res.json({ pergunta, respostas, minha_resposta: minha });
+    // URL do áudio para o dashboard (derivado de pergunta_id quando áudio está na BD)
+    const minhaRespostaOut = minha
+      ? { ...minha, audio_url: minha.audio_in_db ? '/api/dashboard/faq-audio/' + id : undefined }
+      : null;
+    res.json({ pergunta, respostas, minha_resposta: minhaRespostaOut });
   } catch (err) {
     logStartup(`getPergunta error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao carregar pergunta.' });
+  }
+});
+
+// Áudio da resposta da gestora (guardado na BD) — usado pelo dashboard ao reproduzir
+app.get('/api/dashboard/faq-audio/:perguntaId', requireDashboardAuth, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (user.role !== 'gestora') return res.status(403).end();
+  const perguntaId = req.params.perguntaId;
+  if (!/^\d+$/.test(perguntaId)) return res.status(400).end();
+  try {
+    const row = await getRespostaAudioData(Number(perguntaId), user.id);
+    if (!row || !row.data) return res.status(404).end();
+    res.setHeader('Content-Type', row.mimetype || 'audio/webm');
+    res.send(row.data);
+  } catch (err) {
+    logStartup(`faq-audio dashboard error: ${err.message}`);
+    res.status(500).end();
+  }
+});
+
+// Áudio para envio ao lead via Evo (Evolution API faz GET a esta URL); token em query
+app.get('/api/internal/faq-audio/:perguntaId/:gestoraId', async (req, res) => {
+  const token = (req.query && req.query.token) ? String(req.query.token).trim() : '';
+  const expected = (process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET || '').trim();
+  if (!expected || token !== expected) return res.status(403).end();
+  const perguntaId = req.params.perguntaId;
+  const gestoraId = req.params.gestoraId;
+  if (!/^\d+$/.test(perguntaId) || !/^\d+$/.test(gestoraId)) return res.status(400).end();
+  try {
+    const row = await getRespostaAudioData(Number(perguntaId), Number(gestoraId));
+    if (!row || !row.data) return res.status(404).end();
+    res.setHeader('Content-Type', row.mimetype || 'audio/webm');
+    res.send(row.data);
+  } catch (err) {
+    logStartup(`faq-audio internal error: ${err.message}`);
+    res.status(500).end();
   }
 });
 
@@ -1104,25 +1145,15 @@ app.post('/api/dashboard/perguntas/:id/minha-resposta-audio', requireDashboardAu
     const pergunta = await getPerguntaById(id);
     if (!pergunta) return res.status(404).json({ message: 'Pergunta não encontrada.' });
 
-    // Guardar ficheiro de áudio em disco (pasta compartilhada com as outras respostas FAQ)
-    const baseDir = path.join(__dirname, 'storage', 'faq-audio');
-    try {
-      await fs.promises.mkdir(baseDir, { recursive: true });
-    } catch (_) {}
-    const ext = (audioFile.mimetype || '').toLowerCase().includes('ogg') ? '.ogg' : '.webm';
-    const baseName = `pergunta_${id}_gestora_${user.id}_${Date.now()}${ext}`;
-    const fullPath = path.join(baseDir, baseName);
-    await fs.promises.writeFile(fullPath, audioFile.buffer);
-    const audioUrl = '/faq-audio/' + baseName;
-
-    // Substitui/atualiza a resposta desta gestora para esta pergunta, mantendo eh_pendente como está (já é FAQ)
+    const mimetype = (audioFile.mimetype || '').toLowerCase().includes('ogg') ? 'audio/ogg' : 'audio/webm';
     await upsertRespostaComAudio(Number(id), user.id, {
       texto: '',
-      audioUrl,
       audioTranscricao: null,
+      audioData: audioFile.buffer,
+      audioMimetype: mimetype,
     });
 
-    res.json({ ok: true, audio_url: audioUrl });
+    res.json({ ok: true, audio_url: '/api/dashboard/faq-audio/' + id });
   } catch (err) {
     logStartup(`updateMinhaRespostaAudio error: ${err.message}`);
     res.status(500).json({ message: err.message || 'Erro ao atualizar áudio.' });
@@ -1329,35 +1360,19 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
     const duvida = await getDuvidaPendenteById(id);
     if (!duvida) return res.status(404).json({ message: 'Dúvida não encontrada.' });
 
-    let audioUrl = null;
-    let audioTranscricao = null;
-
-    if (audioFile) {
-      // Guardar ficheiro de áudio numa pasta pública simples (ex.: /storage/faq-audio)
-      const baseDir = path.join(__dirname, 'storage', 'faq-audio');
-      try {
-        await fs.promises.mkdir(baseDir, { recursive: true });
-      } catch (_) {}
-      const ext = (audioFile.mimetype || '').toLowerCase().includes('ogg') ? '.ogg' : '.webm';
-      const baseName = `duvida_${id}_gestora_${user.id}_${Date.now()}${ext}`;
-      const fullPath = path.join(baseDir, baseName);
-      await fs.promises.writeFile(fullPath, audioFile.buffer);
-      audioUrl = '/faq-audio/' + baseName;
-
-      // (Opcional) Aqui no futuro podemos chamar a API da OpenAI via HTTP para obter transcrição,
-      // mas neste momento não usamos o SDK para evitar dependências extra.
-      audioTranscricao = null;
-    }
-
+    const audioTranscricao = null; // opcional para embeddings no futuro
     const textoFinal = texto || audioTranscricao || '';
-    if (!textoFinal && !audioUrl) {
+    if (!textoFinal && !audioFile) {
       return res.status(400).json({ message: 'Não foi possível obter conteúdo da resposta.' });
     }
 
     await upsertRespostaComAudio(Number(id), user.id, {
       texto: textoFinal,
-      audioUrl,
       audioTranscricao,
+      ...(audioFile && {
+        audioData: audioFile.buffer,
+        audioMimetype: (audioFile.mimetype || '').toLowerCase().includes('ogg') ? 'audio/ogg' : 'audio/webm',
+      }),
     });
     // Se for a primeira resposta, marca como não pendente (passa a FAQ),
     // mas continua a permitir novas respostas de outras gestoras.
@@ -1374,13 +1389,11 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
       try {
         const respostas = await listRespostasByPerguntaId(Number(id));
         if (respostas && respostas.length) {
-          respostasComAudio = respostas.filter(
-            (r) => r && r.audio_url && String(r.audio_url).trim().length > 0
-          );
+          respostasComAudio = respostas.filter((r) => r && r.audio_in_db === 1);
           respostasTexto = respostas
             .map((r) => {
               const nomeGestora = (r.gestora_nome || '').trim() || 'Gestora';
-              if (r.audio_url && String(r.audio_url).trim().length > 0) {
+              if (r.audio_in_db === 1) {
                 return `- ${nomeGestora}: (resposta em áudio)`;
               }
               return `- ${nomeGestora}: ${r.texto}`;
@@ -1423,11 +1436,9 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
             logStartup('WARN: IA_APP_BASE_URL/IA_PUBLIC_BASE_URL não configurado – não é possível enviar áudio por WhatsApp.');
           }
           for (const r of respostasComAudio) {
-            const rawUrl = String(r.audio_url || '').trim();
-            if (!rawUrl) continue;
-            if (!baseUrl) continue;
-            const fullAudioUrl = rawUrl.startsWith('http') ? rawUrl : baseUrl + rawUrl;
-            if (!fullAudioUrl || !fullAudioUrl.startsWith('http')) continue;
+            if (r.audio_in_db !== 1 || !baseUrl || !evoSecret) continue;
+            const fullAudioUrl =
+              baseUrl + '/api/internal/faq-audio/' + r.pergunta_id + '/' + r.gestora_id + '?token=' + encodeURIComponent(evoSecret);
             try {
               await fetch(evoUrl + '/api/internal/send-audio', {
                 method: 'POST',
@@ -1472,10 +1483,22 @@ app.get('/api/faq/perguntas', (req, res) => {
 app.get('/api/faq/perguntas/:id', (req, res) => {
   const id = req.params.id;
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
+  const baseUrl = (process.env.IA_APP_BASE_URL || process.env.IA_PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
+  const evoSecret = (process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET || '').trim();
   getPerguntaById(id)
     .then((pergunta) => {
       if (!pergunta) return res.status(404).json({ message: 'Não encontrado.' });
-      return listRespostasByPerguntaId(id).then((respostas) => res.json({ pergunta, respostas }));
+      return listRespostasByPerguntaId(id).then((respostas) => {
+        // Para o Evo: quando o áudio está na BD, devolver URL completo com token
+        const out = (respostas || []).map((r) => {
+          const row = { ...r };
+          if (row.audio_in_db === 1 && baseUrl && evoSecret) {
+            row.audio_url = baseUrl + '/api/internal/faq-audio/' + row.pergunta_id + '/' + row.gestora_id + '?token=' + encodeURIComponent(evoSecret);
+          }
+          return row;
+        });
+        return res.json({ pergunta, respostas: out });
+      });
     })
     .catch((err) => {
       logStartup(`faq/perguntas/:id error: ${err.message}`);

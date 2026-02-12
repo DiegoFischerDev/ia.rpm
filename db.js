@@ -403,10 +403,12 @@ async function deletePergunta(id) {
   await query('DELETE FROM ch_duvidas WHERE id = ?', [id]);
 }
 
-/** Respostas de uma pergunta (com nome da gestora). pergunta_id referencia ch_duvidas.id */
+/** Respostas de uma pergunta (com nome da gestora). pergunta_id referencia ch_duvidas.id.
+ *  audio_in_db = 1 quando o áudio está guardado em audio_data. */
 async function listRespostasByPerguntaId(perguntaId) {
   return query(
-    `SELECT r.id, r.pergunta_id, r.gestora_id, r.texto, r.audio_url, r.audio_transcricao, r.created_at, r.updated_at, g.nome AS gestora_nome
+    `SELECT r.id, r.pergunta_id, r.gestora_id, r.texto, r.audio_transcricao, r.created_at, r.updated_at, g.nome AS gestora_nome,
+     (r.audio_data IS NOT NULL AND LENGTH(r.audio_data) > 0) AS audio_in_db
      FROM ch_pergunta_respostas r
      JOIN ch_gestoras g ON g.id = r.gestora_id
      WHERE r.pergunta_id = ?
@@ -417,10 +419,23 @@ async function listRespostasByPerguntaId(perguntaId) {
 
 async function getRespostaByPerguntaAndGestora(perguntaId, gestoraId) {
   const rows = await query(
-    'SELECT id, pergunta_id, gestora_id, texto, audio_url, audio_transcricao, created_at, updated_at FROM ch_pergunta_respostas WHERE pergunta_id = ? AND gestora_id = ?',
+    `SELECT id, pergunta_id, gestora_id, texto, audio_transcricao, created_at, updated_at,
+     (audio_data IS NOT NULL AND LENGTH(audio_data) > 0) AS audio_in_db
+     FROM ch_pergunta_respostas WHERE pergunta_id = ? AND gestora_id = ?`,
     [perguntaId, gestoraId]
   );
   return rows[0] || null;
+}
+
+/** Devolve apenas o áudio (blob + mimetype) de uma resposta, para servir em rotas GET. */
+async function getRespostaAudioData(perguntaId, gestoraId) {
+  const rows = await query(
+    'SELECT audio_data, audio_mimetype FROM ch_pergunta_respostas WHERE pergunta_id = ? AND gestora_id = ?',
+    [perguntaId, gestoraId]
+  );
+  const r = rows[0];
+  if (!r || !r.audio_data || !(r.audio_data instanceof Buffer)) return null;
+  return { data: r.audio_data, mimetype: r.audio_mimetype || 'audio/webm' };
 }
 
 async function deleteRespostaByPerguntaAndGestora(perguntaId, gestoraId) {
@@ -438,23 +453,38 @@ async function upsertResposta(perguntaId, gestoraId, texto) {
   );
 }
 
-/** Cria ou atualiza resposta (texto/áudio) de uma gestora a uma pergunta */
-async function upsertRespostaComAudio(perguntaId, gestoraId, { texto, audioUrl, audioTranscricao }) {
+/** Cria ou atualiza resposta (texto/áudio) de uma gestora a uma pergunta.
+ *  Se audioData (Buffer) for passado, o áudio fica em audio_data (URL deriva de pergunta_id). */
+async function upsertRespostaComAudio(perguntaId, gestoraId, { texto, audioTranscricao, audioData, audioMimetype }) {
   const t = typeof texto === 'string' ? texto.trim() : '';
-  const aUrl = audioUrl ? String(audioUrl).trim() : null;
   const aTxt = typeof audioTranscricao === 'string' ? audioTranscricao.trim() : null;
-  if (!t && !aUrl && !aTxt) return;
+  const hasBlob = audioData instanceof Buffer && audioData.length > 0;
+  if (!t && !aTxt && !hasBlob) return;
   const textToStore = t || aTxt || '';
-  await query(
-    `INSERT INTO ch_pergunta_respostas (pergunta_id, gestora_id, texto, audio_url, audio_transcricao)
-     VALUES (?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE
-       texto = VALUES(texto),
-       audio_url = VALUES(audio_url),
-       audio_transcricao = VALUES(audio_transcricao),
-       updated_at = NOW()`,
-    [perguntaId, gestoraId, textToStore, aUrl, aTxt]
-  );
+  const mimetype = audioMimetype && String(audioMimetype).trim() ? String(audioMimetype).trim() : null;
+  if (hasBlob) {
+    await query(
+      `INSERT INTO ch_pergunta_respostas (pergunta_id, gestora_id, texto, audio_transcricao, audio_data, audio_mimetype)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         texto = VALUES(texto),
+         audio_transcricao = VALUES(audio_transcricao),
+         audio_data = VALUES(audio_data),
+         audio_mimetype = VALUES(audio_mimetype),
+         updated_at = NOW()`,
+      [perguntaId, gestoraId, textToStore, aTxt, audioData, mimetype]
+    );
+  } else {
+    await query(
+      `INSERT INTO ch_pergunta_respostas (pergunta_id, gestora_id, texto, audio_transcricao)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+         texto = VALUES(texto),
+         audio_transcricao = VALUES(audio_transcricao),
+         updated_at = NOW()`,
+      [perguntaId, gestoraId, textToStore, aTxt]
+    );
+  }
 }
 
 /** Dúvidas pendentes: apenas eh_pendente=1 (ainda sem resposta no FAQ). */
@@ -575,5 +605,6 @@ module.exports = {
   updateDuvidaPendenteTexto,
   deleteDuvidaPendente,
   upsertRespostaComAudio,
+  getRespostaAudioData,
   setDuvidaEhPendente,
 };
