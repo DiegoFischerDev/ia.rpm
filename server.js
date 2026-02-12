@@ -1382,8 +1382,6 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
               logStartup(`Enviar resposta em áudio ao lead (WhatsApp) falhou: ${err.response?.data || err.message}`);
             }
           }
-          // Depois de enviar os áudios, aguardar ~5 segundos e enviar o complemento
-          await new Promise((resolve) => setTimeout(resolve, 5000));
           try {
             await fetch(evoUrl + '/api/internal/send-text', {
               method: 'POST',

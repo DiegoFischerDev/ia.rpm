@@ -756,6 +756,9 @@
       const API = '/api/dashboard';
       let user = null;
       let duvidaAudioBlob = null;
+      let duvidaMediaRecorder = null;
+      let duvidaRecorderChunks = [];
+      let duvidaRecorderStopResolvers = [];
 
       function hashToScreenId(hash) {
         var map = { gestoras: 'gestoras', rafa: 'rafa', perfil: 'perfil', 'duvidas-pendentes': 'duvidasPendentes', 'duvidas-respondidas': 'duvidasRespondidas' };
@@ -1653,8 +1656,15 @@
           .catch(function () { alert('Erro ao carregar.'); });
       }
 
-      function submitResponderDuvida() {
+      async function submitResponderDuvida() {
         if (!_duvidaModalId) return;
+        // Se ainda estiver a gravar, parar primeiro e esperar o blob ficar pronto
+        if (duvidaMediaRecorder && duvidaMediaRecorder.state === 'recording') {
+          await new Promise(function (resolve) {
+            duvidaRecorderStopResolvers.push(resolve);
+            try { duvidaMediaRecorder.stop(); } catch (e) { resolve(); }
+          });
+        }
         if (!duvidaAudioBlob) { alert('Grave uma resposta em áudio.'); return; }
         const submitBtn = document.getElementById('modalDuvidaResponderSubmit');
         const originalText = submitBtn ? submitBtn.textContent : '';
@@ -1736,27 +1746,29 @@
           if (recBtn) recBtn.disabled = true;
           return;
         }
-        let mediaRecorder = null;
-        let chunks = [];
         recBtn.addEventListener('click', function () {
           // Sempre que iniciar uma nova gravação, limpar qualquer estado anterior
           resetDuvidaAudioState();
           navigator.mediaDevices.getUserMedia({ audio: true })
             .then(function (stream) {
-              chunks = [];
-              mediaRecorder = new MediaRecorder(stream);
-              mediaRecorder.ondataavailable = function (e) {
-                if (e.data && e.data.size > 0) chunks.push(e.data);
+              duvidaRecorderChunks = [];
+              duvidaMediaRecorder = new MediaRecorder(stream);
+              duvidaMediaRecorder.ondataavailable = function (e) {
+                if (e.data && e.data.size > 0) duvidaRecorderChunks.push(e.data);
               };
-              mediaRecorder.onstop = function () {
-                duvidaAudioBlob = new Blob(chunks, { type: 'audio/webm' });
+              duvidaMediaRecorder.onstop = function () {
+                duvidaAudioBlob = new Blob(duvidaRecorderChunks, { type: 'audio/webm' });
                 audioEl.src = URL.createObjectURL(duvidaAudioBlob);
                 audioEl.style.display = 'block';
                 playBtn.style.display = 'inline-block';
                 clearBtn.style.display = 'inline-block';
                 if (indicator) indicator.style.display = 'none';
+                duvidaRecorderChunks = [];
+                var resolvers = duvidaRecorderStopResolvers.slice();
+                duvidaRecorderStopResolvers = [];
+                resolvers.forEach(function (fn) { try { fn(); } catch (_) {} });
               };
-              mediaRecorder.start();
+              duvidaMediaRecorder.start();
               recBtn.style.display = 'none';
               stopBtn.style.display = 'inline-block';
               playBtn.style.display = 'none';
@@ -1770,8 +1782,8 @@
             });
         });
         stopBtn.addEventListener('click', function () {
-          if (mediaRecorder && mediaRecorder.state === 'recording') {
-            mediaRecorder.stop();
+          if (duvidaMediaRecorder && duvidaMediaRecorder.state === 'recording') {
+            duvidaMediaRecorder.stop();
             stopBtn.style.display = 'none';
             recBtn.style.display = 'inline-block';
           }
