@@ -1543,22 +1543,11 @@
                   let faqChunks = [];
                   let faqStopResolvers = [];
 
-                  const recBtn = document.createElement('button');
-                  recBtn.type = 'button';
-                  recBtn.className = 'btn btn-secondary btn-sm';
-                  recBtn.textContent = '🎙️ Gravar novo áudio';
-
                   const stopBtn = document.createElement('button');
                   stopBtn.type = 'button';
                   stopBtn.className = 'btn btn-secondary btn-sm';
                   stopBtn.textContent = 'Parar';
-                  stopBtn.style.display = 'none';
-
-                  const playBtn = document.createElement('button');
-                  playBtn.type = 'button';
-                  playBtn.className = 'btn btn-secondary btn-sm';
-                  playBtn.textContent = 'Reproduzir';
-                  playBtn.style.display = 'none';
+                  stopBtn.style.display = 'inline-block';
 
                   const saveBtn = document.createElement('button');
                   saveBtn.type = 'button';
@@ -1579,16 +1568,14 @@
 
                   const faqRecordingIndicator = document.createElement('span');
                   faqRecordingIndicator.className = 'recording-indicator';
-                  faqRecordingIndicator.style.display = 'none';
+                  faqRecordingIndicator.style.display = 'inline';
                   faqRecordingIndicator.style.marginLeft = '0.5rem';
                   faqRecordingIndicator.style.fontWeight = 'bold';
                   faqRecordingIndicator.style.color = '#c00';
                   faqRecordingIndicator.textContent = '🎙️ GRAVANDO...';
 
-                  wrap.appendChild(recBtn);
                   wrap.appendChild(stopBtn);
                   wrap.appendChild(faqRecordingIndicator);
-                  wrap.appendChild(playBtn);
                   wrap.appendChild(saveBtn);
                   wrap.appendChild(cancelBtn);
                   wrap.appendChild(preview);
@@ -1601,57 +1588,45 @@
                       preview.src = '';
                       preview.style.display = 'none';
                     }
-                    recBtn.style.display = 'inline-block';
-                    stopBtn.style.display = 'none';
-                    faqRecordingIndicator.style.display = 'none';
-                    playBtn.style.display = 'none';
+                    stopBtn.style.display = 'inline-block';
+                    faqRecordingIndicator.style.display = 'inline';
                     saveBtn.style.display = 'none';
                   }
 
-                  recBtn.addEventListener('click', function () {
-                    resetFaqRecorder();
-                    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    alert('Não foi possível aceder ao microfone.');
+                    wrap.remove();
+                    return;
+                  }
+                  navigator.mediaDevices.getUserMedia({ audio: true })
+                    .then(function (stream) {
+                      faqChunks = [];
+                      faqRecorder = new MediaRecorder(stream);
+                      faqRecorder.ondataavailable = function (e) {
+                        if (e.data && e.data.size > 0) faqChunks.push(e.data);
+                      };
+                      faqRecorder.onstop = function () {
+                        faqBlob = new Blob(faqChunks, { type: 'audio/webm' });
+                        preview.src = URL.createObjectURL(faqBlob);
+                        preview.style.display = 'block';
+                        faqRecordingIndicator.style.display = 'none';
+                        stopBtn.style.display = 'none';
+                        saveBtn.style.display = 'inline-block';
+                        const resolvers = faqStopResolvers.slice();
+                        faqStopResolvers = [];
+                        resolvers.forEach(function (fn) { try { fn(); } catch (_) {} });
+                      };
+                      faqRecorder.start();
+                    })
+                    .catch(function () {
                       alert('Não foi possível aceder ao microfone.');
-                      return;
-                    }
-                    navigator.mediaDevices.getUserMedia({ audio: true })
-                      .then(function (stream) {
-                        faqChunks = [];
-                        faqRecorder = new MediaRecorder(stream);
-                        faqRecorder.ondataavailable = function (e) {
-                          if (e.data && e.data.size > 0) faqChunks.push(e.data);
-                        };
-                        faqRecorder.onstop = function () {
-                          faqBlob = new Blob(faqChunks, { type: 'audio/webm' });
-                          preview.src = URL.createObjectURL(faqBlob);
-                          preview.style.display = 'block';
-                          playBtn.style.display = 'inline-block';
-                          saveBtn.style.display = 'inline-block';
-                          faqRecordingIndicator.style.display = 'none';
-                          const resolvers = faqStopResolvers.slice();
-                          faqStopResolvers = [];
-                          resolvers.forEach(function (fn) { try { fn(); } catch (_) {} });
-                        };
-                        faqRecorder.start();
-                        recBtn.style.display = 'none';
-                        stopBtn.style.display = 'inline-block';
-                        faqRecordingIndicator.style.display = 'inline';
-                      })
-                      .catch(function () {
-                        alert('Não foi possível aceder ao microfone.');
-                      });
-                  });
+                      wrap.remove();
+                    });
 
                   stopBtn.addEventListener('click', function () {
                     if (faqRecorder && faqRecorder.state === 'recording') {
                       faqRecorder.stop();
-                      stopBtn.style.display = 'none';
-                      recBtn.style.display = 'inline-block';
                     }
-                  });
-
-                  playBtn.addEventListener('click', function () {
-                    if (preview && preview.src) preview.play();
                   });
 
                   cancelBtn.addEventListener('click', function () {
