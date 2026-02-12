@@ -1507,7 +1507,8 @@
                 const audioWrap = document.createElement('div');
                 const audio = document.createElement('audio');
                 audio.controls = true;
-                audio.src = minha.audio_url || ('/api/dashboard/faq-audio/' + perguntaId);
+                // Cache-busting para que, após substituir áudio, ao reabrir se ouça o novo
+                audio.src = (minha.audio_url || ('/api/dashboard/faq-audio/' + perguntaId)) + '?t=' + Date.now();
                 audio.style.display = 'block';
                 audio.style.marginTop = '0.5rem';
                 const audioUnavailableMsg = document.createElement('p');
@@ -1670,7 +1671,16 @@
                       })
                         .then(function (r) { return r.ok ? r.json() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro ao atualizar áudio.')); }); })
                         .then(function () {
-                          document.getElementById('modalPergunta').classList.remove('visible');
+                          var replaceWrap = document.getElementById('faqReplaceAudioControls');
+                          if (replaceWrap) replaceWrap.remove();
+                          var mainAudio = respDiv.querySelector('audio');
+                          if (mainAudio) {
+                            mainAudio.src = '/api/dashboard/faq-audio/' + perguntaId + '?t=' + Date.now();
+                            mainAudio.load();
+                            mainAudio.style.display = 'block';
+                            var unavail = mainAudio.parentNode.querySelector('.text-warning');
+                            if (unavail) unavail.style.display = 'none';
+                          }
                           loadDuvidasRespondidas();
                           alert('Áudio atualizado com sucesso.');
                         })

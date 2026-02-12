@@ -1093,6 +1093,8 @@ app.get('/api/dashboard/faq-audio/:perguntaId', requireDashboardAuth, async (req
     const row = await getRespostaAudioData(Number(perguntaId), user.id);
     if (!row || !row.data) return res.status(404).end();
     res.setHeader('Content-Type', row.mimetype || 'audio/webm');
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
     res.send(row.data);
   } catch (err) {
     logStartup(`faq-audio dashboard error: ${err.message}`);
