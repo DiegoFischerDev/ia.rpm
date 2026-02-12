@@ -1409,19 +1409,11 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
         const nomeGestora = (user && user.nome) || 'Gestora';
         respostasTexto = `- ${nomeGestora}: ${textoFinal}`;
       }
-      const perguntaResumo = (duvida.texto || '').slice(0, 200);
-      const perguntaLabel = perguntaResumo + ((duvida.texto || '').length > 200 ? '…' : '');
-      const footerMsg =
-        `✅ A tua questão foi esclarecida? Se não foi, podes reformular a pergunta ou escrever:\n\n` +
-        `👉 *GESTORA* – se já queres falar com a gestora para iniciar a análise\n` +
-        `👉 *FALAR COM RAFA* – se precisas falar diretamente com a Rafa`;
+      const perguntaLabel = (duvida.texto || '').trim();
       const temAudio = respostasComAudio.length > 0;
+      const nomeGestora = (user && user.nome && String(user.nome).trim()) || 'Gestora';
       const msgIntro =
-        `✨ Olá! Há novas respostas das nossas parceiras para a tua dúvida:\n\n` +
-        `❓ "${perguntaLabel}"\n\n` +
-        `*💬 Respostas das gestoras:*\n` +
-        `${respostasTexto}` +
-        (temAudio ? '' : `\n\n${footerMsg}`);
+        `✨\n✨ ${nomeGestora} respondeu sua dúvida\n\n❓ "${perguntaLabel}"`;
       const headers = { 'Content-Type': 'application/json' };
       if (evoSecret) headers['X-Internal-Secret'] = evoSecret;
       try {
@@ -1450,15 +1442,6 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
             } catch (err) {
               logStartup(`Enviar resposta em áudio ao lead (WhatsApp) falhou: ${err.response?.data || err.message}`);
             }
-          }
-          try {
-            await fetch(evoUrl + '/api/internal/send-text', {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({ number: num, text: footerMsg }),
-            });
-          } catch (err) {
-            logStartup(`Enviar complemento de resposta ao lead (WhatsApp) falhou: ${err.message}`);
           }
         }
       } catch (err) {
