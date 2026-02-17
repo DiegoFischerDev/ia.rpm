@@ -99,6 +99,13 @@ app.use(express.urlencoded({ extended: true }));
 // Ficheiros de áudio de respostas das gestoras (FAQ) – rota customizada para servir ficheiro ou 404 JSON
 // (após deploy os ficheiros podem não existir; 404 em JSON permite ao dashboard mostrar mensagem e "Substituir áudio")
 const faqAudioDir = path.join(__dirname, 'storage', 'faq-audio');
+if (!fs.existsSync(faqAudioDir)) {
+  try {
+    fs.mkdirSync(faqAudioDir, { recursive: true });
+  } catch (e) {
+    logStartup(`Não foi possível criar pasta faq-audio: ${e.message}`);
+  }
+}
 app.get('/faq-audio/:filename', function (req, res) {
   const filename = req.params.filename;
   if (!filename || filename.includes('..') || path.isAbsolute(filename)) {
@@ -1493,11 +1500,24 @@ app.get('/api/faq/perguntas/:id', (req, res) => {
     .then((pergunta) => {
       if (!pergunta) return res.status(404).json({ message: 'Não encontrado.' });
       return listRespostasByPerguntaId(id).then((respostas) => {
-        // Para o Evo: quando o áudio está na BD, devolver URL completo com token
+        // Para o Evo: quando o áudio está na BD, devolver:
+        // - audio_url: URL interno com token (compatibilidade)
+        // - audio_direct_url: URL direto para ficheiro em /faq-audio (melhor para Evolution/WhatsApp)
         const out = (respostas || []).map((r) => {
           const row = { ...r };
           if (row.audio_in_db === 1 && baseUrl && evoSecret) {
-            row.audio_url = baseUrl + '/api/internal/faq-audio/' + row.pergunta_id + '/' + row.gestora_id + '?token=' + encodeURIComponent(evoSecret);
+            const mime = (row.audio_mimetype || '').toLowerCase();
+            const ext = mime.includes('ogg') ? '.ogg' : '.webm';
+            const filename = `${row.pergunta_id}-${row.gestora_id}${ext}`;
+            row.audio_url =
+              baseUrl +
+              '/api/internal/faq-audio/' +
+              row.pergunta_id +
+              '/' +
+              row.gestora_id +
+              '?token=' +
+              encodeURIComponent(evoSecret);
+            row.audio_direct_url = baseUrl + '/faq-audio/' + filename;
           }
           return row;
         });
