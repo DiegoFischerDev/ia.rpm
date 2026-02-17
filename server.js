@@ -1123,7 +1123,7 @@ app.get('/api/dashboard/faq-audio-admin/:perguntaId', requireDashboardAuth, requ
     res.setHeader('Pragma', 'no-cache');
     res.send(row.data);
   } catch (err) {
-    logStartup(`faq-audio-admin error: ${err.message}`);
+    logStartup(`faq-audio-admin error: ${err.message}`); 
     res.status(500).end();
   }
 });
