@@ -148,8 +148,8 @@
       0%, 100% { opacity: 1; }
       50% { opacity: 0.85; }
     }
-    .main { flex: 1; min-width: 0; padding: 2rem 2.5rem; overflow: auto; }
-    .screen { display: none; }
+    .main { flex: 1; min-width: 0; padding: 0; overflow: auto; }
+    .screen { display: none; padding: 2rem 2.5rem; }
     .screen.visible { display: block !important; }
     .app.screen.visible { display: flex !important; }
     .main .screen { display: none; }
@@ -290,7 +290,8 @@
     .main-header-logo { display: none; }
     /* Cartões responsivos para tabelas em mobile */
     @media (max-width: 768px) {
-      .main { margin-left: 0; padding: 1.25rem 1rem 2.5rem; }
+      .main { margin-left: 0; }
+      .screen { padding: 1.25rem 1rem 2.5rem; }
       .table-wrap { overflow-x: visible; }
       table.responsive-table,
       table.responsive-table thead,
@@ -315,8 +316,9 @@
         border-bottom: none;
         padding: 0.4rem 0.75rem;
         display: flex;
-        align-items: baseline;
-        justify-content: space-between;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: flex-start;
         gap: 0.75rem;
         font-size: 0.9rem;
       }
@@ -328,12 +330,20 @@
         letter-spacing: 0.04em;
         font-size: 0.7rem;
         margin-right: 0.75rem;
-        flex: 0 0 48%;
+        margin-bottom: 0.15rem;
+        flex: 0 0 auto;
       }
       table.responsive-table td.actions {
         justify-content: flex-start;
         flex-wrap: wrap;
         gap: 0.35rem;
+      }
+      /* Não usar cartão (borda/fundo) em Perguntas pendentes */
+      #screenDuvidasPendentes table.responsive-table tr {
+        border: none;
+        box-shadow: none;
+        background: transparent;
+        padding: 0;
       }
       tbody tr:hover { background: transparent; }
     }
@@ -1484,10 +1494,17 @@
                     '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta-gestora" data-id="' + p.id + '">Editar</button>';
                 if (isAdmin) {
                   tr.innerHTML =
-                    '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td><td>' + (p.frequencia || 0) + '</td><td class="td-acoes-admin">' + acoes + '</td>';
+                    '<td data-label="#">' + p.id + '</td>' +
+                    '<td data-label="Pergunta" class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td>' +
+                    '<td data-label="Frequência">' + (p.frequencia || 0) + '</td>' +
+                    '<td class="td-acoes-admin actions" data-label="Ações">' + acoes + '</td>';
                 } else {
                   tr.innerHTML =
-                    '<td>' + p.id + '</td><td class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td><td>' + (p.frequencia || 0) + '</td><td>' + acoes + '</td><td class="td-acoes-admin"></td>';
+                    '<td data-label="#">' + p.id + '</td>' +
+                    '<td data-label="Pergunta" class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td>' +
+                    '<td data-label="Frequência">' + (p.frequencia || 0) + '</td>' +
+                    '<td class="actions" data-label="Resposta">' + acoes + '</td>' +
+                    '<td class="td-acoes-admin" data-label="Ações admin"></td>';
                 }
                 perguntasBody.appendChild(tr);
               });
