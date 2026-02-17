@@ -342,6 +342,10 @@
         gap: 0.75rem;
         font-size: 0.9rem;
       }
+      /* Em mobile, ocultar células de ID em todos os dashboards */
+      table.responsive-table td.cell-id {
+        display: none;
+      }
       /* FAQ: frequência no canto superior direito em mobile (badge no card) */
       #screenDuvidasRespondidas table.responsive-table tr {
         position: relative;
@@ -363,9 +367,11 @@
       table.responsive-table td.actions {
         flex-direction: row;
         align-items: center;
-        justify-content: flex-start;
+        justify-content: flex-end;
         flex-wrap: wrap;
         gap: 0.35rem;
+        width: 100%;
+        text-align: right;
       }
       table.responsive-table td[data-label=""]::before {
         content: none;
@@ -1195,7 +1201,7 @@
             var comentario = (r.comentario || '').trim();
             var comentarioCell = comentario ? '<span title="' + escapeHtml(comentario) + '">' + escapeHtml(comentario) + '</span>' : '<span class="text-muted">—</span>';
             tr.innerHTML =
-              '<td data-label="ID">' + r.id + '</td><td data-label="Atualizado">' + escapeHtml(formatDate(r.updated_at)) +
+              '<td data-label="ID" class="cell-id">' + r.id + '</td><td data-label="Atualizado">' + escapeHtml(formatDate(r.updated_at)) +
               '</td><td data-label="WhatsApp">' + escapeHtml(r.whatsapp_number || '') +
               '</td><td data-label="Nome">' + escapeHtml(r.nome || '') +
               '</td><td data-label="Email">' + escapeHtml(r.email || '') +
@@ -1207,7 +1213,7 @@
             var convBadge = '<span class="' + leadBadgeClass('conv', convVal) + '">' + escapeHtml(convVal || '—') + '</span>';
             var docsBadge = '<span class="' + leadBadgeClass('docs', docsVal) + '">' + escapeHtml(docsVal || '—') + '</span>';
             tr.innerHTML =
-              '<td data-label="ID">' + r.id + '</td><td data-label="WhatsApp">' +
+              '<td data-label="ID" class="cell-id">' + r.id + '</td><td data-label="WhatsApp">' +
               escapeHtml(r.whatsapp_number || '') + '</td><td data-label="Nome">' + escapeHtml(r.nome || '') + '</td><td data-label="Email">' + escapeHtml(r.email || '') +
               '</td><td data-label="Estado conversa">' + convBadge + '</td><td data-label="Estado docs">' + docsBadge + '</td>' +
               '<td data-label="Docs enviados">' + (r.docs_enviados ? 'Sim' : 'Não') + '</td><td data-label="Gestora">' + escapeHtml(r.gestora_nome || '—') +
