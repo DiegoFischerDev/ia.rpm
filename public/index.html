@@ -325,6 +325,18 @@
         gap: 0.75rem;
         font-size: 0.9rem;
       }
+      /* FAQ: frequência no canto superior direito em mobile */
+      #screenDuvidasRespondidas table.responsive-table tr {
+        position: relative;
+      }
+      #screenDuvidasRespondidas table.responsive-table td.cell-freq {
+        position: absolute;
+        top: 0.4rem;
+        right: 0.75rem;
+        padding: 0;
+        font-size: 0.75rem;
+        color: var(--text-muted);
+      }
       table.responsive-table td::before {
         content: none;
       }
@@ -1498,13 +1510,13 @@
                 tr.innerHTML =
                   '<td data-label="" class="cell-id">#' + p.id + '</td>' +
                   '<td data-label="Pergunta" class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td>' +
-                  '<td data-label="Frequência">' + (p.frequencia || 0) + '</td>' +
+                  '<td data-label="Frequência" class="cell-freq">Frequência ' + (p.frequencia || 0) + '</td>' +
                   '<td class="td-acoes-admin actions" data-label="Ações">' + acoes + '</td>';
               } else {
                 tr.innerHTML =
                   '<td data-label="" class="cell-id">#' + p.id + '</td>' +
                   '<td data-label="Pergunta" class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td>' +
-                  '<td data-label="Frequência">' + (p.frequencia || 0) + '</td>' +
+                  '<td data-label="Frequência" class="cell-freq">Frequência ' + (p.frequencia || 0) + '</td>' +
                   '<td class="actions" data-label="Resposta">' + acoes + '</td>' +
                   '<td class="td-acoes-admin" data-label="Ações admin"></td>';
               }
