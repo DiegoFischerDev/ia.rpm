@@ -124,7 +124,13 @@
       animation: pulse-badge 2s ease-in-out infinite;
     }
     .nav-badge.hidden { display: none; }
-    .sidebar-footer-text { display: flex; align-items: center; justify-content: center; flex: 1; gap: 0.5rem; }
+    .sidebar-footer-text { display: flex; align-items: center; justify-content: flex-start; flex: 1; gap: 0.5rem; }
+    .sidebar-footer-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.25rem;
+    }
     .sidebar-footer-avatar {
       width: 28px;
       height: 28px;
@@ -207,7 +213,7 @@
     th { background: var(--bg); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
     tr:last-child td { border-bottom: none; }
     tbody tr { transition: none; background: var(--surface); }
-    tbody tr:hover { background: inherit; }
+    tbody tr:hover { background: var(--surface); }
     .actions { display: flex; gap: 0.5rem; }
     .lead-estado-docs-select { margin-bottom: 0; }
     .lead-badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
@@ -275,7 +281,11 @@
     .modal { background: var(--surface); border-radius: var(--radius-lg); padding: 1.75rem; max-width: 440px; width: 100%; max-height: 90vh; overflow: auto; box-shadow: 0 20px 40px rgba(0,0,0,.15); }
     .modal h3 { margin: 0 0 1.25rem; font-size: 1.125rem; font-weight: 700; }
     .modal-actions { margin-top: 1.5rem; display: flex; gap: 0.5rem; justify-content: flex-end; }
-    .table-wrap { overflow-x: auto; border-radius: var(--radius-lg); }
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: var(--radius-lg);
+      border: 1px solid lightgray;
+    }
     .text-muted { color: var(--text-muted); font-size: 0.875rem; }
     .btn-whatsapp { background: #25d366; color: #fff; }
     .btn-whatsapp:hover { background: #20bd5a; color: #fff; }
@@ -475,8 +485,10 @@
           <img id="sidebarUserAvatar" class="sidebar-footer-avatar" src="" alt="Foto de perfil">
           <span id="sidebarUserName" class="sidebar-footer-name" aria-live="polite"></span>
         </div>
-        <button type="button" id="btnImpersonateExit" class="sidebar-footer-sair" style="display:none;margin-right:0.5rem;">Sair do modo gestora</button>
-        <button type="button" id="btnLogout" class="sidebar-footer-sair">Sair</button>
+        <div class="sidebar-footer-actions">
+          <button type="button" id="btnImpersonateExit" class="sidebar-footer-sair" style="display:none;">Sair do modo gestora</button>
+          <button type="button" id="btnLogout" class="sidebar-footer-sair">Sair</button>
+        </div>
       </div>
     </nav>
     <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
