@@ -1639,12 +1639,24 @@
                   navigator.mediaDevices.getUserMedia({ audio: true })
                     .then(function (stream) {
                       faqChunks = [];
-                      faqRecorder = new MediaRecorder(stream);
+                      var preferredTypes = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm'];
+                      var chosenType = null;
+                      if (window.MediaRecorder && typeof MediaRecorder.isTypeSupported === 'function') {
+                        for (var i = 0; i < preferredTypes.length; i++) {
+                          if (MediaRecorder.isTypeSupported(preferredTypes[i])) {
+                            chosenType = preferredTypes[i];
+                            break;
+                          }
+                        }
+                      }
+                      var recorderOptions = chosenType ? { mimeType: chosenType } : undefined;
+                      faqRecorder = new MediaRecorder(stream, recorderOptions);
                       faqRecorder.ondataavailable = function (e) {
                         if (e.data && e.data.size > 0) faqChunks.push(e.data);
                       };
                       faqRecorder.onstop = function () {
-                        faqBlob = new Blob(faqChunks, { type: 'audio/webm' });
+                        var blobType = chosenType || 'audio/webm';
+                        faqBlob = new Blob(faqChunks, { type: blobType });
                         preview.src = URL.createObjectURL(faqBlob);
                         preview.style.display = 'block';
                         faqRecordingIndicator.style.display = 'none';
@@ -1928,12 +1940,24 @@
           navigator.mediaDevices.getUserMedia({ audio: true })
             .then(function (stream) {
               duvidaRecorderChunks = [];
-              duvidaMediaRecorder = new MediaRecorder(stream);
+              var preferredTypes = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm'];
+              var chosenType = null;
+              if (window.MediaRecorder && typeof MediaRecorder.isTypeSupported === 'function') {
+                for (var i = 0; i < preferredTypes.length; i++) {
+                  if (MediaRecorder.isTypeSupported(preferredTypes[i])) {
+                    chosenType = preferredTypes[i];
+                    break;
+                  }
+                }
+              }
+              var recorderOptions = chosenType ? { mimeType: chosenType } : undefined;
+              duvidaMediaRecorder = new MediaRecorder(stream, recorderOptions);
               duvidaMediaRecorder.ondataavailable = function (e) {
                 if (e.data && e.data.size > 0) duvidaRecorderChunks.push(e.data);
               };
               duvidaMediaRecorder.onstop = function () {
-                duvidaAudioBlob = new Blob(duvidaRecorderChunks, { type: 'audio/webm' });
+                var blobType = chosenType || 'audio/webm';
+                duvidaAudioBlob = new Blob(duvidaRecorderChunks, { type: blobType });
                 audioEl.src = URL.createObjectURL(duvidaAudioBlob);
                 audioEl.style.display = 'block';
                 playBtn.style.display = 'inline-block';
