@@ -91,6 +91,26 @@
       flex-shrink: 0;
     }
     .sidebar-footer-sair:hover { color: #fff; }
+    .sidebar-impersonate-wrap {
+      padding: 0.75rem 1.25rem;
+      border-top: 1px solid rgba(255,255,255,.2);
+    }
+    .sidebar-impersonate-exit {
+      display: block;
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.8125rem;
+      color: rgba(255,255,255,.9);
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: var(--radius);
+      cursor: pointer;
+      text-align: center;
+    }
+    .sidebar-impersonate-exit:hover {
+      background: rgba(255,255,255,.2);
+      color: #fff;
+    }
     .sidebar-nav-item {
       display: flex;
       align-items: center;
@@ -477,6 +497,9 @@
       </a>
       <a href="#duvidas-respondidas" id="navDuvidasRespondidas" class="sidebar-nav-item">FAQ</a>
       <a href="#perfil" id="navPerfil" class="sidebar-nav-item" style="display:none;">Perfil</a>
+      <div id="sidebarImpersonateWrap" class="sidebar-impersonate-wrap" style="display:none;">
+        <button type="button" id="btnImpersonateExit" class="sidebar-impersonate-exit">Sair do modo gestora</button>
+      </div>
       <div class="sidebar-footer">
         <span class="sidebar-footer-icon" aria-hidden="true">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
@@ -485,10 +508,7 @@
           <img id="sidebarUserAvatar" class="sidebar-footer-avatar" src="" alt="Foto de perfil">
           <span id="sidebarUserName" class="sidebar-footer-name" aria-live="polite"></span>
         </div>
-        <div class="sidebar-footer-actions">
-          <button type="button" id="btnImpersonateExit" class="sidebar-footer-sair" style="display:none;">Sair do modo gestora</button>
-          <button type="button" id="btnLogout" class="sidebar-footer-sair">Sair</button>
-        </div>
+        <button type="button" id="btnLogout" class="sidebar-footer-sair">Sair</button>
       </div>
     </nav>
     <div id="sidebarOverlay" class="sidebar-overlay" aria-hidden="true"></div>
@@ -950,10 +970,10 @@
                 avatarEl.style.display = 'none';
               }
             }
-            // Mostrar/ocultar botão "Sair do modo gestora" (impersonação)
-            var btnImpersonateExit = document.getElementById('btnImpersonateExit');
-            if (btnImpersonateExit) {
-              btnImpersonateExit.style.display = (user.role === 'gestora' && data.impersonated) ? 'inline-flex' : 'none';
+            // Mostrar/ocultar bloco "Sair do modo gestora" (impersonação)
+            var sidebarImpersonateWrap = document.getElementById('sidebarImpersonateWrap');
+            if (sidebarImpersonateWrap) {
+              sidebarImpersonateWrap.style.display = (user.role === 'gestora' && data.impersonated) ? 'block' : 'none';
             }
             document.getElementById('loginScreen').classList.remove('visible');
             document.getElementById('loginScreen').style.display = 'none';
