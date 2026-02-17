@@ -1497,32 +1497,43 @@ app.get('/api/faq/perguntas/:id', (req, res) => {
   const baseUrl = (process.env.IA_APP_BASE_URL || process.env.IA_PUBLIC_BASE_URL || '').trim().replace(/\/$/, '');
   const evoSecret = (process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET || '').trim();
   getPerguntaById(id)
-    .then((pergunta) => {
+    .then(async (pergunta) => {
       if (!pergunta) return res.status(404).json({ message: 'Não encontrado.' });
-      return listRespostasByPerguntaId(id).then((respostas) => {
-        // Para o Evo: quando o áudio está na BD, devolver:
-        // - audio_url: URL interno com token (compatibilidade)
-        // - audio_direct_url: URL direto para ficheiro em /faq-audio (melhor para Evolution/WhatsApp)
-        const out = (respostas || []).map((r) => {
-          const row = { ...r };
-          if (row.audio_in_db === 1 && baseUrl && evoSecret) {
-            const mime = (row.audio_mimetype || '').toLowerCase();
-            const ext = mime.includes('ogg') ? '.ogg' : '.webm';
-            const filename = `${row.pergunta_id}-${row.gestora_id}${ext}`;
-            row.audio_url =
-              baseUrl +
-              '/api/internal/faq-audio/' +
-              row.pergunta_id +
-              '/' +
-              row.gestora_id +
-              '?token=' +
-              encodeURIComponent(evoSecret);
-            row.audio_direct_url = baseUrl + '/faq-audio/' + filename;
+      const respostas = await listRespostasByPerguntaId(id);
+      const out = [];
+      for (const r of respostas || []) {
+        const row = { ...r };
+        if (row.audio_in_db === 1 && baseUrl && evoSecret) {
+          const mime = (row.audio_mimetype || '').toLowerCase();
+          const ext = mime.includes('ogg') ? '.ogg' : '.webm';
+          const filename = `${row.pergunta_id}-${row.gestora_id}${ext}`;
+          const filePath = path.join(faqAudioDir, filename);
+          try {
+            // Se o ficheiro ainda não existir, criar a partir da BD
+            await fs.promises.access(filePath, fs.constants.R_OK);
+          } catch {
+            try {
+              const audioRow = await getRespostaAudioData(Number(row.pergunta_id), Number(row.gestora_id));
+              if (audioRow && audioRow.data) {
+                await fs.promises.writeFile(filePath, audioRow.data);
+              }
+            } catch (e) {
+              logStartup(`faq-audio write file error (${filename}): ${e.message}`);
+            }
           }
-          return row;
-        });
-        return res.json({ pergunta, respostas: out });
-      });
+          row.audio_url =
+            baseUrl +
+            '/api/internal/faq-audio/' +
+            row.pergunta_id +
+            '/' +
+            row.gestora_id +
+            '?token=' +
+            encodeURIComponent(evoSecret);
+          row.audio_direct_url = baseUrl + '/faq-audio/' + filename;
+        }
+        out.push(row);
+      }
+      return res.json({ pergunta, respostas: out });
     })
     .catch((err) => {
       logStartup(`faq/perguntas/:id error: ${err.message}`);
