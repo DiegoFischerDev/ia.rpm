@@ -200,13 +200,13 @@
     }
     .error-msg { color: var(--error); font-size: 0.875rem; margin-top: 0.5rem; }
     .page-title { margin: 0 0 1.5rem; font-size: 1.375rem; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
-    .card { border-radius: var(--radius-lg); overflow: hidden; box-shadow: var(--shadow); }
+    .card { border-radius: var(--radius-lg); overflow: hidden; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
     th { background: var(--bg); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
     tr:last-child td { border-bottom: none; }
-    tbody tr { transition: background .12s; }
-    tbody tr:hover { background: var(--accent-soft); }
+    tbody tr { transition: none; }
+    tbody tr:hover { background: inherit; }
     .actions { display: flex; gap: 0.5rem; }
     .lead-estado-docs-select { margin-bottom: 0; }
     .lead-badge { display: inline-block; padding: 0.25rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
@@ -304,6 +304,8 @@
         width: 100%;
       }
       table.responsive-table thead { display: none; }
+      /* Esconder explicitamente os títulos das colunas no dashboard de LEADS em mobile */
+      #screenLeads table thead { display: none !important; }
       table.responsive-table tbody { display: block; }
       table.responsive-table tr {
         margin-bottom: 0.75rem;
@@ -344,16 +346,14 @@
       table.responsive-table td[data-label=""]::before {
         content: none;
       }
-      /* Perguntas pendentes: sem cartão branco, mas com separação entre elementos */
+      /* Perguntas pendentes: com separação entre elementos (usa o mesmo fundo dos outros cards) */
       #screenDuvidasPendentes table.responsive-table tr {
         border: none;
         box-shadow: none;
-        background: transparent;
         padding: 0.25rem 0 0.5rem;
         margin-bottom: 0.25rem;
         border-bottom: 1px solid var(--border);
       }
-      tbody tr:hover { background: transparent; }
     }
     @media (max-width: 768px) {
       .main { margin-left: 0; }
