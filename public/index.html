@@ -133,10 +133,11 @@
       display: none;
     }
     .sidebar-footer-name {
-      max-width: 120px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      max-width: 100%;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+      word-break: break-word;
     }
     .sidebar-footer-version {
       font-size: 0.7rem;
@@ -205,7 +206,7 @@
     th, td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); }
     th { background: var(--bg); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
     tr:last-child td { border-bottom: none; }
-    tbody tr { transition: none; }
+    tbody tr { transition: none; background: var(--surface); }
     tbody tr:hover { background: inherit; }
     .actions { display: flex; gap: 0.5rem; }
     .lead-estado-docs-select { margin-bottom: 0; }
@@ -452,7 +453,7 @@
 
   <div id="dashboardApp" class="app screen">
     <nav class="sidebar">
-      <div class="sidebar-footer-version">versão 1.0</div>
+      <div class="sidebar-footer-version">versão 2.0</div>
       <a href="#leads" class="sidebar-logo" aria-label="Início"><img src="logo_bg_clara.png" alt=""></a>
       <a href="#leads" id="navLeads" class="sidebar-nav-item active">Leads</a>
       <a href="#rafa" id="navRafa" class="sidebar-nav-item">
