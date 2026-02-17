@@ -1139,6 +1139,10 @@ app.get('/api/internal/faq-audio/:perguntaId/:gestoraId', async (req, res) => {
   try {
     const row = await getRespostaAudioData(Number(perguntaId), Number(gestoraId));
     if (!row || !row.data) return res.status(404).end();
+    logStartup(
+      `internal faq-audio pergunta=${perguntaId} gestora=${gestoraId} ` +
+      `mime=${row.mimetype || 'unknown'} bytes=${row.data.length}`
+    );
     res.setHeader('Content-Type', row.mimetype || 'audio/webm');
     res.send(row.data);
   } catch (err) {
