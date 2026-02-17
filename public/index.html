@@ -2236,68 +2236,181 @@
               container.innerHTML = '<p class="text-muted">Nenhum áudio configurado.</p>';
               return;
             }
-            var html = '';
+            container.innerHTML = '';
             rows.forEach(function (item) {
-              var status = item.has_audio ? '<span style="color:var(--success, #059669);">Enviado</span>' : '<span class="text-muted">Não enviado</span>';
-              var playBtn = item.has_audio
-                ? '<button type="button" class="btn btn-secondary btn-sm btn-audio-rafa-play" data-codigo="' + escapeHtml(item.codigo) + '" style="margin-left:0.5rem;">Ouvir</button>'
-                : '';
-              html +=
-                '<div class="audios-rafa-item" style="margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);">' +
-                '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;">' +
-                '<strong>' + escapeHtml(item.nome || item.codigo) + '</strong> ' + status + playBtn + '</div>' +
-                '<form class="audios-rafa-upload-form" data-codigo="' + escapeHtml(item.codigo) + '">' +
-                '<input type="file" accept="audio/*" name="audio" required class="audios-rafa-file">' +
-                '<button type="submit" class="btn btn-primary btn-sm" style="margin-top:0.5rem;">Enviar áudio</button>' +
-                '</form>' +
-                '</div>';
-            });
-            container.innerHTML = html;
-            container.querySelectorAll('.audios-rafa-upload-form').forEach(function (form) {
-              form.addEventListener('submit', function (e) {
-                e.preventDefault();
-                var codigo = form.getAttribute('data-codigo');
-                var fileInput = form.querySelector('.audios-rafa-file');
-                if (!fileInput || !fileInput.files || !fileInput.files[0]) {
-                  alert('Escolhe um ficheiro de áudio.');
+              const itemDiv = document.createElement('div');
+              itemDiv.className = 'audios-rafa-item';
+              itemDiv.style.marginBottom = '1.5rem';
+              itemDiv.style.paddingBottom = '1.5rem';
+              itemDiv.style.borderBottom = '1px solid var(--border)';
+
+              const statusSpan = document.createElement('span');
+              statusSpan.style.marginLeft = '0.5rem';
+              statusSpan.textContent = item.has_audio ? 'Enviado' : 'Não enviado';
+              statusSpan.style.color = item.has_audio ? 'var(--success, #059669)' : '';
+
+              const header = document.createElement('div');
+              header.style.display = 'flex';
+              header.style.alignItems = 'center';
+              header.style.flexWrap = 'wrap';
+              header.style.gap = '0.5rem';
+              header.style.marginBottom = '0.5rem';
+              const strong = document.createElement('strong');
+              strong.textContent = item.nome || item.codigo;
+              header.appendChild(strong);
+              header.appendChild(statusSpan);
+
+              if (item.has_audio) {
+                const playBtn = document.createElement('button');
+                playBtn.type = 'button';
+                playBtn.className = 'btn btn-secondary btn-sm btn-audio-rafa-play';
+                playBtn.setAttribute('data-codigo', item.codigo);
+                playBtn.textContent = 'Ouvir';
+                playBtn.style.marginLeft = '0.5rem';
+                playBtn.addEventListener('click', function () {
+                  const codigo = this.getAttribute('data-codigo');
+                  if (!codigo) return;
+                  const audio = document.createElement('audio');
+                  audio.controls = true;
+                  audio.src = API + '/audios-rafa/' + encodeURIComponent(codigo) + '?t=' + Date.now();
+                  audio.style.marginTop = '0.5rem';
+                  const wrap = this.closest('.audios-rafa-item');
+                  if (wrap) {
+                    const old = wrap.querySelector('audio.audios-rafa-preview-saved');
+                    if (old) old.remove();
+                    audio.className = 'audios-rafa-preview-saved';
+                    wrap.appendChild(audio);
+                  }
+                });
+                header.appendChild(playBtn);
+              }
+              itemDiv.appendChild(header);
+
+              const recordWrap = document.createElement('div');
+              recordWrap.className = 'audios-rafa-record-wrap';
+              recordWrap.style.marginTop = '0.75rem';
+
+              let currentBlob = null;
+              let currentRecorder = null;
+              let currentChunks = [];
+              let currentChosenType = null;
+
+              const gravarBtn = document.createElement('button');
+              gravarBtn.type = 'button';
+              gravarBtn.className = 'btn btn-primary btn-sm';
+              gravarBtn.textContent = 'Gravar áudio';
+              recordWrap.appendChild(gravarBtn);
+
+              function showRecordingUI() {
+                recordWrap.innerHTML = '';
+                const stopBtn = document.createElement('button');
+                stopBtn.type = 'button';
+                stopBtn.className = 'btn btn-secondary btn-sm';
+                stopBtn.textContent = 'Parar';
+                const ind = document.createElement('span');
+                ind.className = 'recording-indicator';
+                ind.style.marginLeft = '0.5rem';
+                ind.style.fontWeight = 'bold';
+                ind.style.color = '#c00';
+                ind.textContent = 'GRAVANDO...';
+                recordWrap.appendChild(stopBtn);
+                recordWrap.appendChild(ind);
+                stopBtn.addEventListener('click', function () {
+                  if (currentRecorder && currentRecorder.state === 'recording') currentRecorder.stop();
+                });
+              }
+
+              function showPreviewAndSave(blob) {
+                recordWrap.innerHTML = '';
+                const preview = document.createElement('audio');
+                preview.controls = true;
+                preview.src = URL.createObjectURL(blob);
+                preview.style.display = 'block';
+                preview.style.marginBottom = '0.5rem';
+                const guardarBtn = document.createElement('button');
+                guardarBtn.type = 'button';
+                guardarBtn.className = 'btn btn-primary btn-sm';
+                guardarBtn.textContent = 'Guardar áudio';
+                const cancelarBtn = document.createElement('button');
+                cancelarBtn.type = 'button';
+                cancelarBtn.className = 'btn btn-outline btn-sm';
+                cancelarBtn.textContent = 'Cancelar';
+                cancelarBtn.style.marginLeft = '0.5rem';
+                recordWrap.appendChild(preview);
+                recordWrap.appendChild(guardarBtn);
+                recordWrap.appendChild(cancelarBtn);
+                guardarBtn.addEventListener('click', function () {
+                  guardarBtn.disabled = true;
+                  guardarBtn.textContent = 'A guardar…';
+                  const fd = new FormData();
+                  fd.append('audio', blob, 'audio.webm');
+                  fetch(API + '/audios-rafa/' + encodeURIComponent(item.codigo), {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: fd,
+                  })
+                    .then(function (res) { return res.ok ? res.json() : res.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                    .then(function () {
+                      alert('Áudio guardado.');
+                      loadAudiosRafa();
+                    })
+                    .catch(function (err) { alert(err.message || 'Erro ao guardar.'); })
+                    .finally(function () { guardarBtn.disabled = false; guardarBtn.textContent = 'Guardar áudio'; });
+                });
+                cancelarBtn.addEventListener('click', function () {
+                  recordWrap.innerHTML = '';
+                  recordWrap.appendChild(gravarBtn);
+                });
+              }
+
+              function resetToGravar() {
+                recordWrap.innerHTML = '';
+                recordWrap.appendChild(gravarBtn);
+              }
+
+              gravarBtn.addEventListener('click', function () {
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                  alert('Não foi possível aceder ao microfone. O teu navegador parece não suportar captura de áudio.');
                   return;
                 }
-                var fd = new FormData();
-                fd.append('audio', fileInput.files[0]);
-                var btn = form.querySelector('button[type="submit"]');
-                var origText = btn ? btn.textContent : '';
-                if (btn) { btn.disabled = true; btn.textContent = 'A enviar…'; }
-                fetch(API + '/audios-rafa/' + encodeURIComponent(codigo), {
-                  method: 'POST',
-                  credentials: 'include',
-                  body: fd,
-                })
-                  .then(function (res) { return res.ok ? res.json() : res.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-                  .then(function () {
-                    alert('Áudio guardado.');
-                    loadAudiosRafa();
+                navigator.mediaDevices.getUserMedia({ audio: true })
+                  .then(function (stream) {
+                    currentChunks = [];
+                    var preferredTypes = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm'];
+                    var chosenType = null;
+                    if (window.MediaRecorder && typeof MediaRecorder.isTypeSupported === 'function') {
+                      for (var i = 0; i < preferredTypes.length; i++) {
+                        if (MediaRecorder.isTypeSupported(preferredTypes[i])) {
+                          chosenType = preferredTypes[i];
+                          break;
+                        }
+                      }
+                    }
+                    currentChosenType = chosenType;
+                    var recorderOptions = chosenType ? { mimeType: chosenType } : undefined;
+                    currentRecorder = new MediaRecorder(stream, recorderOptions);
+                    currentRecorder.ondataavailable = function (e) {
+                      if (e.data && e.data.size > 0) currentChunks.push(e.data);
+                    };
+                    currentRecorder.onstop = function () {
+                      var blobType = currentChosenType || 'audio/webm';
+                      currentBlob = new Blob(currentChunks, { type: blobType });
+                      showPreviewAndSave(currentBlob);
+                    };
+                    currentRecorder.start();
+                    showRecordingUI();
                   })
-                  .catch(function (err) { alert(err.message || 'Erro ao guardar.'); })
-                  .finally(function () {
-                    if (btn) { btn.disabled = false; btn.textContent = origText; }
+                  .catch(function (err) {
+                    var msg = 'Não foi possível aceder ao microfone.';
+                    if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
+                      msg += '\n\nParece que o acesso ao microfone foi bloqueado. Abre as definições do site no navegador e ativa a permissão de microfone.';
+                    }
+                    alert(msg);
                   });
               });
-            });
-            container.querySelectorAll('.btn-audio-rafa-play').forEach(function (btn) {
-              btn.addEventListener('click', function () {
-                var codigo = this.getAttribute('data-codigo');
-                if (!codigo) return;
-                var audio = document.createElement('audio');
-                audio.controls = true;
-                audio.src = API + '/audios-rafa/' + encodeURIComponent(codigo) + '?t=' + Date.now();
-                audio.style.marginTop = '0.5rem';
-                var wrap = this.closest('.audios-rafa-item');
-                if (wrap) {
-                  var old = wrap.querySelector('audio');
-                  if (old) old.remove();
-                  wrap.appendChild(audio);
-                }
-              });
+
+              itemDiv.appendChild(recordWrap);
+              container.appendChild(itemDiv);
             });
           })
           .catch(function () {
