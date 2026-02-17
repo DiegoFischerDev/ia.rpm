@@ -565,6 +565,30 @@ async function setDuvidaEhPendente(id, ehPendente) {
   await query('UPDATE ch_duvidas SET eh_pendente = ?, updated_at = NOW() WHERE id = ?', [ehPendente ? 1 : 0, id]);
 }
 
+// ========== Audios Rafa (admin: áudios usados pelo evo com os leads) ==========
+async function listAudiosRafa() {
+  const rows = await query(
+    'SELECT id, codigo, nome, audio_data IS NOT NULL AS has_audio, mimetype, created_at, updated_at FROM ch_audios_rafa ORDER BY id'
+  );
+  return rows || [];
+}
+
+async function getAudiosRafaByCodigo(codigo) {
+  const rows = await query(
+    'SELECT id, codigo, nome, audio_data, mimetype, updated_at FROM ch_audios_rafa WHERE codigo = ?',
+    [codigo]
+  );
+  return rows[0] || null;
+}
+
+async function upsertAudiosRafa(codigo, nome, audioData, mimetype) {
+  await query(
+    `INSERT INTO ch_audios_rafa (codigo, nome, audio_data, mimetype) VALUES (?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE nome = VALUES(nome), audio_data = VALUES(audio_data), mimetype = VALUES(mimetype), updated_at = NOW()`,
+    [codigo, nome || codigo, audioData || null, mimetype || null]
+  );
+}
+
 module.exports = {
   getPool,
   query,
@@ -620,4 +644,7 @@ module.exports = {
   getRespostaAudioData,
   getFirstGestoraIdWithAudio,
   setDuvidaEhPendente,
+  listAudiosRafa,
+  getAudiosRafaByCodigo,
+  upsertAudiosRafa,
 };

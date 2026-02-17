@@ -69,6 +69,9 @@ const {
   getFirstGestoraIdWithAudio,
   deleteRespostaByPerguntaAndGestora,
   setDuvidaEhPendente,
+  listAudiosRafa,
+  getAudiosRafaByCodigo,
+  upsertAudiosRafa,
 } = require('./db');
 const {
   saveDocument,
@@ -1147,6 +1150,69 @@ app.get('/api/internal/faq-audio/:perguntaId/:gestoraId', async (req, res) => {
     res.send(row.data);
   } catch (err) {
     logStartup(`faq-audio internal error: ${err.message}`);
+    res.status(500).end();
+  }
+});
+
+// ---------- Audios Rafa (admin: áudios usados pelo evo com os leads) ----------
+const AUDIOS_RAFA_CODIGOS = ['boas_vindas'];
+
+app.get('/api/dashboard/audios-rafa', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  try {
+    const rows = await listAudiosRafa();
+    res.json(rows);
+  } catch (err) {
+    logStartup(`listAudiosRafa error: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao listar.' });
+  }
+});
+
+app.get('/api/dashboard/audios-rafa/:codigo', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  const codigo = (req.params.codigo || '').trim();
+  if (!AUDIOS_RAFA_CODIGOS.includes(codigo)) return res.status(404).json({ message: 'Áudio não encontrado.' });
+  try {
+    const row = await getAudiosRafaByCodigo(codigo);
+    if (!row || !row.audio_data) return res.status(404).json({ message: 'Áudio ainda não enviado.' });
+    res.setHeader('Content-Type', row.mimetype || 'audio/webm');
+    res.send(row.audio_data);
+  } catch (err) {
+    logStartup(`getAudiosRafa error: ${err.message}`);
+    res.status(500).end();
+  }
+});
+
+const audiosRafaUpload = uploadMemory.single('audio');
+app.post('/api/dashboard/audios-rafa/:codigo', requireDashboardAuth, requireAdminAuth, audiosRafaUpload, async (req, res) => {
+  const codigo = (req.params.codigo || '').trim();
+  if (!AUDIOS_RAFA_CODIGOS.includes(codigo)) return res.status(400).json({ message: 'Código de áudio inválido.' });
+  const audioFile = req.file && req.file.buffer && req.file.buffer.length ? req.file : null;
+  if (!audioFile) return res.status(400).json({ message: 'Envie um ficheiro de áudio.' });
+  const mimetype = (audioFile.mimetype || '').toLowerCase();
+  const mime = mimetype.includes('ogg') ? 'audio/ogg' : 'audio/webm';
+  try {
+    const nome = codigo === 'boas_vindas' ? 'Boas vindas' : codigo;
+    await upsertAudiosRafa(codigo, nome, audioFile.buffer, mime);
+    res.json({ ok: true, codigo, message: 'Áudio guardado.' });
+  } catch (err) {
+    logStartup(`upsertAudiosRafa error: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao guardar áudio.' });
+  }
+});
+
+// Áudio Rafa para o evo (Evolution API faz GET com token em query)
+app.get('/api/internal/audios-rafa/:codigo', async (req, res) => {
+  const token = (req.query && req.query.token) ? String(req.query.token).trim() : '';
+  const expected = (process.env.EVO_INTERNAL_SECRET || process.env.IA_APP_EVO_SECRET || '').trim();
+  if (!expected || token !== expected) return res.status(403).end();
+  const codigo = (req.params.codigo || '').trim();
+  if (!AUDIOS_RAFA_CODIGOS.includes(codigo)) return res.status(404).end();
+  try {
+    const row = await getAudiosRafaByCodigo(codigo);
+    if (!row || !row.audio_data) return res.status(404).end();
+    res.setHeader('Content-Type', row.mimetype || 'audio/webm');
+    res.send(row.audio_data);
+  } catch (err) {
+    logStartup(`internal audios-rafa error: ${err.message}`);
     res.status(500).end();
   }
 });

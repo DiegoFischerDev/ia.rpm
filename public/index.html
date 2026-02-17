@@ -495,6 +495,7 @@
         <span id="navDuvidasPendentesBadge" class="nav-badge hidden">0</span>
       </a>
       <a href="#duvidas-respondidas" id="navDuvidasRespondidas" class="sidebar-nav-item">FAQ</a>
+      <a href="#audios-rafa" id="navAudiosRafa" class="sidebar-nav-item" style="display:none;">Audios Rafa</a>
       <a href="#perfil" id="navPerfil" class="sidebar-nav-item" style="display:none;">Perfil</a>
       <div id="sidebarImpersonateWrap" class="sidebar-impersonate-wrap" style="display:none;">
         <button type="button" id="btnImpersonateExit" class="sidebar-impersonate-exit">Sair do modo gestora</button>
@@ -633,6 +634,13 @@
               <tbody id="perguntasBody"></tbody>
             </table>
           </div>
+        </div>
+      </div>
+      <div id="screenAudiosRafa" class="screen">
+        <h2 class="page-title">Audios Rafa</h2>
+        <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1.25rem;">Áudios usados pelo sistema para comunicar com os leads no WhatsApp. O primeiro áudio é o de boas-vindas.</p>
+        <div id="audiosRafaList" class="card" style="max-width:520px;padding:1.5rem;">
+          <!-- Preenchido por loadAudiosRafa() -->
         </div>
       </div>
       <div id="screenGestoras" class="screen">
@@ -898,7 +906,7 @@
       let duvidaRecorderStopResolvers = [];
 
       function hashToScreenId(hash) {
-        var map = { gestoras: 'gestoras', rafa: 'rafa', perfil: 'perfil', 'duvidas-pendentes': 'duvidasPendentes', 'duvidas-respondidas': 'duvidasRespondidas' };
+        var map = { gestoras: 'gestoras', rafa: 'rafa', perfil: 'perfil', 'audios-rafa': 'audiosRafa', 'duvidas-pendentes': 'duvidasPendentes', 'duvidas-respondidas': 'duvidasRespondidas' };
         return map[hash] || 'leads';
       }
       function showScreen(id) {
@@ -912,6 +920,7 @@
         if (id === 'gestoras') loadGestoras();
         if (id === 'rafa') loadRafa();
         if (id === 'perfil') loadProfile();
+        if (id === 'audiosRafa') loadAudiosRafa();
         if (id === 'duvidasPendentes') loadDuvidasPendentes();
         if (id === 'duvidasRespondidas') loadDuvidasRespondidas();
       }
@@ -983,10 +992,12 @@
               updateRafaBadge();
               document.getElementById('navRafa').style.display = '';
               document.getElementById('navGestoras').style.display = '';
+              document.getElementById('navAudiosRafa').style.display = '';
               document.getElementById('navPerfil').style.display = 'none';
             } else {
               document.getElementById('navRafa').style.display = 'none';
               document.getElementById('navGestoras').style.display = 'none';
+              document.getElementById('navAudiosRafa').style.display = 'none';
               document.getElementById('navPerfil').style.display = '';
             }
             updateDuvidasPendentesBadge();
@@ -2211,6 +2222,86 @@
           .catch((err) => {
             const msg = (err && (err.detail || err.message)) || 'Erro ao carregar.';
             tbody.innerHTML = '<tr><td colspan="5" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
+          });
+      }
+
+      function loadAudiosRafa() {
+        const container = document.getElementById('audiosRafaList');
+        if (!container) return;
+        container.innerHTML = '<p class="text-muted">A carregar…</p>';
+        fetch(API + '/audios-rafa', { credentials: 'include' })
+          .then((r) => (r.ok ? r.json() : Promise.reject(new Error('Erro ao carregar'))))
+          .then((rows) => {
+            if (!rows || !rows.length) {
+              container.innerHTML = '<p class="text-muted">Nenhum áudio configurado.</p>';
+              return;
+            }
+            var html = '';
+            rows.forEach(function (item) {
+              var status = item.has_audio ? '<span style="color:var(--success, #059669);">Enviado</span>' : '<span class="text-muted">Não enviado</span>';
+              var playBtn = item.has_audio
+                ? '<button type="button" class="btn btn-secondary btn-sm btn-audio-rafa-play" data-codigo="' + escapeHtml(item.codigo) + '" style="margin-left:0.5rem;">Ouvir</button>'
+                : '';
+              html +=
+                '<div class="audios-rafa-item" style="margin-bottom:1.5rem;padding-bottom:1.5rem;border-bottom:1px solid var(--border);">' +
+                '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;">' +
+                '<strong>' + escapeHtml(item.nome || item.codigo) + '</strong> ' + status + playBtn + '</div>' +
+                '<form class="audios-rafa-upload-form" data-codigo="' + escapeHtml(item.codigo) + '">' +
+                '<input type="file" accept="audio/*" name="audio" required class="audios-rafa-file">' +
+                '<button type="submit" class="btn btn-primary btn-sm" style="margin-top:0.5rem;">Enviar áudio</button>' +
+                '</form>' +
+                '</div>';
+            });
+            container.innerHTML = html;
+            container.querySelectorAll('.audios-rafa-upload-form').forEach(function (form) {
+              form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                var codigo = form.getAttribute('data-codigo');
+                var fileInput = form.querySelector('.audios-rafa-file');
+                if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+                  alert('Escolhe um ficheiro de áudio.');
+                  return;
+                }
+                var fd = new FormData();
+                fd.append('audio', fileInput.files[0]);
+                var btn = form.querySelector('button[type="submit"]');
+                var origText = btn ? btn.textContent : '';
+                if (btn) { btn.disabled = true; btn.textContent = 'A enviar…'; }
+                fetch(API + '/audios-rafa/' + encodeURIComponent(codigo), {
+                  method: 'POST',
+                  credentials: 'include',
+                  body: fd,
+                })
+                  .then(function (res) { return res.ok ? res.json() : res.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
+                  .then(function () {
+                    alert('Áudio guardado.');
+                    loadAudiosRafa();
+                  })
+                  .catch(function (err) { alert(err.message || 'Erro ao guardar.'); })
+                  .finally(function () {
+                    if (btn) { btn.disabled = false; btn.textContent = origText; }
+                  });
+              });
+            });
+            container.querySelectorAll('.btn-audio-rafa-play').forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                var codigo = this.getAttribute('data-codigo');
+                if (!codigo) return;
+                var audio = document.createElement('audio');
+                audio.controls = true;
+                audio.src = API + '/audios-rafa/' + encodeURIComponent(codigo) + '?t=' + Date.now();
+                audio.style.marginTop = '0.5rem';
+                var wrap = this.closest('.audios-rafa-item');
+                if (wrap) {
+                  var old = wrap.querySelector('audio');
+                  if (old) old.remove();
+                  wrap.appendChild(audio);
+                }
+              });
+            });
+          })
+          .catch(function () {
+            container.innerHTML = '<p class="error-msg">Erro ao carregar áudios.</p>';
           });
       }
 
