@@ -346,6 +346,10 @@
       table.responsive-table td[data-label=""]::before {
         content: none;
       }
+      /* No dashboard de LEADS, não mostrar os labels (data-label) no mobile */
+      #screenLeads table.responsive-table td::before {
+        content: none !important;
+      }
       /* Perguntas pendentes: com separação entre elementos (usa o mesmo fundo dos outros cards) */
       #screenDuvidasPendentes table.responsive-table tr {
         border: none;
