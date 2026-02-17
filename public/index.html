@@ -326,15 +326,7 @@
         font-size: 0.9rem;
       }
       table.responsive-table td::before {
-        content: attr(data-label);
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        font-size: 0.7rem;
-        margin-right: 0.75rem;
-        margin-bottom: 0.15rem;
-        flex: 0 0 auto;
+        content: none;
       }
       table.responsive-table td.actions {
         flex-direction: row;
@@ -345,10 +337,6 @@
       }
       table.responsive-table td[data-label=""]::before {
         content: none;
-      }
-      /* No dashboard de LEADS, não mostrar os labels (data-label) no mobile */
-      #screenLeads table.responsive-table td::before {
-        content: none !important;
       }
       /* Perguntas pendentes: com separação entre elementos (usa o mesmo fundo dos outros cards) */
       #screenDuvidasPendentes table.responsive-table tr {
