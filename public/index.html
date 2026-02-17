@@ -325,17 +325,20 @@
         gap: 0.75rem;
         font-size: 0.9rem;
       }
-      /* FAQ: frequência no canto superior direito em mobile */
+      /* FAQ: frequência no canto superior direito em mobile (badge no card) */
       #screenDuvidasRespondidas table.responsive-table tr {
         position: relative;
       }
-      #screenDuvidasRespondidas table.responsive-table td.cell-freq {
+      #screenDuvidasRespondidas table.responsive-table tr::after {
+        content: attr(data-freq);
         position: absolute;
         top: 0.4rem;
         right: 0.75rem;
-        padding: 0;
         font-size: 0.75rem;
         color: var(--text-muted);
+      }
+      #screenDuvidasRespondidas table.responsive-table td.cell-freq {
+        display: none;
       }
       table.responsive-table td::before {
         content: none;
@@ -1500,26 +1503,28 @@
               rows.forEach(function (p) {
                 const tr = document.createElement('tr');
                 const textoPergunta = (p.texto || '').trim();
+                const freqVal = p.frequencia || 0;
+                tr.setAttribute('data-freq', 'Frequência ' + freqVal);
                 const acoes = isAdmin
                   ? '<button type="button" class="btn btn-secondary btn-sm btn-ouvir-pergunta" data-id="' + p.id + '">Ouvir</button> ' +
                     '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta" data-id="' + p.id + '">Editar</button> ' +
                     '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta" data-id="' + p.id + '">Excluir</button>'
                   : '<button type="button" class="btn btn-secondary btn-sm btn-ouvir-pergunta" data-id="' + p.id + '">Ouvir</button> ' +
                     '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta-gestora" data-id="' + p.id + '">Editar</button>';
-              if (isAdmin) {
-                tr.innerHTML =
-                  '<td data-label="" class="cell-id">#' + p.id + '</td>' +
-                  '<td data-label="Pergunta" class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td>' +
-                  '<td data-label="Frequência" class="cell-freq">Frequência ' + (p.frequencia || 0) + '</td>' +
-                  '<td class="td-acoes-admin actions" data-label="Ações">' + acoes + '</td>';
-              } else {
-                tr.innerHTML =
-                  '<td data-label="" class="cell-id">#' + p.id + '</td>' +
-                  '<td data-label="Pergunta" class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td>' +
-                  '<td data-label="Frequência" class="cell-freq">Frequência ' + (p.frequencia || 0) + '</td>' +
-                  '<td class="actions" data-label="Resposta">' + acoes + '</td>' +
-                  '<td class="td-acoes-admin" data-label="Ações admin"></td>';
-              }
+                if (isAdmin) {
+                  tr.innerHTML =
+                    '<td data-label="" class="cell-id">#' + p.id + '</td>' +
+                    '<td data-label="Pergunta" class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td>' +
+                    '<td data-label="Frequência" class="cell-freq">' + freqVal + '</td>' +
+                    '<td class="td-acoes-admin actions" data-label="Ações">' + acoes + '</td>';
+                } else {
+                  tr.innerHTML =
+                    '<td data-label="" class="cell-id">#' + p.id + '</td>' +
+                    '<td data-label="Pergunta" class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td>' +
+                    '<td data-label="Frequência" class="cell-freq">' + freqVal + '</td>' +
+                    '<td class="actions" data-label="Resposta">' + acoes + '</td>' +
+                    '<td class="td-acoes-admin" data-label="Ações admin"></td>';
+                }
                 perguntasBody.appendChild(tr);
               });
               perguntasBody.querySelectorAll('.btn-ver-pergunta').forEach(function (btn) {
