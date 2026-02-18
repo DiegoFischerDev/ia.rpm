@@ -2574,11 +2574,16 @@
         document.getElementById('editLeadEstadoDocsLeadId').value = lead.id;
         var sel = document.getElementById('editLeadEstadoDocsSelect');
         sel.innerHTML = '';
-        ESTADO_DOCS_OPCOES.forEach(function (v) {
+        var opcoes = (user && user.role === 'gestora')
+          ? ESTADO_DOCS_OPCOES.filter(function (v) { return v !== 'sem_docs'; })
+          : ESTADO_DOCS_OPCOES;
+        var current = lead.estado_docs || '';
+        if ((user && user.role === 'gestora') && current === 'sem_docs') current = 'aguardando_docs';
+        opcoes.forEach(function (v) {
           var opt = document.createElement('option');
           opt.value = v;
           opt.textContent = v;
-          if ((lead.estado_docs || '') === v) opt.selected = true;
+          if (current === v) opt.selected = true;
           sel.appendChild(opt);
         });
         document.getElementById('editLeadEstadoDocsComentario').value = lead.comentario || '';

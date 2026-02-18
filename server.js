@@ -948,8 +948,10 @@ app.patch('/api/dashboard/leads/:id', requireDashboardAuth, async (req, res) => 
     if (!lead || lead.gestora_id !== user.id) {
       return res.status(403).json({ message: 'Só pode editar leads que lhe estão atribuídos.' });
     }
+    let estadoDocs = req.body && req.body.estado_docs != null ? String(req.body.estado_docs).trim() : undefined;
+    if (estadoDocs === 'sem_docs') estadoDocs = undefined; // gestoras não podem definir sem_docs
     body = {
-      estado_docs: req.body && req.body.estado_docs != null ? String(req.body.estado_docs).trim() : undefined,
+      estado_docs: estadoDocs,
       comentario: req.body && typeof req.body.comentario === 'string'
         ? req.body.comentario.trim()
         : (req.body && req.body.comentario === null ? null : undefined),
