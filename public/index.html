@@ -389,15 +389,15 @@
       table.responsive-table td.cell-id {
         display: none;
       }
-      /* FAQ: frequência no canto superior direito em mobile (badge no card) */
+      /* FAQ: frequência no canto inferior esquerdo em mobile (badge no card) */
       #screenDuvidasRespondidas table.responsive-table tr {
         position: relative;
       }
       #screenDuvidasRespondidas table.responsive-table tr::after {
         content: attr(data-freq);
         position: absolute;
-        top: 0.4rem;
-        right: 0.75rem;
+        bottom: 0.4rem;
+        left: 0.75rem;
         font-size: 0.75rem;
         color: var(--text-muted);
       }
