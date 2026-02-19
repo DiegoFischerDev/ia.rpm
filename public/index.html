@@ -1205,16 +1205,19 @@
         return 'lead-badge lead-badge--' + prefix + '-' + safe;
       }
 
+      /** Atualiza os contadores nos botões de filtro (Todos, Sem docs, Com docs, Aprovados).
+       * Usa sempre _leadsRows: para admin é a lista total; para gestora o backend já devolve
+       * apenas os leads atribuídos a ela (GET /api/dashboard/leads), por isso os números
+       * refletem corretamente só os leads da gestora logada. */
       function updateLeadsGroupCounts() {
         var buttons = document.querySelectorAll('.leads-group-btn');
-        if (!buttons || !buttons.length || !_leadsRows || !_leadsRows.length) {
-          return;
-        }
-        var total = _leadsRows.length;
+        if (!buttons || !buttons.length) return;
+        var rows = Array.isArray(_leadsRows) ? _leadsRows : [];
+        var total = rows.length;
         var semDocs = 0;
         var comDocs = 0;
         var aprovados = 0;
-        _leadsRows.forEach(function (r) {
+        rows.forEach(function (r) {
           var estado = r && r.estado_docs;
           if (estado === 'sem_docs' || estado === 'aguardando_docs') {
             semDocs++;
