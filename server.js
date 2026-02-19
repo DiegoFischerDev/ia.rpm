@@ -1148,7 +1148,9 @@ app.get('/api/internal/faq-audio/:perguntaId/:gestoraId', async (req, res) => {
       `internal faq-audio pergunta=${perguntaId} gestora=${gestoraId} ` +
       `mime=${row.mimetype || 'unknown'} bytes=${row.data.length}`
     );
-    res.setHeader('Content-Type', row.mimetype || 'audio/webm');
+    // Para a Evolution/WhatsApp, normalizamos sempre como audio/webm,
+    // independentemente do mimetype original gravado (ogg/webm), para evitar incompatibilidades.
+    res.setHeader('Content-Type', 'audio/webm');
     res.send(row.data);
   } catch (err) {
     logStartup(`faq-audio internal error: ${err.message}`);
@@ -1211,7 +1213,8 @@ app.get('/api/internal/audios-rafa/:codigo', async (req, res) => {
   try {
     const row = await getAudiosRafaByCodigo(codigo);
     if (!row || !row.audio_data) return res.status(404).end();
-    res.setHeader('Content-Type', row.mimetype || 'audio/webm');
+    // Também aqui normalizamos o Content-Type para audio/webm para garantir compatibilidade com a Evolution.
+    res.setHeader('Content-Type', 'audio/webm');
     res.send(row.audio_data);
   } catch (err) {
     logStartup(`internal audios-rafa error: ${err.message}`);
