@@ -192,7 +192,8 @@ const DOC_LABELS = {
 };
 
 function getRequiredDocFieldsByVinculo(vinculo) {
-  const common = ['cartao_residencia_ou_passaporte', 'irs_declaracao', 'irs_nota_liquidacao', 'comprovativo_morada', 'mapa_responsabilidades', 'rgpd_assinado'];
+  // rgpd_assinado não é obrigatório: o consentimento é dado pelo checkbox na página de upload (em conformidade com RGPD)
+  const common = ['cartao_residencia_ou_passaporte', 'irs_declaracao', 'irs_nota_liquidacao', 'comprovativo_morada', 'mapa_responsabilidades'];
   const v = (vinculo || '').trim();
   if (v === 'Contrato temporário') {
     return ['recibo_vencimento_1', 'recibo_vencimento_2', 'recibo_vencimento_3', 'contrato_temporario', ...common];
@@ -669,7 +670,7 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
   const vinculo = (body.vinculo_laboral || '').trim();
   const requiredBase = getRequiredDocFieldsByVinculo(vinculo);
   const financiamento100 = body.financiamento_100 === '1' || body.financiamento_100 === 'true';
-  const required = financiamento100
+  let required = financiamento100
     ? [
         ...requiredBase,
         'declaracao_nao_divida_financas',
