@@ -545,10 +545,10 @@
           </div>
           <div class="leads-groups-wrap">
             <span class="leads-groups-label">Ver:</span>
-            <button type="button" class="btn btn-outline btn-sm leads-group-btn active" data-group="todos">Todos</button>
-            <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="sem_docs">Sem docs</button>
-            <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="com_docs">Com docs</button>
-            <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="aprovados">Aprovados</button>
+            <button type="button" class="btn btn-outline btn-sm leads-group-btn active" data-group="todos" data-base-label="Todos">Todos</button>
+            <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="sem_docs" data-base-label="Sem docs">Sem docs</button>
+            <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="com_docs" data-base-label="Com docs">Com docs</button>
+            <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="aprovados" data-base-label="Aprovados">Aprovados</button>
           </div>
         </div>
         <div class="table-wrap card">
@@ -1205,6 +1205,41 @@
         return 'lead-badge lead-badge--' + prefix + '-' + safe;
       }
 
+      function updateLeadsGroupCounts() {
+        var buttons = document.querySelectorAll('.leads-group-btn');
+        if (!buttons || !buttons.length || !_leadsRows || !_leadsRows.length) {
+          return;
+        }
+        var total = _leadsRows.length;
+        var semDocs = 0;
+        var comDocs = 0;
+        var aprovados = 0;
+        _leadsRows.forEach(function (r) {
+          var estado = r && r.estado_docs;
+          if (estado === 'sem_docs' || estado === 'aguardando_docs') {
+            semDocs++;
+          } else if (estado === 'docs_enviados' || estado === 'inviavel') {
+            comDocs++;
+          } else if (
+            estado === 'credito_aprovado' ||
+            estado === 'agendado_escritura' ||
+            estado === 'escritura_realizada'
+          ) {
+            aprovados++;
+          }
+        });
+        buttons.forEach(function (btn) {
+          var base = btn.getAttribute('data-base-label') || btn.textContent || '';
+          var group = btn.getAttribute('data-group') || '';
+          var count = 0;
+          if (group === 'todos') count = total;
+          else if (group === 'sem_docs') count = semDocs;
+          else if (group === 'com_docs') count = comDocs;
+          else if (group === 'aprovados') count = aprovados;
+          btn.textContent = base + ' ' + String(count);
+        });
+      }
+
       function renderLeads() {
         const tbody = document.getElementById('leadsBody');
         const isGestora = user && user.role === 'gestora';
@@ -1241,6 +1276,8 @@
             return _leadsSort === 'asc' ? ta - tb : tb - ta;
           });
         }
+        // Atualizar contadores dos grupos sempre que a lista base é renderizada
+        updateLeadsGroupCounts();
         tbody.innerHTML = '';
         if (!rows.length) {
           tbody.innerHTML = '<tr><td colspan="' + colCount + '">' + (filterVal ? 'Nenhum lead corresponde ao filtro.' : 'Nenhum lead.') + '</td></tr>';
@@ -1443,6 +1480,7 @@
               b.classList.toggle('active', b === btn);
             });
             if (_leadsRows.length) renderLeads();
+            else updateLeadsGroupCounts();
           });
         });
       })();
