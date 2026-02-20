@@ -550,6 +550,7 @@
             <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="com_docs" data-base-label="Com docs">Com docs</button>
             <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="aprovados" data-base-label="Aprovados">Aprovados</button>
           </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btnInserirLead" style="display:none;">Inserir lead</button>
         </div>
         <div class="table-wrap card">
           <table class="responsive-table">
@@ -778,6 +779,46 @@
           </div>
         </div>
       </div>
+
+  <div id="modalInserirLead" class="modal-overlay">
+    <div class="modal" style="max-width:420px;">
+      <h3>Inserir lead</h3>
+      <label>ID (opcional)</label>
+      <input type="text" id="inserirLeadId" placeholder="Vazio = automático ou 6 dígitos" maxlength="6" pattern="[0-9]*" inputmode="numeric">
+      <label>WhatsApp (obrigatório)</label>
+      <input type="text" id="inserirLeadWhatsapp" placeholder="ex.: 351912345678" maxlength="20">
+      <label>Nome</label>
+      <input type="text" id="inserirLeadNome" placeholder="Nome do lead">
+      <label>Email</label>
+      <input type="email" id="inserirLeadEmail" placeholder="email@exemplo.pt">
+      <label>Estado conversa</label>
+      <select id="inserirLeadEstadoConversa">
+        <option value="aguardando_escolha">aguardando_escolha</option>
+        <option value="com_duvida">com_duvida</option>
+        <option value="com_gestora">com_gestora</option>
+        <option value="em_pausa">em_pausa</option>
+        <option value="em_boas_vindas">em_boas_vindas</option>
+      </select>
+      <label>Estado docs</label>
+      <select id="inserirLeadEstadoDocs">
+        <option value="aguardando_docs">aguardando_docs</option>
+        <option value="sem_docs">sem_docs</option>
+        <option value="docs_enviados">docs_enviados</option>
+        <option value="inviavel">inviavel</option>
+        <option value="credito_aprovado">credito_aprovado</option>
+        <option value="agendado_escritura">agendado_escritura</option>
+        <option value="escritura_realizada">escritura_realizada</option>
+      </select>
+      <label>Gestora</label>
+      <select id="inserirLeadGestora">
+        <option value="">— Nenhuma —</option>
+      </select>
+      <div class="modal-actions" style="margin-top:1.25rem;">
+        <button type="button" class="btn btn-secondary" id="modalInserirLeadCancel">Cancelar</button>
+        <button type="button" class="btn btn-primary" id="modalInserirLeadSave">Inserir</button>
+      </div>
+    </div>
+  </div>
 
   <div id="modalLead" class="modal-overlay">
     <div class="modal">
@@ -1359,6 +1400,8 @@
         }
         // Toolbar (filtro + grupos) disponível para admin e gestora
         if (toolbarEl) toolbarEl.style.display = 'flex';
+        var btnInserir = document.getElementById('btnInserirLead');
+        if (btnInserir) btnInserir.style.display = (user && user.role === 'admin') ? '' : 'none';
         tbody.innerHTML = '<tr><td colspan="' + colCount + '">A carregar…</td></tr>';
         fetch(API + '/leads', { credentials: 'include' })
           .then((r) => r.json().then((data) => (r.ok ? data : Promise.reject(data))))
@@ -2699,6 +2742,70 @@
           .then((r) => (r.ok ? loadLeads() : Promise.reject()))
           .catch(() => alert('Erro ao apagar'));
       }
+
+      function openModalInserirLead() {
+        document.getElementById('inserirLeadId').value = '';
+        document.getElementById('inserirLeadWhatsapp').value = '';
+        document.getElementById('inserirLeadNome').value = '';
+        document.getElementById('inserirLeadEmail').value = '';
+        document.getElementById('inserirLeadEstadoConversa').value = 'aguardando_escolha';
+        document.getElementById('inserirLeadEstadoDocs').value = 'aguardando_docs';
+        var sel = document.getElementById('inserirLeadGestora');
+        sel.innerHTML = '<option value="">— Nenhuma —</option>';
+        fetch(API + '/gestoras', { credentials: 'include' })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (rows) {
+            (rows || []).forEach(function (g) {
+              var opt = document.createElement('option');
+              opt.value = g.id;
+              opt.textContent = (g.nome || '').trim() || 'Gestora #' + g.id;
+              sel.appendChild(opt);
+            });
+          })
+          .catch(function () {});
+        document.getElementById('modalInserirLead').classList.add('visible');
+      }
+      document.getElementById('btnInserirLead').addEventListener('click', openModalInserirLead);
+      document.getElementById('modalInserirLeadCancel').addEventListener('click', function () {
+        document.getElementById('modalInserirLead').classList.remove('visible');
+      });
+      document.getElementById('modalInserirLeadSave').addEventListener('click', function () {
+        var whatsapp = (document.getElementById('inserirLeadWhatsapp').value || '').trim().replace(/\D/g, '');
+        if (!whatsapp) {
+          alert('WhatsApp (número) é obrigatório.');
+          return;
+        }
+        var idVal = (document.getElementById('inserirLeadId').value || '').trim().replace(/\D/g, '');
+        if (idVal.length > 0 && idVal.length !== 6) {
+          alert('ID deve ter exatamente 6 dígitos (ou deixar em branco para atribuição automática).');
+          return;
+        }
+        var payload = {
+          whatsapp_number: whatsapp,
+          nome: document.getElementById('inserirLeadNome').value.trim() || null,
+          email: document.getElementById('inserirLeadEmail').value.trim() || null,
+          estado_conversa: document.getElementById('inserirLeadEstadoConversa').value,
+          estado_docs: document.getElementById('inserirLeadEstadoDocs').value,
+          gestora_id: document.getElementById('inserirLeadGestora').value || null,
+        };
+        if (payload.gestora_id === '') payload.gestora_id = null;
+        if (idVal.length === 6) payload.id = idVal;
+        fetch(API + '/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(payload),
+        })
+          .then(function (r) {
+            if (r.ok) return r.json();
+            return r.json().then(function (d) { throw new Error(d.message || 'Erro ao criar lead'); });
+          })
+          .then(function () {
+            document.getElementById('modalInserirLead').classList.remove('visible');
+            loadLeads();
+          })
+          .catch(function (err) { alert(err.message || 'Erro ao criar lead'); });
+      });
 
       function loadGestoras() {
         const tbody = document.getElementById('gestorasBody');

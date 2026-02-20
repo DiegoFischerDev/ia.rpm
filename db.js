@@ -257,6 +257,46 @@ async function deleteLead(id) {
   await query('DELETE FROM ch_leads WHERE id = ?', [id]);
 }
 
+/** Dashboard admin: inserir lead manualmente. whatsapp_number já normalizado (apenas dígitos).
+ * origem_instancia = 'dashboardAdm' para identificar inserção manual. id opcional: 6 dígitos ou AUTO_INCREMENT. */
+async function createLeadAdmin(dados) {
+  const whatsapp_number = (dados.whatsapp_number || '').trim().replace(/\D/g, '');
+  if (!whatsapp_number) return null;
+  const nome = (dados.nome || '').trim() || null;
+  const email = (dados.email || '').trim() || null;
+  const estado_conversa = (dados.estado_conversa || 'aguardando_escolha').trim() || 'aguardando_escolha';
+  const estado_docs = (dados.estado_docs || 'aguardando_docs').trim() || 'aguardando_docs';
+  let gestora_id = dados.gestora_id != null ? parseInt(dados.gestora_id, 10) : null;
+  if (gestora_id && !Number.isInteger(gestora_id)) gestora_id = null;
+  let gestora_nome = null;
+  if (gestora_id) {
+    const g = await getGestoraById(gestora_id);
+    if (g && g.nome) gestora_nome = g.nome.trim() || null;
+  }
+  const idRaw = dados.id != null ? String(dados.id).trim().replace(/\D/g, '') : '';
+  const idManual = idRaw.length === 6 ? parseInt(idRaw, 10) : null;
+  if (idRaw.length > 0 && idRaw.length !== 6) return null; // id inválido (não 6 dígitos)
+  if (idManual != null) {
+    const existing = await query('SELECT id FROM ch_leads WHERE id = ?', [idManual]);
+    if (existing && existing.length > 0) return null; // id já existe
+  }
+  if (idManual != null) {
+    await query(
+      `INSERT INTO ch_leads (id, whatsapp_number, nome, email, origem_instancia, estado_conversa, estado_docs, gestora_id, gestora_nome, created_at, updated_at)
+       VALUES (?, ?, ?, ?, 'dashboardAdm', ?, ?, ?, ?, NOW(), NOW())`,
+      [idManual, whatsapp_number, nome, email, estado_conversa, estado_docs, gestora_id, gestora_nome]
+    );
+  } else {
+    await query(
+      `INSERT INTO ch_leads (whatsapp_number, nome, email, origem_instancia, estado_conversa, estado_docs, gestora_id, gestora_nome, created_at, updated_at)
+       VALUES (?, ?, ?, 'dashboardAdm', ?, ?, ?, ?, NOW(), NOW())`,
+      [whatsapp_number, nome, email, estado_conversa, estado_docs, gestora_id, gestora_nome]
+    );
+  }
+  const rows = await query('SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, gestora_id, gestora_nome, created_at, updated_at FROM ch_leads WHERE whatsapp_number = ? ORDER BY created_at DESC LIMIT 1', [whatsapp_number]);
+  return rows[0] || null;
+}
+
 /** Dashboard: lista todas as gestoras. */
 async function getAllGestoras() {
   const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, foto_perfil, boas_vindas, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id ASC');
@@ -614,6 +654,7 @@ module.exports = {
   getAllLeads,
   updateLeadAdmin,
   deleteLead,
+  createLeadAdmin,
   getAllGestoras,
   getGestorasWithLeadCounts,
   createGestora,

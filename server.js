@@ -39,6 +39,7 @@ const {
   getAllLeads,
   updateLeadAdmin,
   deleteLead,
+  createLeadAdmin,
   getAllGestoras,
   getGestorasWithLeadCounts,
   createGestora,
@@ -916,6 +917,42 @@ app.get('/api/dashboard/leads', requireDashboardAuth, async (req, res) => {
   } catch (err) {
     logStartup(`getLeads error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar leads.', detail: err.message });
+  }
+});
+
+app.post('/api/dashboard/leads', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  const body = req.body || {};
+  const whatsapp_number = (body.whatsapp_number || '').trim().replace(/\D/g, '');
+  if (!whatsapp_number) {
+    return res.status(400).json({ message: 'WhatsApp (número) é obrigatório.' });
+  }
+  let idParam = body.id;
+  if (idParam !== undefined && idParam !== null && idParam !== '') {
+    const idStr = String(idParam).trim().replace(/\D/g, '');
+    if (idStr.length !== 6) {
+      return res.status(400).json({ message: 'ID deve ter exatamente 6 dígitos (ou deixar em branco para atribuição automática).' });
+    }
+    idParam = idStr;
+  } else {
+    idParam = undefined;
+  }
+  try {
+    const row = await createLeadAdmin({
+      whatsapp_number,
+      nome: body.nome,
+      email: body.email,
+      estado_conversa: body.estado_conversa || 'aguardando_escolha',
+      estado_docs: body.estado_docs || 'aguardando_docs',
+      gestora_id: body.gestora_id,
+      id: idParam,
+    });
+    if (!row) {
+      return res.status(400).json({ message: 'Não foi possível criar o lead. Se indicou um ID, verifique que tem 6 dígitos e que não está já em uso.' });
+    }
+    res.status(201).json(row);
+  } catch (err) {
+    logStartup(`createLeadAdmin error: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao criar lead.' });
   }
 });
 
