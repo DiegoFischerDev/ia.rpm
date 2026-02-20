@@ -129,7 +129,7 @@ Servidor em `http://localhost:3000`. Para testar na Hostinger, usa o domínio do
 - **Leads:** tabela com todos os leads; testa **Editar** (alterar nome, estado, gestora) e **Apagar** (com confirmação).
 - **Gestoras:** testa **Nova gestora** (nome, email, WhatsApp, ativo), **Editar** e **Apagar**.
 - **Sair:** termina a sessão e volta ao ecrã de login.
-- O URL **/dashboard** redireciona para **/**.
+- O URL **/dashboard** redireciona para **/**
 
 ### 5. Resumo rápido em produção
 
