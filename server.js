@@ -218,9 +218,11 @@ function setNoCache(res) {
   res.set('Expires', '0');
 }
 
-// Health check
+const SERVER_STARTED_AT = new Date().toISOString();
+
+// Health check (startedAt = hora em que ESTE processo arrancou; útil para confirmar que reiniciou após deploy)
 app.get('/api/health', (req, res) => {
-  res.json({ ok: true, time: new Date().toISOString() });
+  res.json({ ok: true, time: new Date().toISOString(), startedAt: SERVER_STARTED_AT });
 });
 
 // Página inicial

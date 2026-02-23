@@ -1,8 +1,29 @@
-# Cache na Hostinger – ver alterações logo após o deploy
+# Cache e deploy na Hostinger – ver alterações e logs após o deploy
 
-Se as alterações no site **ia.rafaapelomundo.com** não aparecem de imediato após o deploy, é provável que esteja a ser servida uma versão em cache (browser, servidor Hostinger ou CDN).
+Se **nem os logs nem as alterações de código** aparecem após o build/deploy, o problema mais provável é o **processo Node.js não ter sido reiniciado**. O servidor continua a correr a versão antiga em memória.
 
-## 1. Confirmar que o problema é cache
+## 0. Reiniciar a aplicação Node.js (obrigatório após cada deploy)
+
+Na Hostinger, **fazer build ou enviar ficheiros novos não reinicia sozinho o processo Node**. Tens de reiniciar manualmente:
+
+1. **hPanel** → **Websites** → escolhe o site (ia-app ou evo)
+2. Entra na secção da **aplicação Node.js** (por vezes em "Avançado" ou "Node.js")
+3. Clica em **"Restart"** (ou "Reiniciar") na aplicação
+
+Faz isto **em ambos** (ia-app e evo) após cada deploy. Sem restart, o código novo e os logs (ex.: envio para WhatsApp) **não entram em efeito**.
+
+### Como confirmar que reiniciou
+
+Chama o health check e verifica o campo **startedAt** (hora em que o processo arrancou):
+
+- **ia-app:** `https://ia.rafaapelomundo.com/api/health` → deve devolver `startedAt` com a hora recente
+- **evo:** URL do teu evo + `/api/health` → `startedAt` com hora recente
+
+Se o `startedAt` for de há horas ou dias, o processo não foi reiniciado após o último deploy.
+
+---
+
+## 1. Confirmar que o problema é cache (HTML/estáticos)
 
 No **hPanel** da Hostinger:
 
