@@ -59,6 +59,8 @@
     .doc-step ol { margin: 0.25rem 0 0 1rem; padding: 0; }
     .doc-link-inline { color: var(--accent); text-decoration: none; }
     .doc-link-inline:hover { text-decoration: underline; }
+    .doc-link-contact { color: #0066cc; text-decoration: none; }
+    .doc-link-contact:hover { text-decoration: underline; }
     .btn-text-link { background: none; border: none; padding: 0; font: inherit; color: var(--accent); cursor: pointer; text-decoration: none; }
     .btn-text-link:hover { text-decoration: underline; }
     .btn-text-link:disabled { opacity: 0.7; cursor: not-allowed; }
@@ -434,8 +436,8 @@
     <div id="gestoraWelcomeWrap" style="display:none;margin:0 0 1rem 0;text-align:center;">
       <img id="gestoraFotoPerfil" src="" alt="Foto da gestora" loading="lazy" decoding="async" style="width:280px;height:280px;border-radius:10px;object-fit:cover;display:none;margin:0 auto 0.5rem;">
       <div id="gestoraWelcomeNome" style="font-weight:600;margin-bottom:0.25rem;"></div>
-      <p id="gestoraWelcomeEmailWrap" style="display:none;margin:0.25rem 0;font-size:0.9rem;">Email: <a href="#" id="gestoraWelcomeEmailRef" class="doc-link-inline"></a></p>
-      <p id="gestoraWelcomeWhatsappWrap" style="display:none;margin:0.25rem 0;font-size:0.9rem;">WhatsApp: <a href="#" id="gestoraWelcomeWhatsappRef" class="doc-link-inline" target="_blank" rel="noopener">Contactar por WhatsApp</a></p>
+      <p id="gestoraWelcomeEmailWrap" style="display:none;margin:0.25rem 0;font-size:0.9rem;">Email: <a href="#" id="gestoraWelcomeEmailRef" class="doc-link-contact"></a></p>
+      <p id="gestoraWelcomeWhatsappWrap" style="display:none;margin:0.25rem 0;font-size:0.9rem;">WhatsApp: <a href="#" id="gestoraWelcomeWhatsappRef" class="doc-link-contact" target="_blank" rel="noopener">Contactar por WhatsApp</a></p>
       <p id="gestoraWelcomeTexto" style="margin:0;font-size:0.9rem;"></p>
     </div>
 
@@ -482,8 +484,8 @@
         <h2>Documentos recebidos</h2>
         <p class="doc-hint">Os seus documentos foram enviados com sucesso. A gestora irá analisá-los e contactá-lo(a) por email.</p>
         <p class="doc-hint" id="gestoraNomeWrap" style="display:none;">A sua gestora de crédito: <strong id="gestoraNomeRef"></strong></p>
-        <p class="doc-hint" id="gestoraEmailWrap" style="display:none;">Email de contacto da gestora: <a href="#" id="gestoraEmailRef" class="doc-link-inline"></a></p>
-        <p class="doc-hint" id="gestoraWhatsappWrap" style="display:none;">Contactar a gestora por <a href="#" id="gestoraWhatsappRef" class="doc-link-inline" target="_blank" rel="noopener">WhatsApp</a></p>
+        <p class="doc-hint" id="gestoraEmailWrap" style="display:none;">Email de contacto da gestora: <a href="#" id="gestoraEmailRef" class="doc-link-contact"></a></p>
+        <p class="doc-hint" id="gestoraWhatsappWrap" style="display:none;">Contactar a gestora por <a href="#" id="gestoraWhatsappRef" class="doc-link-contact" target="_blank" rel="noopener">WhatsApp</a></p>
       </div>
     </div>
 
@@ -724,7 +726,7 @@
           }
         }
       }
-      var WHATSAPP_MSG = 'Ola, meu nome é {nome}, acabei de enviar meus documentos por email para você. Pode confirmar o recebimento por favor?';
+      var WHATSAPP_MSG = 'Olá, meu nome é {nome}. Estou a utilizar a plataforma de envio de documentos para crédito habitação e gostaria de falar consigo.';
       function setGestoraEmailDisplay(email) {
         var wrap = document.getElementById('gestoraEmailWrap');
         var ref = document.getElementById('gestoraEmailRef');
