@@ -2,6 +2,22 @@
 
 Se **nem os logs nem as alterações de código** aparecem após o build/deploy, o problema mais provável é o **processo Node.js não ter sido reiniciado**. O servidor continua a correr a versão antiga em memória.
 
+---
+
+## Resolver cache HTTP (browser, CDN, LiteSpeed) – checklist
+
+Quando o problema é **cache** (ves versão antiga do site mesmo após deploy + restart), faz por esta ordem:
+
+| Onde | O quê |
+|------|--------|
+| **Hostinger – Cache Manager** | **Websites** → **Dashboard** do site (ia-app e evo) → pesquisa **"Cache Manager"** → **Purge All**. Repete para cada site. |
+| **Hostinger – CDN** | Se tiveres CDN ativo: **hPanel** → **CDN** → **Flush cache**. |
+| **Hostinger – Modo desenvolvimento** | Se já ativaste "Modo de desenvolvimento" no dashboard do site, o cache do servidor fica desativado; assim não precisas de Purge All a cada deploy. |
+| **Browser** | **Hard refresh:** Ctrl+Shift+R (Windows) ou Cmd+Shift+R (Mac). Ou abre o site em **janela anónima/privada**. |
+| **Testar sem cache** | No hPanel: **Websites** → **Overview** do site → **"No cache preview"** e abre o link; aí vês sempre a versão sem cache. |
+
+**Ordem recomendada após cada deploy:** Restart Node (ia-app + evo) → **Purge All** (Cache Manager) → **Flush** (CDN se existir). No teu PC, hard refresh ou janela anónima para confirmar.
+
 ## 0. Reiniciar a aplicação Node.js (obrigatório após cada deploy)
 
 Na Hostinger, **fazer build ou enviar ficheiros novos não reinicia sozinho o processo Node**. Tens de reiniciar manualmente:
