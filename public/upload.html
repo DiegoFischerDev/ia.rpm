@@ -551,6 +551,15 @@
           Autorizo o tratamento dos meus dados pessoais e dos documentos enviados para análise do meu pedido de crédito habitação pela gestora, em conformidade com o Regulamento Geral de Proteção de Dados (RGPD). Compreendo que posso retirar o meu consentimento a qualquer momento.
         </label>
         <button type="button" class="btn btn-outline" id="btnSemDocs" style="margin-top:0.75rem; display:none; color:var(--error); border-color:var(--error);">Não tenho todos os docs</button>
+        <div id="semDocsPanel" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
+          <p style="margin:0 0 0.75rem 0; font-weight:600;">Quais docs você não tem?</p>
+          <p style="margin:0 0 1rem 0; font-size:0.875rem; color:var(--text-muted);">Selecione os documentos que ainda não possui. Esta informação será enviada à gestora.</p>
+          <div id="semDocsCheckboxes"></div>
+          <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+            <button type="button" class="btn btn-outline" id="btnSemDocsConfirmar" style="color:var(--error); border-color:var(--error);">Confirmar que não tenho todos</button>
+            <button type="button" class="btn btn-outline" id="btnSemDocsCancelar">Voltar</button>
+          </div>
+        </div>
       </div>
 
       <div id="semDocsDisclaimer" style="display:none; margin-bottom:1rem;">
@@ -843,6 +852,24 @@
         const base = getRequiredBaseFields();
         const is100 = document.getElementById('financiamento_100').checked;
         return is100 ? [...base, ...required100] : base;
+      }
+
+      /** Lista de documentos obrigatórios com label (para o painel "Quais docs você não tem?"). */
+      function getRequiredDocLabels() {
+        const vinculo = (document.getElementById('vinculo_laboral') && document.getElementById('vinculo_laboral').value) || '';
+        const base = getDocsBase(vinculo);
+        const is100 = document.getElementById('financiamento_100') && document.getElementById('financiamento_100').checked;
+        const out = [];
+        base.forEach(function (d) {
+          if (d.field) out.push({ field: d.field, label: d.label });
+          if (d.fields && d.fields.length) {
+            var labels = ['Recibo 1', 'Recibo 2', 'Recibo 3'];
+            d.fields.forEach(function (f, i) { out.push({ field: f, label: labels[i] || f }); });
+          }
+        });
+        if (hasRgpdTemplate) out.push({ field: DOC_RGPD.field, label: DOC_RGPD.label });
+        if (is100) DOCS_100.forEach(function (d) { out.push({ field: d.field, label: d.label }); });
+        return out;
       }
 
       function countUploaded() {
@@ -1454,11 +1481,70 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
           .finally(function () { document.getElementById('btnContinuar').disabled = false; });
       });
 
+      function renderSemDocsPanel() {
+        var container = document.getElementById('semDocsCheckboxes');
+        if (!container) return;
+        container.innerHTML = '';
+        var list = getRequiredDocLabels();
+        list.forEach(function (item) {
+          var label = document.createElement('label');
+          label.className = 'consent-checkbox';
+          label.style.display = 'flex';
+          label.style.marginBottom = '0.5rem';
+          var cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.dataset.docLabel = item.label;
+          cb.addEventListener('change', function () {
+            var email = getVerifiedEmail();
+            if (!email) return;
+            var docLabel = this.dataset.docLabel || '';
+            if (!docLabel) return;
+            fetch('/api/leads/' + leadId + '/comentario-sem-docs', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: email, docLabel: docLabel, add: this.checked }),
+            })
+              .then(function (r) {
+                if (!r.ok) return r.json().then(function (d) { throw new Error(d.message || 'Erro'); });
+              })
+              .catch(function (err) {
+                document.getElementById('formError').textContent = err.message || 'Erro ao atualizar. Tente novamente.';
+                document.getElementById('formError').style.display = 'block';
+                this.checked = !this.checked;
+              }.bind(this));
+          });
+          label.appendChild(cb);
+          label.appendChild(document.createTextNode(' ' + item.label));
+          container.appendChild(label);
+        });
+      }
+
       document.getElementById('btnSemDocs').addEventListener('click', function () {
         var email = getVerifiedEmail();
         if (!email) return;
-        var btn = this;
-        btn.disabled = true;
+        var panel = document.getElementById('semDocsPanel');
+        var btn = document.getElementById('btnSemDocs');
+        if (panel && btn) {
+          renderSemDocsPanel();
+          panel.style.display = 'block';
+          btn.style.display = 'none';
+        }
+      });
+
+      document.getElementById('btnSemDocsCancelar').addEventListener('click', function () {
+        var panel = document.getElementById('semDocsPanel');
+        var btn = document.getElementById('btnSemDocs');
+        if (panel && btn && !leadIsSemDocs) {
+          panel.style.display = 'none';
+          btn.style.display = 'block';
+        }
+      });
+
+      document.getElementById('btnSemDocsConfirmar').addEventListener('click', function () {
+        var email = getVerifiedEmail();
+        if (!email) return;
+        var confirmBtn = this;
+        confirmBtn.disabled = true;
         fetch('/api/leads/' + leadId + '/sem-docs', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1466,7 +1552,10 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         })
           .then(function (r) {
             if (r.ok) {
+              leadIsSemDocs = true;
               setSemDocsUI(true);
+              var panel = document.getElementById('semDocsPanel');
+              if (panel) panel.style.display = 'none';
               return;
             }
             return r.json().then(function (d) { throw new Error(d.message || 'Erro'); });
@@ -1475,7 +1564,7 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
             document.getElementById('formError').textContent = err.message || 'Erro. Tente novamente.';
             document.getElementById('formError').style.display = 'block';
           })
-          .finally(function () { btn.disabled = false; });
+          .finally(function () { confirmBtn.disabled = false; });
       });
 
       document.getElementById('form').addEventListener('submit', function (e) {

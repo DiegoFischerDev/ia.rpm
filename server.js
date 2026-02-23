@@ -439,6 +439,55 @@ app.get('/api/leads/:leadId/status', async (req, res) => {
   res.json(payload);
 });
 
+// Atualizar comentário do lead: adicionar ou remover "não tem (nome do doc)" — requer email do lead
+const SEM_DOCS_PREFIX = 'não tem (';
+const SEM_DOCS_SUFFIX = ')';
+function buildNaoTemString(docLabel) {
+  return SEM_DOCS_PREFIX + (docLabel || '').trim() + SEM_DOCS_SUFFIX;
+}
+function addNaoTemToComentario(current, docLabel) {
+  const add = buildNaoTemString(docLabel);
+  if (!add || add === SEM_DOCS_PREFIX + SEM_DOCS_SUFFIX) return current;
+  const existing = (current && String(current).trim()) || '';
+  return existing ? existing + ' ' + add : add;
+}
+function removeNaoTemFromComentario(current, docLabel) {
+  const toRemove = buildNaoTemString(docLabel);
+  if (!toRemove || toRemove === SEM_DOCS_PREFIX + SEM_DOCS_SUFFIX) return current;
+  let s = (current && String(current)) || '';
+  const idx = s.indexOf(toRemove);
+  if (idx === -1) return s;
+  const before = s.slice(0, idx).trimEnd();
+  const after = s.slice(idx + toRemove.length).trimStart();
+  const result = (before + (before && after ? ' ' : '') + after).trim();
+  return result.replace(/\s+/g, ' ');
+}
+
+app.post('/api/leads/:leadId/comentario-sem-docs', async (req, res) => {
+  const leadId = req.params.leadId;
+  const email = normalizeEmail(req.body && req.body.email);
+  if (!email) return res.status(400).json({ message: 'Indique o seu email.' });
+  const v = await validateLeadAguardandoDocs(leadId);
+  if (v.error) return res.status(v.error).json({ message: v.message });
+  const lead = v.lead;
+  const stored = normalizeEmail(lead.email);
+  if (stored !== email) return res.status(403).json({ message: 'Email incorreto.' });
+  const docLabel = req.body && typeof req.body.docLabel === 'string' ? req.body.docLabel.trim() : '';
+  const add = !!(req.body && req.body.add === true);
+  if (!docLabel) return res.status(400).json({ message: 'Falta o nome do documento.' });
+  try {
+    const current = (lead.comentario && String(lead.comentario)) || '';
+    const newComentario = add
+      ? addNaoTemToComentario(current, docLabel)
+      : removeNaoTemFromComentario(current, docLabel);
+    await updateLeadAdmin(leadId, { comentario: newComentario || null });
+    res.json({ ok: true, comentario: newComentario || null });
+  } catch (err) {
+    logStartup(`comentario-sem-docs error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao atualizar.' });
+  }
+});
+
 // Marcar lead como "não tenho todos os docs" (estado sem_docs) — requer email do lead
 app.post('/api/leads/:leadId/sem-docs', async (req, res) => {
   const leadId = req.params.leadId;
