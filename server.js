@@ -211,6 +211,13 @@ function getResendClient() {
   return new Resend(apiKey.trim());
 }
 
+// Evitar cache do browser nas páginas da app (útil após deploy)
+function setNoCache(res) {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+}
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
@@ -218,6 +225,7 @@ app.get('/api/health', (req, res) => {
 
 // Página inicial
 app.get('/', (req, res) => {
+  setNoCache(res);
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
@@ -243,6 +251,7 @@ async function validateLeadUploadPage(leadId) {
 // Upload: mostrar página se o lead existir e estiver em aguardando_docs ou docs_enviados
 app.get('/upload/:leadId', async (req, res) => {
   const leadId = req.params.leadId;
+  setNoCache(res);
   if (!/^\d+$/.test(leadId)) {
     return res.status(400).sendFile(path.join(__dirname, 'public', 'upload.html'));
   }
@@ -490,6 +499,7 @@ app.post('/api/leads/:leadId/comentario-sem-docs', async (req, res) => {
     const newComentario = add
       ? addNaoTemToComentario(current, docLabel)
       : removeNaoTemFromComentario(current, docLabel);
+    if (add && newComentario) logStartup(`comentario-sem-docs add: "${newComentario.slice(-80)}"`);
     await updateLeadAdmin(leadId, { comentario: newComentario || null });
     res.json({ ok: true, comentario: newComentario || null });
   } catch (err) {
