@@ -439,23 +439,33 @@ app.get('/api/leads/:leadId/status', async (req, res) => {
   res.json(payload);
 });
 
-// Atualizar comentário do lead: adicionar ou remover "não tem (nome do doc)" — requer email do lead
-const SEM_DOCS_PREFIX = 'não tem (';
-const SEM_DOCS_SUFFIX = ')';
+// Atualizar comentário do lead: adicionar ou remover "👱‍♀️ Joana: lead nao tem Nome do doc" — requer email do lead
+const SEM_DOCS_PREFIX = '👱‍♀️ Joana: lead nao tem ';
+const SEM_DOCS_SUFFIX = '';
+function normalizeDocLabel(docLabel) {
+  return (docLabel || '').trim().replace(/^\d+\.\s*/, '');
+}
 function buildNaoTemString(docLabel) {
-  return SEM_DOCS_PREFIX + (docLabel || '').trim() + SEM_DOCS_SUFFIX;
+  const normalized = normalizeDocLabel(docLabel);
+  return normalized ? SEM_DOCS_PREFIX + normalized + SEM_DOCS_SUFFIX : '';
 }
 function addNaoTemToComentario(current, docLabel) {
   const add = buildNaoTemString(docLabel);
-  if (!add || add === SEM_DOCS_PREFIX + SEM_DOCS_SUFFIX) return current;
+  if (!add) return current;
   const existing = (current && String(current).trim()) || '';
   return existing ? existing + ' ' + add : add;
 }
 function removeNaoTemFromComentario(current, docLabel) {
-  const toRemove = buildNaoTemString(docLabel);
-  if (!toRemove || toRemove === SEM_DOCS_PREFIX + SEM_DOCS_SUFFIX) return current;
+  const normalized = normalizeDocLabel(docLabel);
+  const toRemoveNew = normalized ? SEM_DOCS_PREFIX + normalized + SEM_DOCS_SUFFIX : '';
+  const toRemoveOld = (docLabel || '').trim() ? 'não tem (' + (docLabel || '').trim() + ')' : '';
   let s = (current && String(current)) || '';
-  const idx = s.indexOf(toRemove);
+  let idx = toRemoveNew ? s.indexOf(toRemoveNew) : -1;
+  let toRemove = toRemoveNew;
+  if (idx === -1 && toRemoveOld) {
+    idx = s.indexOf(toRemoveOld);
+    toRemove = toRemoveOld;
+  }
   if (idx === -1) return s;
   const before = s.slice(0, idx).trimEnd();
   const after = s.slice(idx + toRemove.length).trimStart();

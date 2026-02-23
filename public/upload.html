@@ -555,9 +555,8 @@
           <p style="margin:0 0 0.75rem 0; font-weight:600;">Quais docs você não tem?</p>
           <p style="margin:0 0 1rem 0; font-size:0.875rem; color:var(--text-muted);">Selecione os documentos que ainda não possui. Esta informação será enviada à gestora.</p>
           <div id="semDocsCheckboxes"></div>
-          <div style="margin-top:1rem; display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <div style="margin-top:1rem;">
             <button type="button" class="btn btn-outline" id="btnSemDocsConfirmar" style="color:var(--error); border-color:var(--error);">Confirmar que não tenho todos</button>
-            <button type="button" class="btn btn-outline" id="btnSemDocsCancelar">Voltar</button>
           </div>
         </div>
       </div>
@@ -592,7 +591,7 @@
         var disc = document.getElementById('semDocsDisclaimer');
         var btn = document.getElementById('btnSemDocs');
         if (disc) disc.style.display = showDisclaimer ? 'block' : 'none';
-        if (btn) btn.style.display = showDisclaimer || leadIsSemDocs ? 'none' : 'block';
+        if (btn) btn.style.display = showDisclaimer ? 'none' : 'block';
       }
 
       function idbOpen() {
@@ -833,6 +832,8 @@
       };
 
       let docsState = {};
+      /** Estado das checkboxes "não tenho este doc" (label -> true). Persistido em formDados no IndexedDB. */
+      let semDocsSelecionados = {};
       let hasRgpdTemplate = false; // se a gestora tiver RGPD disponível
       const required100 = DOCS_100.map((d) => d.field);
 
@@ -1211,6 +1212,7 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
           disponibilidade_fiador: disponibilidade_fiador || '',
           consent_intermediaria: consent_intermediaria,
           financiamento_100: document.getElementById('financiamento_100') && document.getElementById('financiamento_100').checked,
+          semDocsSelecionados: typeof semDocsSelecionados === 'object' && semDocsSelecionados !== null ? { ...semDocsSelecionados } : {},
         }).catch(function () {});
       }
 
@@ -1243,6 +1245,11 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
           if (consentIntermediariaEl) consentIntermediariaEl.checked = !!(formDados.consent_intermediaria);
           var fin100El = document.getElementById('financiamento_100');
           if (fin100El) fin100El.checked = !!(formDados.financiamento_100);
+          if (formDados.semDocsSelecionados && typeof formDados.semDocsSelecionados === 'object') {
+            semDocsSelecionados = { ...formDados.semDocsSelecionados };
+          } else {
+            semDocsSelecionados = {};
+          }
           var fiadorWrap = document.getElementById('fiadorWrap');
           if (fiadorWrap) fiadorWrap.style.display = (vinculoVal === VINCULO_TEMPORARIO || vinculoVal === VINCULO_RECIBOS_VERDES) ? 'block' : 'none';
           var emailFormEl = document.getElementById('email');
@@ -1487,35 +1494,39 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         container.innerHTML = '';
         var list = getRequiredDocLabels();
         list.forEach(function (item) {
-          var label = document.createElement('label');
-          label.className = 'consent-checkbox';
-          label.style.display = 'flex';
-          label.style.marginBottom = '0.5rem';
+          var labelEl = document.createElement('label');
+          labelEl.className = 'consent-checkbox';
+          labelEl.style.display = 'flex';
+          labelEl.style.marginBottom = '0.5rem';
           var cb = document.createElement('input');
           cb.type = 'checkbox';
           cb.dataset.docLabel = item.label;
+          cb.checked = !!semDocsSelecionados[item.label];
           cb.addEventListener('change', function () {
             var email = getVerifiedEmail();
             if (!email) return;
             var docLabel = this.dataset.docLabel || '';
             if (!docLabel) return;
+            var newChecked = this.checked;
             fetch('/api/leads/' + leadId + '/comentario-sem-docs', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: email, docLabel: docLabel, add: this.checked }),
+              body: JSON.stringify({ email: email, docLabel: docLabel, add: newChecked }),
             })
               .then(function (r) {
                 if (!r.ok) return r.json().then(function (d) { throw new Error(d.message || 'Erro'); });
+                semDocsSelecionados[docLabel] = newChecked;
+                saveDados();
               })
               .catch(function (err) {
                 document.getElementById('formError').textContent = err.message || 'Erro ao atualizar. Tente novamente.';
                 document.getElementById('formError').style.display = 'block';
-                this.checked = !this.checked;
+                this.checked = !newChecked;
               }.bind(this));
           });
-          label.appendChild(cb);
-          label.appendChild(document.createTextNode(' ' + item.label));
-          container.appendChild(label);
+          labelEl.appendChild(cb);
+          labelEl.appendChild(document.createTextNode(' ' + item.label));
+          container.appendChild(labelEl);
         });
       }
 
@@ -1528,15 +1539,6 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
           renderSemDocsPanel();
           panel.style.display = 'block';
           btn.style.display = 'none';
-        }
-      });
-
-      document.getElementById('btnSemDocsCancelar').addEventListener('click', function () {
-        var panel = document.getElementById('semDocsPanel');
-        var btn = document.getElementById('btnSemDocs');
-        if (panel && btn && !leadIsSemDocs) {
-          panel.style.display = 'none';
-          btn.style.display = 'block';
         }
       });
 
