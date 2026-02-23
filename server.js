@@ -211,9 +211,9 @@ function getResendClient() {
   return new Resend(apiKey.trim());
 }
 
-// Evitar cache do browser nas páginas da app (útil após deploy)
+// Evitar cache do browser e de proxies/CDN nas páginas da app (útil após deploy na Hostinger)
 function setNoCache(res) {
-  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
   res.set('Pragma', 'no-cache');
   res.set('Expires', '0');
 }
