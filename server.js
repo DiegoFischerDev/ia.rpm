@@ -1450,7 +1450,10 @@ app.delete('/api/dashboard/perguntas/:id', requireDashboardAuth, requireAdminAut
 
 app.post('/api/dashboard/perguntas/:id/respostas', requireDashboardAuth, async (req, res) => {
   const user = req.session.dashboardUser;
-  if (user.role !== 'gestora') return res.status(403).json({ message: 'Acesso reservado à gestora.' });
+  // Agora tanto gestora como admin podem editar a resposta do FAQ
+  if (user.role !== 'gestora' && user.role !== 'admin') {
+    return res.status(403).json({ message: 'Acesso reservado à gestora ou admin.' });
+  }
   const id = req.params.id;
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
   const texto = (req.body && req.body.texto) != null ? String(req.body.texto).trim() : '';
