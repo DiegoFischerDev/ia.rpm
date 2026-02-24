@@ -225,6 +225,11 @@ app.get('/api/health', (req, res) => {
   res.json({ ok: true, time: new Date().toISOString(), startedAt: SERVER_STARTED_AT });
 });
 
+// Favicon / ícone da aba (dashboard)
+app.get(['/favicon.ico', '/logo_bg_escura.png'], (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'logo_bg_escura.png'));
+});
+
 // Página inicial
 app.get('/', (req, res) => {
   setNoCache(res);
@@ -1268,7 +1273,8 @@ app.get('/api/internal/faq-audio/:perguntaId/:gestoraId', async (req, res) => {
 });
 
 // ---------- Audios Rafa (admin: áudios usados pelo evo com os leads) ----------
-const AUDIOS_RAFA_CODIGOS = ['boas_vindas'];
+// 'boas_vindas' fica preservado; 'boas_vindas_2' passa a ser o novo áudio de boas-vindas usado pelo evo.
+const AUDIOS_RAFA_CODIGOS = ['boas_vindas', 'boas_vindas_2'];
 
 app.get('/api/dashboard/audios-rafa', requireDashboardAuth, requireAdminAuth, async (req, res) => {
   try {
@@ -1303,7 +1309,10 @@ app.post('/api/dashboard/audios-rafa/:codigo', requireDashboardAuth, requireAdmi
   const mimetype = (audioFile.mimetype || '').toLowerCase();
   const mime = mimetype.includes('ogg') ? 'audio/ogg' : 'audio/webm';
   try {
-    const nome = codigo === 'boas_vindas' ? 'Boas vindas' : codigo;
+    let nome;
+    if (codigo === 'boas_vindas') nome = 'Boas vindas';
+    else if (codigo === 'boas_vindas_2') nome = 'Boas vindas 2';
+    else nome = codigo;
     await upsertAudiosRafa(codigo, nome, audioFile.buffer, mime);
     res.json({ ok: true, codigo, message: 'Áudio guardado.' });
   } catch (err) {
