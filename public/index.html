@@ -1767,7 +1767,23 @@
             const minhaWrap = document.getElementById('modalPerguntaMinhaRespostaWrap');
             const adminActions = document.getElementById('modalPerguntaAdminActions');
             if (user && user.role === 'gestora') {
-              // Gestora: vê apenas a própria resposta em áudio (se existir)
+              // Gestora: vê/edita apenas a própria resposta em texto
+              minhaWrap.style.display = 'block';
+              adminActions.style.display = 'block'; // mantém botão Fechar
+              const myId = user && user.id;
+              var minha = null;
+              if (Array.isArray(data.respostas) && myId != null) {
+                minha = data.respostas.find(function (r) { return r.gestora_id === myId; }) || null;
+              }
+              if (!minha && data.minha_resposta) minha = data.minha_resposta;
+              const minhaTextarea = document.getElementById('modalPerguntaMinhaResposta');
+              if (minhaTextarea) {
+                minhaTextarea.value = (minha && minha.texto ? minha.texto : '').trim();
+              }
+              return;
+            }
+            if (false && user && user.role === 'gestora') {
+              // Gestora (fluxo antigo com áudio) – mantido apenas como fallback desativado
               minhaWrap.style.display = 'none';
               adminActions.style.display = 'block'; // mantém botão Fechar
               const myId = user && user.id;
