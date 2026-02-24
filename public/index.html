@@ -1625,7 +1625,7 @@
         const perguntasBody = document.getElementById('perguntasBody');
         if (!perguntasBody) return;
         const isAdmin = user && user.role === 'admin';
-        const colCount = isAdmin ? 4 : 5;
+        const colCount = 5;
         var tblPerguntas = document.getElementById('tblPerguntasRespondidas');
         if (tblPerguntas) {
           tblPerguntas.classList.remove('role-admin', 'role-gestora');
@@ -1633,7 +1633,7 @@
           var headRow = document.getElementById('tblPerguntasRespondidasHead');
           if (headRow) {
             if (isAdmin) {
-              headRow.innerHTML = '<th>#</th><th>Pergunta</th><th>Frequencia</th><th class="th-acoes-admin">Ações (admin)</th>';
+              headRow.innerHTML = '<th>#</th><th>Pergunta</th><th>Frequencia</th><th>Resposta</th><th class="th-acoes-admin">Ações (admin)</th>';
             } else {
               headRow.innerHTML = '<th>#</th><th>Pergunta</th><th>Frequencia</th><th>Resposta</th><th class="th-acoes-admin">Ações (admin)</th>';
             }
@@ -1650,7 +1650,7 @@
               : '';
             if (filterVal) {
               rows = rows.filter(function (p) {
-                var text = [p.id, p.texto, p.frequencia].join(' ').toLowerCase();
+                var text = [p.id, p.texto, p.frequencia, (p.resposta || '')].join(' ').toLowerCase();
                 return text.indexOf(filterVal) !== -1;
               });
             }
@@ -1662,6 +1662,7 @@
                 const tr = document.createElement('tr');
                 const textoPergunta = (p.texto || '').trim();
                 const freqVal = p.frequencia || 0;
+                const respostaTxt = (p.resposta || '').trim();
                 tr.setAttribute('data-freq', 'Frequência ' + freqVal);
                 const acoes = isAdmin
                   ? '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta" data-id="' + p.id + '">Editar</button> ' +
@@ -1672,14 +1673,15 @@
                     '<td data-label="" class="cell-id">#' + p.id + '</td>' +
                     '<td data-label="Pergunta" class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td>' +
                     '<td data-label="Frequência" class="cell-freq">' + freqVal + '</td>' +
+                    '<td data-label="Resposta" class="cell-resposta">' + (respostaTxt ? escapeHtml(respostaTxt) : '<span class="text-muted">—</span>') + '</td>' +
                     '<td class="td-acoes-admin actions" data-label="Ações">' + acoes + '</td>';
                 } else {
                   tr.innerHTML =
                     '<td data-label="" class="cell-id">#' + p.id + '</td>' +
                     '<td data-label="Pergunta" class="cell-pergunta" title="' + escapeHtml(textoPergunta) + '">' + escapeHtml(textoPergunta) + '</td>' +
                     '<td data-label="Frequência" class="cell-freq">' + freqVal + '</td>' +
-                    '<td class="actions" data-label="Resposta">' + acoes + '</td>' +
-                    '<td class="td-acoes-admin" data-label="Ações admin"></td>';
+                    '<td data-label="Resposta" class="cell-resposta">' + (respostaTxt ? escapeHtml(respostaTxt) : '<span class="text-muted">—</span>') + '</td>' +
+                    '<td class="actions" data-label="Ações">' + acoes + '</td>';
                 }
                 perguntasBody.appendChild(tr);
               });

@@ -1650,7 +1650,16 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
 // APIs para o Evo (busca por vetores, incrementar frequência, criar dúvida pendente)
 app.get('/api/faq/perguntas', (req, res) => {
   listPerguntas()
-    .then((rows) => res.json(rows.map((p) => ({ id: p.id, texto: p.texto }))))
+    .then((rows) =>
+      res.json(
+        rows.map((p) => ({
+          id: p.id,
+          texto: p.texto,
+          frequencia: p.frequencia,
+          resposta: p.resposta || null,
+        }))
+      )
+    )
     .catch((err) => {
       logStartup(`faq/perguntas error: ${err.message}`);
       res.status(500).json({ message: 'Erro.' });

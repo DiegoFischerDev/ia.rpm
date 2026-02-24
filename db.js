@@ -412,7 +412,8 @@ async function hasGestoraRgpd(gestoraId) {
 async function listPerguntas() {
   return query(
     `SELECT d.id, d.texto, d.frequencia, d.created_at, d.updated_at,
-            (SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id) AS num_respostas
+            (SELECT COUNT(*) FROM ch_pergunta_respostas r WHERE r.pergunta_id = d.id) AS num_respostas,
+            (SELECT r2.texto FROM ch_pergunta_respostas r2 WHERE r2.pergunta_id = d.id ORDER BY r2.updated_at DESC LIMIT 1) AS resposta
      FROM ch_duvidas d
      WHERE d.eh_pendente = 0
      ORDER BY d.frequencia DESC, d.updated_at DESC`
