@@ -1566,36 +1566,24 @@ app.delete('/api/dashboard/duvidas-pendentes/:id', requireDashboardAuth, require
   }
 });
 
-const duvidaAudioUpload = uploadMemory.single('audio');
-
-app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth, duvidaAudioUpload, async (req, res) => {
+app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth, async (req, res) => {
   const user = req.session.dashboardUser;
   if (user.role !== 'gestora') return res.status(403).json({ message: 'Acesso reservado à gestora.' });
   const id = req.params.id;
   if (!/^\d+$/.test(id)) return res.status(400).json({ message: 'ID inválido.' });
   const body = req.body || {};
   const texto = body.texto != null ? String(body.texto).trim() : '';
-  const audioFile = req.file && req.file.buffer && req.file.buffer.length ? req.file : null;
-  if (!texto && !audioFile) return res.status(400).json({ message: 'Texto ou áudio são obrigatórios.' });
+  if (!texto) return res.status(400).json({ message: 'Texto é obrigatório.' });
   try {
     const duvida = await getDuvidaPendenteById(id);
     if (!duvida) return res.status(404).json({ message: 'Dúvida não encontrada.' });
 
-    // Se a gestora escrever texto juntamente com o áudio, usamos esse texto como transcrição
-    // (fica guardado em audio_transcricao e também em texto).
-    const audioTranscricao = texto || null;
-    const textoFinal = texto || '';
-    if (!textoFinal && !audioFile) {
-      return res.status(400).json({ message: 'Não foi possível obter conteúdo da resposta.' });
-    }
+    const audioTranscricao = null;
+    const textoFinal = texto;
 
     await upsertRespostaComAudio(Number(id), user.id, {
       texto: textoFinal,
       audioTranscricao,
-      ...(audioFile && {
-        audioData: audioFile.buffer,
-        audioMimetype: (audioFile.mimetype || '').toLowerCase().includes('ogg') ? 'audio/ogg' : 'audio/webm',
-      }),
     });
     // Se for a primeira resposta, marca como não pendente (passa a FAQ),
     // mas continua a permitir novas respostas de outras gestoras.
@@ -1608,17 +1596,12 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
       const num = String(duvida.contacto_whatsapp).replace(/\D/g, '');
       // Buscar todas as respostas atuais para esta dúvida (já incluindo a resposta acabada de guardar)
       let respostasTexto = '';
-      let respostasComAudio = [];
       try {
         const respostas = await listRespostasByPerguntaId(Number(id));
         if (respostas && respostas.length) {
-          respostasComAudio = respostas.filter((r) => r && r.audio_in_db === 1);
           respostasTexto = respostas
             .map((r) => {
               const nomeGestora = (r.gestora_nome || '').trim() || 'Gestora';
-              if (r.audio_in_db === 1) {
-                return `- ${nomeGestora}: (resposta em áudio)`;
-              }
               return `- ${nomeGestora}: ${r.texto}`;
             })
             .join('\n\n');
@@ -1631,7 +1614,6 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
         respostasTexto = `- ${nomeGestora}: ${textoFinal}`;
       }
       const perguntaLabel = (duvida.texto || '').trim();
-      const temAudio = respostasComAudio.length > 0;
       const nomeGestora = (user && user.nome && String(user.nome).trim()) || 'Gestora';
       const msgIntro =
         `✨\n✨ ${nomeGestora} respondeu sua dúvida\n\n❓ "${perguntaLabel}"`;
@@ -1643,65 +1625,6 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
           headers,
           body: JSON.stringify({ number: num, text: msgIntro }),
         });
-        // Se tiver respostas em áudio, enviar também os áudios imediatamente.
-        // Se o envio do áudio falhar, fazemos fallback enviando a transcrição em texto (quando existir).
-        if (temAudio) {
-          const baseUrlRaw = (process.env.IA_APP_BASE_URL || process.env.IA_PUBLIC_BASE_URL || '').trim();
-          const baseUrl = baseUrlRaw ? baseUrlRaw.replace(/\/$/, '') : '';
-          if (!baseUrl) {
-            logStartup('WARN: IA_APP_BASE_URL/IA_PUBLIC_BASE_URL não configurado – não é possível enviar áudio por WhatsApp.');
-          }
-          for (const r of respostasComAudio) {
-            if (r.audio_in_db !== 1 || !baseUrl || !evoSecret) continue;
-            const fullAudioUrl =
-              baseUrl + '/api/internal/faq-audio/' + r.pergunta_id + '/' + r.gestora_id + '?token=' + encodeURIComponent(evoSecret);
-            const textoAudio =
-              (r.audio_transcricao && String(r.audio_transcricao).trim()) ||
-              (r.texto && String(r.texto).trim()) ||
-              '';
-            try {
-              const resp = await fetch(evoUrl + '/api/internal/send-audio', {
-                method: 'POST',
-                headers,
-                body: JSON.stringify({ number: num, audio_url: fullAudioUrl }),
-              });
-              if (!resp.ok) {
-                const data = await resp.json().catch(() => ({}));
-                logStartup(
-                  `Enviar resposta em áudio ao lead (WhatsApp) falhou: ${resp.status} ${
-                    data.message || data.error || resp.statusText
-                  }`
-                );
-                if (textoAudio) {
-                  const nomeG = (r.gestora_nome && String(r.gestora_nome).trim()) || 'Gestora';
-                  const fallbackText =
-                    `Resposta da ${nomeG} (transcrição do áudio):\n\n` + textoAudio;
-                  await fetch(evoUrl + '/api/internal/send-text', {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ number: num, text: fallbackText }),
-                  });
-                }
-              }
-            } catch (err) {
-              logStartup(`Enviar resposta em áudio ao lead (WhatsApp) falhou: ${err.response?.data || err.message}`);
-              if (textoAudio) {
-                const nomeG = (r.gestora_nome && String(r.gestora_nome).trim()) || 'Gestora';
-                const fallbackText =
-                  `Resposta da ${nomeG} (transcrição do áudio):\n\n` + textoAudio;
-                try {
-                  await fetch(evoUrl + '/api/internal/send-text', {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify({ number: num, text: fallbackText }),
-                  });
-                } catch (err2) {
-                  logStartup(`Fallback texto da resposta em áudio também falhou: ${err2.message}`);
-                }
-              }
-            }
-          }
-        }
       } catch (err) {
         logStartup(`Enviar resposta ao lead (WhatsApp) falhou: ${err.message}`);
       }

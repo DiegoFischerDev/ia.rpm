@@ -934,15 +934,9 @@
     <div class="modal" style="max-width:520px;">
       <h3>Responder dúvida pendente</h3>
       <p id="modalDuvidaTexto" class="text-muted" style="white-space:pre-wrap;margin-bottom:1rem;"></p>
-      <div id="duvidaAudioControls" class="audio-recorder">
-        <button type="button" class="btn btn-secondary btn-sm" id="btnStartRecording">🎙️ Gravar áudio</button>
-        <button type="button" class="btn btn-secondary btn-sm" id="btnStopRecording" style="display:none;">Parar</button>
-        <button type="button" class="btn btn-secondary btn-sm" id="btnPlayRecording" style="display:none;">Reproduzir</button>
-        <button type="button" class="btn btn-outline btn-sm" id="btnClearRecording" style="display:none;">Apagar</button>
-        <span id="duvidaRecordingIndicator" class="recording-indicator" style="display:none; margin-left:0.5rem; font-weight:bold; color:#c00;">
-          🎙️ GRAVANDO...
-        </span>
-        <audio id="duvidaAudioPreview" controls style="display:none; margin-top:0.5rem;"></audio>
+      <div class="form-group">
+        <label for="modalDuvidaRespostaTexto">Resposta da gestora</label>
+        <textarea id="modalDuvidaRespostaTexto" rows="4" style="width:100%;" placeholder="Escreve a tua resposta para o lead..."></textarea>
       </div>
       <div class="modal-actions" style="margin-top:1rem;">
         <button type="button" class="btn btn-secondary" id="modalDuvidaResponderCancel">Cancelar</button>
@@ -2112,34 +2106,25 @@
 
       async function submitResponderDuvida() {
         if (!_duvidaModalId) return;
-        // Se ainda estiver a gravar, parar primeiro e esperar o blob ficar pronto
-        if (duvidaMediaRecorder && duvidaMediaRecorder.state === 'recording') {
-          await new Promise(function (resolve) {
-            duvidaRecorderStopResolvers.push(resolve);
-            try { duvidaMediaRecorder.stop(); } catch (e) { resolve(); }
-          });
-        }
-        if (!duvidaAudioBlob) { alert('Grave uma resposta em áudio.'); return; }
+        var respostaTextoEl = document.getElementById('modalDuvidaRespostaTexto');
+        var respostaTexto = respostaTextoEl ? respostaTextoEl.value.trim() : '';
+        if (!respostaTexto) { alert('Escreve a tua resposta para o lead.'); return; }
         const submitBtn = document.getElementById('modalDuvidaResponderSubmit');
         const originalText = submitBtn ? submitBtn.textContent : '';
         if (submitBtn) {
           submitBtn.disabled = true;
           submitBtn.textContent = 'Enviando...';
         }
-        const fd = new FormData();
-        fd.append('texto', ''); // texto não é usado para o lead; áudio é obrigatório
-        if (duvidaAudioBlob) {
-          fd.append('audio', duvidaAudioBlob, 'resposta.webm');
-        }
         fetch(API + '/duvidas-pendentes/' + _duvidaModalId + '/responder', {
           method: 'POST',
           credentials: 'include',
-          body: fd,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ texto: respostaTexto }),
         })
           .then((r) => (r.ok ? Promise.resolve() : r.json().then((d) => Promise.reject(new Error(d.message || 'Erro')))))
           .then(function () {
             document.getElementById('modalDuvidaResponder').classList.remove('visible');
-            if (typeof resetDuvidaAudioState === 'function') resetDuvidaAudioState();
+            if (respostaTextoEl) respostaTextoEl.value = '';
             loadDuvidasPendentes();
             loadDuvidasRespondidas();
             const nome = user && user.nome && user.nome.trim() ? user.nome.trim() : 'Gestora';
@@ -2164,116 +2149,10 @@
       document.getElementById('modalEditarDuvidaSave').addEventListener('click', saveEditarDuvida);
       document.getElementById('modalDuvidaResponderCancel').addEventListener('click', function () {
         document.getElementById('modalDuvidaResponder').classList.remove('visible');
-        // Limpar estado de áudio quando fecha o modal
-        if (typeof resetDuvidaAudioState === 'function') resetDuvidaAudioState();
       });
       document.getElementById('modalDuvidaResponderSubmit').addEventListener('click', submitResponderDuvida);
 
-      // Áudio na resposta de dúvida (dashboard gestora)
-      function resetDuvidaAudioState() {
-        const recBtn = document.getElementById('btnStartRecording');
-        const stopBtn = document.getElementById('btnStopRecording');
-        const playBtn = document.getElementById('btnPlayRecording');
-        const clearBtn = document.getElementById('btnClearRecording');
-        const audioEl = document.getElementById('duvidaAudioPreview');
-        const indicator = document.getElementById('duvidaRecordingIndicator');
-        duvidaAudioBlob = null;
-        if (audioEl) {
-          audioEl.src = '';
-          audioEl.style.display = 'none';
-        }
-        if (recBtn) recBtn.style.display = 'inline-block';
-        if (stopBtn) stopBtn.style.display = 'none';
-        if (playBtn) playBtn.style.display = 'none';
-        if (clearBtn) clearBtn.style.display = 'none';
-        if (indicator) indicator.style.display = 'none';
-      }
-
-      (function initDuvidaAudioRecorder() {
-        const recBtn = document.getElementById('btnStartRecording');
-        const stopBtn = document.getElementById('btnStopRecording');
-        const playBtn = document.getElementById('btnPlayRecording');
-        const clearBtn = document.getElementById('btnClearRecording');
-        const audioEl = document.getElementById('duvidaAudioPreview');
-        const indicator = document.getElementById('duvidaRecordingIndicator');
-        if (!recBtn || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          if (recBtn) {
-            recBtn.disabled = true;
-            recBtn.title = 'O teu navegador não suporta gravação de áudio ou o microfone está desativado.';
-          }
-          return;
-        }
-        recBtn.addEventListener('click', function () {
-          // Sempre que iniciar uma nova gravação, limpar qualquer estado anterior
-          resetDuvidaAudioState();
-          navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function (stream) {
-              duvidaRecorderChunks = [];
-              var preferredTypes = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/webm'];
-              var chosenType = null;
-              if (window.MediaRecorder && typeof MediaRecorder.isTypeSupported === 'function') {
-                for (var i = 0; i < preferredTypes.length; i++) {
-                  if (MediaRecorder.isTypeSupported(preferredTypes[i])) {
-                    chosenType = preferredTypes[i];
-                    break;
-                  }
-                }
-              }
-              var recorderOptions = chosenType ? { mimeType: chosenType } : undefined;
-              duvidaMediaRecorder = new MediaRecorder(stream, recorderOptions);
-              duvidaMediaRecorder.ondataavailable = function (e) {
-                if (e.data && e.data.size > 0) duvidaRecorderChunks.push(e.data);
-              };
-              duvidaMediaRecorder.onstop = function () {
-                var blobType = chosenType || 'audio/webm';
-                duvidaAudioBlob = new Blob(duvidaRecorderChunks, { type: blobType });
-                audioEl.src = URL.createObjectURL(duvidaAudioBlob);
-                audioEl.style.display = 'block';
-                playBtn.style.display = 'inline-block';
-                clearBtn.style.display = 'inline-block';
-                if (indicator) indicator.style.display = 'none';
-                duvidaRecorderChunks = [];
-                var resolvers = duvidaRecorderStopResolvers.slice();
-                duvidaRecorderStopResolvers = [];
-                resolvers.forEach(function (fn) { try { fn(); } catch (_) {} });
-              };
-              duvidaMediaRecorder.start();
-              recBtn.style.display = 'none';
-              stopBtn.style.display = 'inline-block';
-              playBtn.style.display = 'none';
-              clearBtn.style.display = 'none';
-              audioEl.style.display = 'none';
-              duvidaAudioBlob = null;
-              if (indicator) indicator.style.display = 'inline-block';
-            })
-            .catch(function (err) {
-              var msg = 'Não foi possível aceder ao microfone.';
-              if (err && (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError')) {
-                msg += '\n\nParece que o acesso ao microfone foi bloqueado para este site.\n' +
-                  'Por favor abre as definições do site no teu navegador (ícone de cadeado/URL),\n' +
-                  'altera a permissão de microfone para "Permitir" e tenta novamente.';
-              } else if (err && (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError')) {
-                msg += '\n\nO navegador não encontrou nenhum microfone ligado ao dispositivo.';
-              } else {
-                msg += '\n\nErro técnico: ' + (err.message || String(err));
-              }
-              alert(msg);
-            });
-        });
-        stopBtn.addEventListener('click', function () {
-          if (duvidaMediaRecorder && duvidaMediaRecorder.state === 'recording') {
-            duvidaMediaRecorder.stop();
-            stopBtn.style.display = 'none';
-            recBtn.style.display = 'inline-block';
-          }
-        });
-        playBtn.addEventListener('click', function () {
-          if (audioEl.src) audioEl.play();
-        });
-        clearBtn.addEventListener('click', function () {
-          resetDuvidaAudioState();
-        });
-      })();
+      // Áudio na resposta de dúvida (dashboard gestora) removido: respostas passam a ser só em texto.
 
       function loadRafa() {
         const tbody = document.getElementById('rafaBody');
