@@ -1784,8 +1784,6 @@
               }
             }
             if (false && user && user.role === 'gestora') {
-              // Gestora (fluxo antigo com áudio) – mantido apenas como fallback desativado
-              minhaWrap.style.display = 'none';
               adminActions.style.display = 'block'; // mantém botão Fechar
               const myId = user && user.id;
               // Primeiro tenta encontrar a resposta desta gestora no array completo (garante que apanhamos audio_url)
@@ -2039,7 +2037,6 @@
               } else {
                 respDiv.innerHTML = '<p class="text-muted">Ainda sem respostas.</p>';
               }
-              minhaWrap.style.display = 'none';
               adminActions.style.display = 'block';
             }
             document.getElementById('modalPergunta').classList.add('visible');
