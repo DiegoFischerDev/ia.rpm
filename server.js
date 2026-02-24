@@ -1625,6 +1625,14 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
           headers,
           body: JSON.stringify({ number: num, text: msgIntro }),
         });
+        if (respostasTexto) {
+          const msgResp = 'Aqui vão as respostas das gestoras:\n\n' + respostasTexto;
+          await fetch(evoUrl + '/api/internal/send-text', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ number: num, text: msgResp }),
+          });
+        }
       } catch (err) {
         logStartup(`Enviar resposta ao lead (WhatsApp) falhou: ${err.message}`);
       }

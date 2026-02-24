@@ -446,12 +446,11 @@ async function deletePergunta(id) {
   await query('DELETE FROM ch_duvidas WHERE id = ?', [id]);
 }
 
-/** Respostas de uma pergunta (com nome da gestora). pergunta_id referencia ch_duvidas.id.
- *  audio_in_db = 1 quando o áudio está guardado em audio_data. */
+/** Respostas de uma pergunta (com nome da gestora). pergunta_id referencia ch_duvidas.id. */
 async function listRespostasByPerguntaId(perguntaId) {
   return query(
-    `SELECT r.id, r.pergunta_id, r.gestora_id, r.texto, r.audio_transcricao, r.created_at, r.updated_at, g.nome AS gestora_nome,
-     (r.audio_data IS NOT NULL AND LENGTH(r.audio_data) > 0) AS audio_in_db
+    `SELECT r.id, r.pergunta_id, r.gestora_id, r.texto, r.created_at, r.updated_at, g.nome AS gestora_nome,
+     0 AS audio_in_db
      FROM ch_pergunta_respostas r
      JOIN ch_gestoras g ON g.id = r.gestora_id
      WHERE r.pergunta_id = ?
@@ -462,32 +461,22 @@ async function listRespostasByPerguntaId(perguntaId) {
 
 async function getRespostaByPerguntaAndGestora(perguntaId, gestoraId) {
   const rows = await query(
-    `SELECT id, pergunta_id, gestora_id, texto, audio_transcricao, created_at, updated_at,
-     (audio_data IS NOT NULL AND LENGTH(audio_data) > 0) AS audio_in_db
+    `SELECT id, pergunta_id, gestora_id, texto, created_at, updated_at,
+     0 AS audio_in_db
      FROM ch_pergunta_respostas WHERE pergunta_id = ? AND gestora_id = ?`,
     [perguntaId, gestoraId]
   );
   return rows[0] || null;
 }
 
-/** Devolve apenas o áudio (blob + mimetype) de uma resposta, para servir em rotas GET. */
-async function getRespostaAudioData(perguntaId, gestoraId) {
-  const rows = await query(
-    'SELECT audio_data, audio_mimetype FROM ch_pergunta_respostas WHERE pergunta_id = ? AND gestora_id = ?',
-    [perguntaId, gestoraId]
-  );
-  const r = rows[0];
-  if (!r || !r.audio_data || !(r.audio_data instanceof Buffer)) return null;
-  return { data: r.audio_data, mimetype: r.audio_mimetype || 'audio/webm' };
+// Funções relacionadas com áudio de respostas (getRespostaAudioData, getFirstGestoraIdWithAudio) foram desativadas
+// porque as colunas de áudio foram removidas da tabela. Mantidas apenas como stubs caso sejam referenciadas em algum lugar.
+async function getRespostaAudioData() {
+  return null;
 }
 
-/** Primeira resposta com áudio para uma pergunta (para admin ouvir). */
-async function getFirstGestoraIdWithAudio(perguntaId) {
-  const rows = await query(
-    'SELECT gestora_id FROM ch_pergunta_respostas WHERE pergunta_id = ? AND audio_data IS NOT NULL AND LENGTH(audio_data) > 0 ORDER BY updated_at ASC LIMIT 1',
-    [perguntaId]
-  );
-  return rows[0] ? rows[0].gestora_id : null;
+async function getFirstGestoraIdWithAudio() {
+  return null;
 }
 
 async function deleteRespostaByPerguntaAndGestora(perguntaId, gestoraId) {
@@ -505,38 +494,18 @@ async function upsertResposta(perguntaId, gestoraId, texto) {
   );
 }
 
-/** Cria ou atualiza resposta (texto/áudio) de uma gestora a uma pergunta.
- *  Se audioData (Buffer) for passado, o áudio fica em audio_data (URL deriva de pergunta_id). */
-async function upsertRespostaComAudio(perguntaId, gestoraId, { texto, audioTranscricao, audioData, audioMimetype }) {
+/** Cria ou atualiza resposta (apenas texto) de uma gestora a uma pergunta. */
+async function upsertRespostaComAudio(perguntaId, gestoraId, { texto }) {
   const t = typeof texto === 'string' ? texto.trim() : '';
-  const aTxt = typeof audioTranscricao === 'string' ? audioTranscricao.trim() : null;
-  const hasBlob = audioData instanceof Buffer && audioData.length > 0;
-  if (!t && !aTxt && !hasBlob) return;
-  const textToStore = t || aTxt || '';
-  const mimetype = audioMimetype && String(audioMimetype).trim() ? String(audioMimetype).trim() : null;
-  if (hasBlob) {
-    await query(
-      `INSERT INTO ch_pergunta_respostas (pergunta_id, gestora_id, texto, audio_transcricao, audio_data, audio_mimetype)
-       VALUES (?, ?, ?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         texto = VALUES(texto),
-         audio_transcricao = VALUES(audio_transcricao),
-         audio_data = VALUES(audio_data),
-         audio_mimetype = VALUES(audio_mimetype),
-         updated_at = NOW()`,
-      [perguntaId, gestoraId, textToStore, aTxt, audioData, mimetype]
-    );
-  } else {
-    await query(
-      `INSERT INTO ch_pergunta_respostas (pergunta_id, gestora_id, texto, audio_transcricao)
-       VALUES (?, ?, ?, ?)
-       ON DUPLICATE KEY UPDATE
-         texto = VALUES(texto),
-         audio_transcricao = VALUES(audio_transcricao),
-         updated_at = NOW()`,
-      [perguntaId, gestoraId, textToStore, aTxt]
-    );
-  }
+  if (!t) return;
+  await query(
+    `INSERT INTO ch_pergunta_respostas (pergunta_id, gestora_id, texto)
+     VALUES (?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+       texto = VALUES(texto),
+       updated_at = NOW()`,
+    [perguntaId, gestoraId, t]
+  );
 }
 
 /** Dúvidas pendentes: apenas eh_pendente=1 (ainda sem resposta no FAQ). */
