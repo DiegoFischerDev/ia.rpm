@@ -744,6 +744,7 @@
           var digits = String(whatsappNumber).replace(/\D/g, '');
           var msg = WHATSAPP_MSG.replace('{nome}', (nome || '')).trim();
           ref.href = 'https://wa.me/' + digits + '?text=' + encodeURIComponent(msg);
+          ref.textContent = digits;
           wrap.style.display = 'block';
         } else if (wrap) wrap.style.display = 'none';
       }
@@ -797,6 +798,7 @@
             var digits = String(whatsappNumber).replace(/\D/g, '');
             var msg = WHATSAPP_MSG.replace('{nome}', (leadNome || '')).trim();
             waRef.href = 'https://wa.me/' + digits + '?text=' + encodeURIComponent(msg);
+            waRef.textContent = digits;
             waWrap.style.display = 'block';
           } else {
             waWrap.style.display = 'none';
