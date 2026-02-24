@@ -1664,11 +1664,9 @@
                 const freqVal = p.frequencia || 0;
                 tr.setAttribute('data-freq', 'Frequência ' + freqVal);
                 const acoes = isAdmin
-                  ? '<button type="button" class="btn btn-secondary btn-sm btn-ouvir-pergunta" data-id="' + p.id + '">Ouvir</button> ' +
-                    '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta" data-id="' + p.id + '">Editar</button> ' +
+                  ? '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta" data-id="' + p.id + '">Editar</button> ' +
                     '<button type="button" class="btn btn-danger btn-sm btn-excluir-pergunta" data-id="' + p.id + '">Excluir</button>'
-                  : '<button type="button" class="btn btn-secondary btn-sm btn-ouvir-pergunta" data-id="' + p.id + '">Ouvir</button> ' +
-                    '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta-gestora" data-id="' + p.id + '">Editar</button>';
+                  : '<button type="button" class="btn btn-outline btn-sm btn-editar-pergunta-gestora" data-id="' + p.id + '">Editar</button>';
                 if (isAdmin) {
                   tr.innerHTML =
                     '<td data-label="" class="cell-id">#' + p.id + '</td>' +
@@ -1685,14 +1683,8 @@
                 }
                 perguntasBody.appendChild(tr);
               });
-              perguntasBody.querySelectorAll('.btn-ver-pergunta').forEach(function (btn) {
-                btn.addEventListener('click', function () { openPerguntaDetail(parseInt(this.dataset.id, 10)); });
-              });
               perguntasBody.querySelectorAll('.btn-editar-pergunta-gestora').forEach(function (btn) {
                 btn.addEventListener('click', function () { openPerguntaDetail(parseInt(this.dataset.id, 10)); });
-              });
-              perguntasBody.querySelectorAll('.btn-ouvir-pergunta').forEach(function (btn) {
-                btn.addEventListener('click', function () { openOuvirResposta(parseInt(this.dataset.id, 10)); });
               });
               perguntasBody.querySelectorAll('.btn-editar-pergunta').forEach(function (btn) {
                 btn.addEventListener('click', function () { openEditarPergunta(parseInt(this.dataset.id, 10)); });

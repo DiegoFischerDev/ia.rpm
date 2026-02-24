@@ -1626,7 +1626,7 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
           body: JSON.stringify({ number: num, text: msgIntro }),
         });
         if (respostasTexto) {
-          const msgResp = 'Aqui vão as respostas das gestoras:\n\n' + respostasTexto;
+          const msgResp = respostasTexto; // ex.: "- Suelen Santiago: depende da casa..."
           await fetch(evoUrl + '/api/internal/send-text', {
             method: 'POST',
             headers,
