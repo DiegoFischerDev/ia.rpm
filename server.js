@@ -1630,7 +1630,7 @@ app.post('/api/dashboard/duvidas-pendentes/:id/responder', requireDashboardAuth,
           await fetch(evoUrl + '/api/internal/send-text', {
             method: 'POST',
             headers,
-            body: JSON.stringify({ number: num, text: msgResp }),
+            body: JSON.stringify({ number: num, text: msgResp, skipJoanaPrefix: true }),
           });
         }
       } catch (err) {
