@@ -929,6 +929,7 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
       byField[f.fieldname] = f;
     }
   }
+  const semDocsLabelsRaw = (body.sem_docs_labels || '').trim();
   const missing = required.filter((f) => !byField[f]);
   if (missing.length) {
     const listLabels = missing.map((m) => DOC_LABELS[m] || m).join(', ');
@@ -991,8 +992,11 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
   const vinculoLab = (body.vinculo_laboral || '').trim();
   const dispFiador = (body.disponibilidade_fiador || '').trim();
   const mensagem = (body.mensagem_gestora || '').trim();
+  const semDocsLabels = semDocsLabelsRaw
+    ? semDocsLabelsRaw.split(',').map((s) => s.trim()).filter(Boolean)
+    : [];
 
-  const textBody = [
+  const textLines = [
     `ID: ${lead.id || leadId}`,
     `Nome: ${lead.nome || 'N/A'}`,
     `Email: ${emailLead}`,
@@ -1002,12 +1006,29 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
     `Vínculo laboral: ${vinculoLab || '—'}`,
     dispFiador ? `Disponibilidade para apresentar fiador: ${dispFiador}` : '',
     financiamento100 ? 'Pedido no âmbito do financiamento a 100%.' : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  ];
+
+  if (semDocsLabels.length) {
+    textLines.push(
+      `${lead.nome || 'O lead'} não possui os seguintes documentos: ${semDocsLabels.join(', ')}.`
+    );
+  }
+
+  const textBody = textLines.filter(Boolean).join('\n');
 
   const nomeLead = (body.nome || lead.nome || 'O lead').trim() || 'O lead';
   const textWithNote = textBody + '\n\n---\n' + (mensagem ? mensagem : `(${nomeLead} não deixou mensagem)`);
+
+  // Guardar mensagem do lead em comentario (sem sobrescrever notas anteriores)
+  if (mensagem) {
+    try {
+      const existingComentario = lead.comentario ? String(lead.comentario).trim() : '';
+      const novoComentario = existingComentario
+        ? existingComentario + '\n\nMensagem do lead:\n' + mensagem
+        : 'Mensagem do lead:\n' + mensagem;
+      await updateLeadAdmin(leadId, { comentario: novoComentario });
+    } catch (_) {}
+  }
 
   try {
     const { error } = await resend.emails.send({
@@ -1155,8 +1176,12 @@ app.post('/api/leads/:leadId/send-email-spouse', uploadMemory.any(), async (req,
   const vinculoLab = (body.vinculo_laboral || '').trim();
   const dispFiador = (body.disponibilidade_fiador || '').trim();
   const mensagem = (body.mensagem_gestora || '').trim();
+  const semDocsLabelsRaw = (body.sem_docs_labels || '').trim();
+  const semDocsLabels = semDocsLabelsRaw
+    ? semDocsLabelsRaw.split(',').map((s) => s.trim()).filter(Boolean)
+    : [];
 
-  const textBody = [
+  const textLines = [
     `ID: ${lead.id || leadId}`,
     `Nome: ${lead.nome || 'N/A'}`,
     `Email: ${emailLead}`,
@@ -1168,12 +1193,28 @@ app.post('/api/leads/:leadId/send-email-spouse', uploadMemory.any(), async (req,
     financiamento100 ? 'Pedido no âmbito do financiamento a 100%.' : '',
     '---',
     'Documentos enviados referem-se ao cônjuge.',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  ];
+
+  if (semDocsLabels.length) {
+    textLines.push(
+      `${lead.nome || 'O lead'} não possui os seguintes documentos: ${semDocsLabels.join(', ')}.`
+    );
+  }
+
+  const textBody = textLines.filter(Boolean).join('\n');
 
   const nomeLead = (body.nome || lead.nome || 'O lead').trim() || 'O lead';
   const textWithNote = textBody + '\n\n---\n' + (mensagem ? mensagem : `(${nomeLead} não deixou mensagem)`);
+
+  if (mensagem) {
+    try {
+      const existingComentario = lead.comentario ? String(lead.comentario).trim() : '';
+      const novoComentario = existingComentario
+        ? existingComentario + '\n\nMensagem do lead (cônjuge):\n' + mensagem
+        : 'Mensagem do lead (cônjuge):\n' + mensagem;
+      await updateLeadAdmin(leadId, { comentario: novoComentario });
+    } catch (_) {}
+  }
 
   try {
     const { error } = await resend.emails.send({

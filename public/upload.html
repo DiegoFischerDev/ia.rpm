@@ -486,7 +486,7 @@
         <p class="doc-hint" id="gestoraNomeWrap" style="display:none;">A sua gestora de crédito: <strong id="gestoraNomeRef"></strong></p>
         <p class="doc-hint" id="gestoraEmailWrap" style="display:none;">Email de contacto da gestora: <a href="#" id="gestoraEmailRef" class="doc-link-contact"></a></p>
         <p class="doc-hint" id="gestoraWhatsappWrap" style="display:none;">Contactar a gestora por <a href="#" id="gestoraWhatsappRef" class="doc-link-contact" target="_blank" rel="noopener">WhatsApp</a></p>
-        <button type="button" class="btn btn-outline" id="btnEnviarConjuge" style="margin-top:1rem; width:100%;">Enviar documentos do cônjuge</button>
+        <button type="button" class="btn btn-primary" id="btnEnviarConjuge">Enviar documentos do cônjuge</button>
       </div>
     </div>
 
@@ -1608,11 +1608,29 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         const errEl = document.getElementById('formError');
         errEl.style.display = 'none';
         const req = getRequired();
-        const missing = req.filter(function (f) { return !docsState[f]; });
+
+        // Campos marcados como "não tenho" deixam de ser obrigatórios
+        const requiredLabels = getRequiredDocLabels();
+        const ignoredFields = requiredLabels
+          .filter(function (item) { return !!semDocsSelecionados[item.label]; })
+          .map(function (item) { return item.field; });
+
+        const missing = req.filter(function (f) {
+          return !docsState[f] && ignoredFields.indexOf(f) === -1;
+        });
         if (missing.length) {
-          errEl.textContent = 'É necessário anexar todos os documentos obrigatórios antes de enviar para a gestora. Faltam ' + missing.length + ' documento(s).';
+          errEl.textContent = 'É necessário anexar todos os documentos obrigatórios antes de enviar para a gestora. Se não tiver algum documento, indique em "Quais docs você não tem?".';
           errEl.style.display = 'block';
           errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+          // Abre automaticamente o painel de "Quais docs você não tem?"
+          var panel = document.getElementById('semDocsPanel');
+          var btn = document.getElementById('btnSemDocs');
+          if (panel && btn) {
+            renderSemDocsPanel();
+            panel.style.display = 'block';
+            btn.style.display = 'none';
+          }
           return;
         }
         saveDados();
@@ -1630,7 +1648,15 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         fd.append('anos_emprego_atual', document.getElementById('anos_emprego_atual').value.trim());
         fd.append('vinculo_laboral', (document.getElementById('vinculo_laboral') && document.getElementById('vinculo_laboral').value) || '');
         fd.append('disponibilidade_fiador', (document.getElementById('disponibilidade_fiador') && document.getElementById('disponibilidade_fiador').value) || '');
-        fd.append('mensagem_gestora', document.getElementById('mensagem_gestora').value.trim());
+        var mensagemGestora = document.getElementById('mensagem_gestora').value.trim();
+        fd.append('mensagem_gestora', mensagemGestora);
+        // Enviar também a lista dos docs declarados como "não tenho"
+        var semDocsLabels = requiredLabels
+          .filter(function (item) { return !!semDocsSelecionados[item.label]; })
+          .map(function (item) { return item.label; });
+        if (semDocsLabels.length) {
+          fd.append('sem_docs_labels', semDocsLabels.join(', '));
+        }
         fd.append('financiamento_100', document.getElementById('financiamento_100').checked ? '1' : '0');
         Promise.all(req.map(function (fieldName) { return idbGet(leadId, fieldName); }))
           .then(function (files) {
