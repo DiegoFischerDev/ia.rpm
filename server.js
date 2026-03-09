@@ -913,9 +913,14 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
     return res.status(400).json({ message: 'Indique o seu email.' });
   }
 
-  try {
-    await updateLeadDados(leadId, { nome: body.nome });
-  } catch (_) {}
+  // Só atualizamos o nome do lead no BD se vier um nome não vazio no formulário.
+  // Isto evita sobrescrever com "N/A" / null em envios de mais documentos ou do cônjuge.
+  const nomeFromBody = (body.nome || '').trim();
+  if (nomeFromBody) {
+    try {
+      await updateLeadDados(leadId, { nome: nomeFromBody });
+    } catch (_) {}
+  }
 
   const vinculo = (body.vinculo_laboral || '').trim();
   const requiredBase = getRequiredDocFieldsByVinculo(vinculo);
@@ -1026,8 +1031,10 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
 
   const textBody = textLines.filter(Boolean).join('\n');
 
-  const nomeLeadParaMensagem = nomeLeadBase || 'O lead';
-  const textWithNote = textBody + '\n\n---\n' + (mensagem ? mensagem : `(${nomeLeadParaMensagem} não deixou mensagem)`);
+  // Se o lead não deixou mensagem, não adicionamos texto extra no email.
+  const textWithNote = mensagem
+    ? textBody + '\n\n---\n' + mensagem
+    : textBody;
 
   // Guardar mensagem do lead em comentario (sem sobrescrever notas anteriores)
   if (mensagem) {
