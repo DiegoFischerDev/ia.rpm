@@ -305,7 +305,6 @@ async function validateLeadAguardandoDocs(leadId) {
   return { lead };
 }
 
-// Permite envio de documentos quando: estado_docs aguardando_docs OU sem_docs, e ainda não enviou (não reenvio).
 async function validateLeadCanSendDocs(leadId) {
   if (!/^\d+$/.test(leadId)) return { error: 400, message: 'ID de lead inválido.' };
   let lead;
@@ -316,11 +315,19 @@ async function validateLeadCanSendDocs(leadId) {
     return { error: 500, message: 'Erro ao verificar dados.' };
   }
   if (!lead) return { error: 404, message: 'Link não encontrado.' };
-  const jaEnviou = !!(lead.docs_enviados && Number(lead.docs_enviados) === 1);
-  if (jaEnviou) {
-    return { error: 403, message: 'Já enviaste os documentos. Não é possível reenviar.' };
-  }
-  if (lead.estado_docs !== 'aguardando_docs' && lead.estado_docs !== 'sem_docs') {
+
+  // Nova regra: permitir envio de mais documentos, mesmo depois de já ter enviado uma vez.
+  // Apenas bloqueamos se o estado não estiver numa lista de estados que ainda aceitam uploads.
+  const estadosAceitamEnvio = [
+    'aguardando_docs',
+    'docs_enviados',
+    'sem_docs',
+    'inviavel',
+    'credito_aprovado',
+    'agendado_escritura',
+    'escritura_realizada',
+  ];
+  if (!estadosAceitamEnvio.includes(lead.estado_docs)) {
     return { error: 403, message: 'Este link já não aceita envio de documentos.' };
   }
   return { lead };
