@@ -930,7 +930,12 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
     }
   }
   const semDocsLabelsRaw = (body.sem_docs_labels || '').trim();
-  const missing = required.filter((f) => !byField[f]);
+  const semDocsFieldsRaw = (body.sem_docs_fields || '').trim();
+  const ignoredFields = semDocsFieldsRaw
+    ? semDocsFieldsRaw.split(',').map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const missing = required.filter((f) => !byField[f] && ignoredFields.indexOf(f) === -1);
   if (missing.length) {
     const listLabels = missing.map((m) => DOC_LABELS[m] || m).join(', ');
     return res.status(400).json({
@@ -1114,7 +1119,13 @@ app.post('/api/leads/:leadId/send-email-spouse', uploadMemory.any(), async (req,
       byField[f.fieldname] = f;
     }
   }
-  const missing = required.filter((f) => !byField[f]);
+
+  const semDocsFieldsRaw = (body.sem_docs_fields || '').trim();
+  const ignoredFields = semDocsFieldsRaw
+    ? semDocsFieldsRaw.split(',').map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const missing = required.filter((f) => !byField[f] && ignoredFields.indexOf(f) === -1);
   if (missing.length) {
     const listLabels = missing.map((m) => DOC_LABELS[m] || m).join(', ');
     return res.status(400).json({

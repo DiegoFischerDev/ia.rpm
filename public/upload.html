@@ -560,9 +560,6 @@
           <p style="margin:0 0 0.75rem 0; font-weight:600;">Quais docs você não tem?</p>
           <p style="margin:0 0 1rem 0; font-size:0.875rem; color:var(--text-muted);">Selecione os documentos que ainda não possui. Esta informação será enviada à gestora.</p>
           <div id="semDocsCheckboxes"></div>
-          <div style="margin-top:1rem;">
-            <button type="button" class="btn btn-outline" id="btnSemDocsConfirmar" style="color:var(--error); border-color:var(--error);">Confirmar que não tenho todos</button>
-          </div>
         </div>
       </div>
 
@@ -1576,33 +1573,6 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         }
       });
 
-      document.getElementById('btnSemDocsConfirmar').addEventListener('click', function () {
-        var email = getVerifiedEmail();
-        if (!email) return;
-        var confirmBtn = this;
-        confirmBtn.disabled = true;
-        fetch('/api/leads/' + leadId + '/sem-docs', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email }),
-        })
-          .then(function (r) {
-            if (r.ok) {
-              leadIsSemDocs = true;
-              setSemDocsUI(true);
-              var panel = document.getElementById('semDocsPanel');
-              if (panel) panel.style.display = 'none';
-              return;
-            }
-            return r.json().then(function (d) { throw new Error(d.message || 'Erro'); });
-          })
-          .catch(function (err) {
-            document.getElementById('formError').textContent = err.message || 'Erro. Tente novamente.';
-            document.getElementById('formError').style.display = 'block';
-          })
-          .finally(function () { confirmBtn.disabled = false; });
-      });
-
       document.getElementById('form').addEventListener('submit', function (e) {
         e.preventDefault();
         const errEl = document.getElementById('formError');
@@ -1651,11 +1621,15 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         var mensagemGestora = document.getElementById('mensagem_gestora').value.trim();
         fd.append('mensagem_gestora', mensagemGestora);
         // Enviar também a lista dos docs declarados como "não tenho"
-        var semDocsLabels = requiredLabels
-          .filter(function (item) { return !!semDocsSelecionados[item.label]; })
-          .map(function (item) { return item.label; });
+        var semDocsItems = requiredLabels
+          .filter(function (item) { return !!semDocsSelecionados[item.label]; });
+        var semDocsLabels = semDocsItems.map(function (item) { return item.label; });
+        var semDocsFields = semDocsItems.map(function (item) { return item.field; });
         if (semDocsLabels.length) {
           fd.append('sem_docs_labels', semDocsLabels.join(', '));
+        }
+        if (semDocsFields.length) {
+          fd.append('sem_docs_fields', semDocsFields.join(','));
         }
         fd.append('financiamento_100', document.getElementById('financiamento_100').checked ? '1' : '0');
         Promise.all(req.map(function (fieldName) { return idbGet(leadId, fieldName); }))
