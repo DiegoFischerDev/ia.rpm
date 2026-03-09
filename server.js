@@ -40,6 +40,7 @@ const {
   updateLeadAdmin,
   deleteLead,
   createLeadAdmin,
+  createLeadWeb,
   getAllGestoras,
   getGestorasWithLeadCounts,
   createGestora,
@@ -208,6 +209,13 @@ function getResendClient() {
   return new Resend(apiKey.trim());
 }
 
+function getBaseUrl(req) {
+  const fromEnv = (process.env.APP_URL || process.env.UPLOAD_BASE_URL || process.env.IA_APP_BASE_URL || '').replace(/\/$/, '');
+  if (fromEnv) return fromEnv;
+  const host = req.get('host') || '';
+  return (req.protocol || 'https') + '://' + host;
+}
+
 // Evitar cache do browser e de proxies/CDN nas páginas da app (útil após deploy na Hostinger)
 function setNoCache(res) {
   res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0');
@@ -231,6 +239,12 @@ app.get(['/favicon.ico', '/logo_bg_escura.png'], (req, res) => {
 app.get('/', (req, res) => {
   setNoCache(res);
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Página pública para registo de leads via web
+app.get('/credito', (req, res) => {
+  setNoCache(res);
+  res.sendFile(path.join(__dirname, 'public', 'credito.html'));
 });
 
 // Lead pode aceder à página de upload se existir e estiver em aguardando_docs OU docs_enviados (para mostrar "já enviou")
@@ -326,6 +340,151 @@ async function requireEmailAccess(leadId, emailProvided) {
   if (provided !== stored) return { error: 403, message: 'Email incorreto.' };
   return { lead };
 }
+
+// Criar lead a partir da página web (/credito)
+app.post('/api/leads/web', async (req, res) => {
+  const nome = (req.body && req.body.nome ? String(req.body.nome) : '').trim();
+  const email = normalizeEmail(req.body && req.body.email);
+  const telemovelRaw = (req.body && req.body.telemovel ? String(req.body.telemovel) : '').trim();
+  const consent = !!(req.body && (req.body.consent === true || req.body.consent === '1'));
+
+  if (!consent) {
+    return res.status(400).json({ message: 'É necessário aceitar partilhar estes dados com a Rafa.' });
+  }
+  if (!nome) {
+    return res.status(400).json({ message: 'Indique o seu nome.' });
+  }
+  if (!email) {
+    return res.status(400).json({ message: 'Indique um email válido.' });
+  }
+  const telemovel = telemovelRaw.replace(/\D/g, '');
+  if (!telemovel) {
+    return res.status(400).json({ message: 'Indique o seu telemóvel com indicativo (ex.: 3519...).' });
+  }
+
+  try {
+    const lead = await createLeadWeb({
+      nome,
+      email,
+      whatsapp_number: telemovel,
+    });
+    if (!lead || !lead.id) {
+      return res.status(500).json({ message: 'Não foi possível criar o lead. Tente novamente mais tarde.' });
+    }
+
+    const fullLead = await getLeadById(lead.id).catch(() => lead);
+    const contact = await getGestoraContactForLead(fullLead);
+    const baseUrl = getBaseUrl(req);
+    const uploadLink = `${baseUrl.replace(/\/$/, '')}/upload/${lead.id}`;
+
+    const resend = getResendClient();
+    const mailFrom = process.env.MAIL_FROM || process.env.RESEND_FROM;
+
+    if (resend && mailFrom) {
+      const gestoraNome = contact.gestoraNome || 'a gestora de crédito';
+      const gestoraEmail = contact.gestoraEmail || '';
+      const gestoraWhatsappDigits = (contact.gestoraWhatsapp || '').replace(/\D/g, '');
+      const gestoraWhatsappLink = gestoraWhatsappDigits
+        ? `https://wa.me/${gestoraWhatsappDigits}`
+        : '';
+      const boasVindas = (contact.gestoraBoasVindas || '').trim();
+
+      const fotoUrl = fullLead && fullLead.id
+        ? `${baseUrl.replace(/\/$/, '')}/api/leads/${fullLead.id}/foto-gestora`
+        : '';
+
+      const plainLines = [
+        `Olá ${nome},`,
+        '',
+        'Obrigada pelo teu registo no Crédito Habitação Portugal.',
+        '',
+        `A tua gestora: ${gestoraNome || '—'}`,
+        gestoraEmail ? `Email da gestora: ${gestoraEmail}` : '',
+        gestoraWhatsappDigits ? `WhatsApp da gestora: ${gestoraWhatsappDigits}` : '',
+        '',
+        boasVindas ? boasVindas : '',
+        '',
+        'Para enviares os documentos e continuares o processo, utiliza este link:',
+        uploadLink,
+      ].filter(Boolean).join('\n');
+
+      const htmlParts = [];
+      htmlParts.push(`<p>Olá ${nome},</p>`);
+      htmlParts.push('<p>Obrigada pelo teu registo no <strong>Crédito Habitação Portugal</strong>.</p>');
+      htmlParts.push('<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">');
+      htmlParts.push('<table role="presentation" cellspacing="0" cellpadding="0" style="width:100%;max-width:520px;">');
+      htmlParts.push('<tr>');
+      if (fotoUrl) {
+        htmlParts.push(
+          `<td style="width:160px;padding-right:16px;vertical-align:top;">
+            <img src="${fotoUrl}" alt="Foto da gestora" style="width:160px;height:160px;object-fit:cover;border-radius:12px;display:block;">
+          </td>`
+        );
+      }
+      htmlParts.push('<td style="vertical-align:top;font-family:system-ui,-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-size:14px;color:#111827;">');
+      htmlParts.push(`<p style="margin:0 0 8px 0;"><strong>${gestoraNome || ''}</strong></p>`);
+      if (gestoraEmail) {
+        htmlParts.push(`<p style="margin:0 0 4px 0;">Email: <a href="mailto:${gestoraEmail}" style="color:#2563eb;text-decoration:none;">${gestoraEmail}</a></p>`);
+      }
+      if (gestoraWhatsappLink) {
+        htmlParts.push(
+          `<p style="margin:0 0 8px 0;">WhatsApp:
+            <a href="${gestoraWhatsappLink}" style="color:#2563eb;text-decoration:none;">
+              ${gestoraWhatsappDigits}
+            </a>
+          </p>`
+        );
+      }
+      if (boasVindas) {
+        htmlParts.push(`<p style="margin:8px 0 0 0;white-space:pre-line;">${boasVindas}</p>`);
+      }
+      htmlParts.push('</td>');
+      htmlParts.push('</tr>');
+      htmlParts.push('</table>');
+
+      htmlParts.push('<hr style="border:none;border-top:1px solid #eee;margin:20px 0 16px;">');
+      htmlParts.push('<p style="margin:0 0 8px 0;">Para começares a organizar e enviar os documentos, clica no botão abaixo:</p>');
+      htmlParts.push(
+        `<p style="margin:12px 0 20px 0;">
+          <a href="${uploadLink}"
+             style="display:inline-block;padding:10px 18px;border-radius:999px;background:#edbfbf;color:#000000;
+                    font-weight:600;font-size:14px;text-decoration:none;">
+            Enviar documentos
+          </a>
+        </p>`
+      );
+      htmlParts.push(
+        `<p style="margin:0;font-size:12px;color:#6b7280;">
+          Se o botão não funcionar, copia e cola este link no teu navegador:<br>
+          <a href="${uploadLink}" style="color:#2563eb;text-decoration:none;">${uploadLink}</a>
+        </p>`
+      );
+
+      try {
+        await resend.emails.send({
+          from: mailFrom.includes('<') ? mailFrom : `Crédito Habitação <${mailFrom}>`,
+          to: [email],
+          subject: 'Crédito Habitação Portugal – dados da tua gestora',
+          text: plainLines,
+          html: htmlParts.join(''),
+        });
+      } catch (err) {
+        logStartup(`sendLeadWebEmail error: ${err.message}`);
+      }
+    } else {
+      logStartup('RESEND_API_KEY ou MAIL_FROM/RESEND_FROM não configurados para /api/leads/web');
+    }
+
+    res.status(201).json({
+      ok: true,
+      lead_id: lead.id,
+      upload_url: uploadLink,
+    });
+  } catch (err) {
+    logStartup(`/api/leads/web error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao criar o lead. Tente novamente.' });
+  }
+});
 
 async function getGestoraContactForLead(lead) {
   if (lead && lead.gestora_id) {
