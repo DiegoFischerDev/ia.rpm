@@ -1001,7 +1001,7 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
   // Nome exibido no email: tentar primeiro o nome enviado no formulário, depois o que está gravado no lead
   const nomeLeadBase = (body.nome || lead.nome || '').trim();
   const nomeLeadDisplay = nomeLeadBase || 'N/A';
-  const nomeComModo = isSpouse ? (nomeLeadDisplay + ' + cônjuge') : nomeLeadDisplay;
+  const nomeComModo = isSpouse ? (nomeLeadDisplay + ' (cônjuge)') : nomeLeadDisplay;
   const semDocsLabels = semDocsLabelsRaw
     ? semDocsLabelsRaw.split(',').map((s) => s.trim()).filter(Boolean)
     : [];
