@@ -1651,7 +1651,15 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
                 setTimeout(function () { window.location.href = '/upload/' + leadId; }, 700);
               });
             }
-            return r.json().then(function (d) { throw new Error(d.message || 'Erro ao enviar'); });
+            // Quando o servidor devolve HTML (503, proxy, etc.), r.json() falha;
+            // neste caso mostramos uma mensagem amigável em vez do erro de JSON.
+            return r.json()
+              .then(function (d) {
+                throw new Error(d.message || 'Envio temporariamente indisponível. Tente novamente mais tarde.');
+              })
+              .catch(function () {
+                throw new Error('Envio temporariamente indisponível. Tente novamente mais tarde.');
+              });
           })
           .catch(function (err) {
             submitBtn.classList.remove('sending');
