@@ -1536,26 +1536,11 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
           cb.dataset.docLabel = item.label;
           cb.checked = !!semDocsSelecionados[item.label];
           cb.addEventListener('change', function () {
-            var email = getVerifiedEmail();
-            if (!email) return;
             var docLabel = this.dataset.docLabel || '';
             if (!docLabel) return;
             var newChecked = this.checked;
-            fetch('/api/leads/' + leadId + '/comentario-sem-docs', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: email, docLabel: docLabel, add: newChecked }),
-            })
-              .then(function (r) {
-                if (!r.ok) return r.json().then(function (d) { throw new Error(d.message || 'Erro'); });
-                semDocsSelecionados[docLabel] = newChecked;
-                saveDados();
-              })
-              .catch(function (err) {
-                document.getElementById('formError').textContent = err.message || 'Erro ao atualizar. Tente novamente.';
-                document.getElementById('formError').style.display = 'block';
-                this.checked = !newChecked;
-              }.bind(this));
+            semDocsSelecionados[docLabel] = newChecked;
+            saveDados();
           });
           labelEl.appendChild(cb);
           labelEl.appendChild(document.createTextNode(' ' + item.label));
