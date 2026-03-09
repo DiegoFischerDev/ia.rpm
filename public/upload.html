@@ -1711,13 +1711,25 @@
                 setTimeout(function () { window.location.href = '/upload/' + leadId; }, 700);
               });
             }
-            // Quando o servidor devolve HTML (503, proxy, etc.), r.json() falha;
-            // neste caso mostramos uma mensagem amigável em vez do erro de JSON.
-            return r.json()
-              .then(function (d) {
-                throw new Error(d.message || 'Envio temporariamente indisponível. Tente novamente mais tarde.');
-              })
+            // Tentar obter a mensagem real do servidor:
+            // 1) Primeiro tentamos JSON ({ message: "..." }).
+            // 2) Se não for JSON (ex.: HTML 503 da Hostinger), tentamos ler como texto.
+            return r
+              .json()
               .catch(function () {
+                // Se falhar JSON, tentamos texto simples (HTML bruto, etc.)
+                return r.text().then(function (t) {
+                  return { __rawText: t };
+                });
+              })
+              .then(function (d) {
+                if (d && typeof d.message === 'string' && d.message.trim()) {
+                  throw new Error(d.message.trim());
+                }
+                if (d && typeof d.__rawText === 'string' && d.__rawText.trim()) {
+                  // Mostramos o texto devolvido (truncado para não quebrar o layout)
+                  throw new Error(d.__rawText.trim().slice(0, 400));
+                }
                 throw new Error('Envio temporariamente indisponível. Tente novamente mais tarde.');
               });
           })
