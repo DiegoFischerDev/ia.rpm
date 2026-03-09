@@ -555,8 +555,8 @@
           <input type="checkbox" id="consent_intermediaria" name="consent_intermediaria" required>
           Autorizo o tratamento dos meus dados pessoais e dos documentos enviados para análise do meu pedido de crédito habitação pela gestora, em conformidade com o Regulamento Geral de Proteção de Dados (RGPD). Compreendo que posso retirar o meu consentimento a qualquer momento.
         </label>
-        <button type="button" class="btn btn-outline" id="btnSemDocs" style="margin-top:0.75rem; display:none; color:var(--error); border-color:var(--error);">Não tenho todos os docs</button>
-        <div id="semDocsPanel" style="display:none; margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
+        <button type="button" class="btn btn-outline" id="btnSemDocs" style="display:none;"></button>
+        <div id="semDocsPanel" style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
           <p style="margin:0 0 0.75rem 0; font-weight:600;">Quais docs você não tem?</p>
           <p style="margin:0 0 1rem 0; font-size:0.875rem; color:var(--text-muted);">Selecione os documentos que ainda não possui. Esta informação será enviada à gestora.</p>
           <div id="semDocsCheckboxes"></div>
@@ -1523,7 +1523,9 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         var container = document.getElementById('semDocsCheckboxes');
         if (!container) return;
         container.innerHTML = '';
-        var list = getRequiredDocLabels();
+        var list = getRequiredDocLabels().filter(function (item) {
+          return !docsState[item.field];
+        });
         list.forEach(function (item) {
           var labelEl = document.createElement('label');
           labelEl.className = 'consent-checkbox';
@@ -1561,17 +1563,8 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         });
       }
 
-      document.getElementById('btnSemDocs').addEventListener('click', function () {
-        var email = getVerifiedEmail();
-        if (!email) return;
-        var panel = document.getElementById('semDocsPanel');
-        var btn = document.getElementById('btnSemDocs');
-        if (panel && btn) {
-          renderSemDocsPanel();
-          panel.style.display = 'block';
-          btn.style.display = 'none';
-        }
-      });
+      // Re-render checkboxes sempre que o formulário for submetido / recarregado
+      renderSemDocsPanel();
 
       document.getElementById('form').addEventListener('submit', function (e) {
         e.preventDefault();
@@ -1579,30 +1572,8 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         errEl.style.display = 'none';
         const req = getRequired();
 
-        // Campos marcados como "não tenho" deixam de ser obrigatórios
+        // Labels dos docs marcados como "não tenho"
         const requiredLabels = getRequiredDocLabels();
-        const ignoredFields = requiredLabels
-          .filter(function (item) { return !!semDocsSelecionados[item.label]; })
-          .map(function (item) { return item.field; });
-
-        const missing = req.filter(function (f) {
-          return !docsState[f] && ignoredFields.indexOf(f) === -1;
-        });
-        if (missing.length) {
-          errEl.textContent = 'É necessário anexar todos os documentos obrigatórios antes de enviar para a gestora. Se não tiver algum documento, indique em "Quais docs você não tem?".';
-          errEl.style.display = 'block';
-          errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-
-          // Abre automaticamente o painel de "Quais docs você não tem?"
-          var panel = document.getElementById('semDocsPanel');
-          var btn = document.getElementById('btnSemDocs');
-          if (panel && btn) {
-            renderSemDocsPanel();
-            panel.style.display = 'block';
-            btn.style.display = 'none';
-          }
-          return;
-        }
         saveDados();
         var submitBtn = document.getElementById('submitBtn');
         var btnText = submitBtn.querySelector('.btn-text');

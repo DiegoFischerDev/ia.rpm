@@ -930,25 +930,15 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
     }
   }
   const semDocsLabelsRaw = (body.sem_docs_labels || '').trim();
-  const semDocsFieldsRaw = (body.sem_docs_fields || '').trim();
-  const ignoredFields = semDocsFieldsRaw
-    ? semDocsFieldsRaw.split(',').map((s) => s.trim()).filter(Boolean)
-    : [];
 
-  const missing = required.filter((f) => !byField[f] && ignoredFields.indexOf(f) === -1);
-  if (missing.length) {
-    const listLabels = missing.map((m) => DOC_LABELS[m] || m).join(', ');
-    return res.status(400).json({
-      message: 'Faltam os seguintes documentos: ' + listLabels + '.',
+  const attachments = required
+    .filter((fieldName) => byField[fieldName])
+    .map((fieldName) => {
+      const file = byField[fieldName];
+      const base = STANDARD_NAMES[fieldName] || fieldName;
+      const ext = getExt(file.originalname);
+      return { filename: base + ext, content: file.buffer };
     });
-  }
-
-  const attachments = required.map((fieldName) => {
-    const file = byField[fieldName];
-    const base = STANDARD_NAMES[fieldName] || fieldName;
-    const ext = getExt(file.originalname);
-    return { filename: base + ext, content: file.buffer };
-  });
 
   let toEmail = process.env.GESTORA_EMAIL || '';
   if (lead.gestora_id) {
@@ -1121,24 +1111,15 @@ app.post('/api/leads/:leadId/send-email-spouse', uploadMemory.any(), async (req,
   }
 
   const semDocsFieldsRaw = (body.sem_docs_fields || '').trim();
-  const ignoredFields = semDocsFieldsRaw
-    ? semDocsFieldsRaw.split(',').map((s) => s.trim()).filter(Boolean)
-    : [];
 
-  const missing = required.filter((f) => !byField[f] && ignoredFields.indexOf(f) === -1);
-  if (missing.length) {
-    const listLabels = missing.map((m) => DOC_LABELS[m] || m).join(', ');
-    return res.status(400).json({
-      message: 'Faltam os seguintes documentos: ' + listLabels + '.',
+  const attachments = required
+    .filter((fieldName) => byField[fieldName])
+    .map((fieldName) => {
+      const file = byField[fieldName];
+      const base = STANDARD_NAMES[fieldName] || fieldName;
+      const ext = getExt(file.originalname);
+      return { filename: base + ext, content: file.buffer };
     });
-  }
-
-  const attachments = required.map((fieldName) => {
-    const file = byField[fieldName];
-    const base = STANDARD_NAMES[fieldName] || fieldName;
-    const ext = getExt(file.originalname);
-    return { filename: base + ext, content: file.buffer };
-  });
 
   let toEmail = process.env.GESTORA_EMAIL || '';
   if (lead.gestora_id) {
