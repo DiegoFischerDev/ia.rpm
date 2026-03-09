@@ -994,14 +994,21 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
   const vinculoLab = (body.vinculo_laboral || '').trim();
   const dispFiador = (body.disponibilidade_fiador || '').trim();
   const mensagem = (body.mensagem_gestora || '').trim();
-  const uploadMode = (body.upload_mode || '').trim() || 'spouse';
+  const uploadMode = (body.upload_mode || '').trim() || 'lead';
+  const isSpouse = uploadMode === 'spouse';
+  const isExtra = uploadMode === 'extra';
+
+  // Nome exibido no email: tentar primeiro o nome enviado no formulário, depois o que está gravado no lead
+  const nomeLeadBase = (body.nome || lead.nome || '').trim();
+  const nomeLeadDisplay = nomeLeadBase || 'N/A';
+  const nomeComModo = isSpouse ? (nomeLeadDisplay + ' + cônjuge') : nomeLeadDisplay;
   const semDocsLabels = semDocsLabelsRaw
     ? semDocsLabelsRaw.split(',').map((s) => s.trim()).filter(Boolean)
     : [];
 
   const textLines = [
     `ID: ${lead.id || leadId}`,
-    `Nome: ${lead.nome || 'N/A'}`,
+    `Nome: ${nomeComModo}`,
     `Email: ${emailLead}`,
     `Estado civil: ${estadoCivil || '—'}`,
     `N.º de dependentes: ${numDependentes || '—'}`,
@@ -1019,8 +1026,8 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
 
   const textBody = textLines.filter(Boolean).join('\n');
 
-  const nomeLead = (body.nome || lead.nome || 'O lead').trim() || 'O lead';
-  const textWithNote = textBody + '\n\n---\n' + (mensagem ? mensagem : `(${nomeLead} não deixou mensagem)`);
+  const nomeLeadParaMensagem = nomeLeadBase || 'O lead';
+  const textWithNote = textBody + '\n\n---\n' + (mensagem ? mensagem : `(${nomeLeadParaMensagem} não deixou mensagem)`);
 
   // Guardar mensagem do lead em comentario (sem sobrescrever notas anteriores)
   if (mensagem) {
@@ -1039,7 +1046,7 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
       to: [toEmail],
       cc: [emailLead],
       replyTo: emailLead,
-      subject: `[${lead.nome || lead.email || leadId}] Documentos`,
+      subject: `[${nomeComModo || lead.email || leadId}] Documentos`,
       text: textWithNote,
       attachments: attachments.map((a) => ({ filename: a.filename, content: a.content })),
     });
