@@ -486,6 +486,7 @@
         <p class="doc-hint" id="gestoraNomeWrap" style="display:none;">A sua gestora de crédito: <strong id="gestoraNomeRef"></strong></p>
         <p class="doc-hint" id="gestoraEmailWrap" style="display:none;">Email de contacto da gestora: <a href="#" id="gestoraEmailRef" class="doc-link-contact"></a></p>
         <p class="doc-hint" id="gestoraWhatsappWrap" style="display:none;">Contactar a gestora por <a href="#" id="gestoraWhatsappRef" class="doc-link-contact" target="_blank" rel="noopener">WhatsApp</a></p>
+        <button type="button" class="btn btn-outline" id="btnEnviarConjuge" style="margin-top:1rem; width:100%;">Enviar documentos do cônjuge</button>
       </div>
     </div>
 
@@ -817,6 +818,8 @@
       const VINCULO_EFETIVO = 'Contrato Efetivo';
       const VINCULO_TEMPORARIO = 'Contrato temporário';
       const VINCULO_RECIBOS_VERDES = 'Recibos verdes';
+
+      let isSpouseUpload = false;
 
       function getDocsBase(vinculo) {
         const cartao = { field: 'cartao_residencia_ou_passaporte', label: '1. Cartão de residência ou passaporte', description: 'Documento de identificação válido: cartão de residência (titular de autorização de residência) ou passaporte. Deve estar dentro do prazo de validade.' };
@@ -1634,7 +1637,10 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
             req.forEach(function (fieldName, i) {
               if (files[i]) fd.append(fieldName, files[i]);
             });
-            return fetch('/api/leads/' + leadId + '/send-email', { method: 'POST', body: fd });
+            var endpoint = isSpouseUpload
+              ? '/api/leads/' + leadId + '/send-email-spouse'
+              : '/api/leads/' + leadId + '/send-email';
+            return fetch(endpoint, { method: 'POST', body: fd });
           })
           .then(function (r) {
             if (r.ok) {
@@ -1657,6 +1663,28 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
       });
 
       window.addEventListener('beforeunload', function () { saveDados(); });
+
+      // Permitir um segundo envio de documentos (ex.: cônjuge)
+      (function () {
+        var btnConjuge = document.getElementById('btnEnviarConjuge');
+        if (!btnConjuge) return;
+        btnConjuge.addEventListener('click', function () {
+          var email = getVerifiedEmail();
+          if (!email) return;
+          isSpouseUpload = true;
+          idbClearLead(leadId).then(function () {
+            docsState = {};
+            semDocsSelecionados = {};
+            showStep('mainForm');
+            setSemDocsUI(false);
+            loadDocuments();
+          }).catch(function () {
+            showStep('mainForm');
+            setSemDocsUI(false);
+            loadDocuments();
+          });
+        });
+      })();
     })();
   </script>
 </body>

@@ -993,6 +993,7 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
   const mensagem = (body.mensagem_gestora || '').trim();
 
   const textBody = [
+    `ID: ${lead.id || leadId}`,
     `Nome: ${lead.nome || 'N/A'}`,
     `Email: ${emailLead}`,
     `Estado civil: ${estadoCivil || '—'}`,
@@ -1041,6 +1042,168 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
     await deleteLeadStorage(leadId);
   } catch (err) {
     logStartup(`deleteLeadStorage error: ${err.message}`);
+  }
+
+  res.status(200).json({ ok: true });
+});
+
+// Segundo envio de documentos (ex.: cônjuge) — permite novo envio mesmo após docs_enviados
+app.post('/api/leads/:leadId/send-email-spouse', uploadMemory.any(), async (req, res) => {
+  const leadId = req.params.leadId;
+  const body = req.body || {};
+  const files = req.files || [];
+
+  if (!/^\d+$/.test(leadId)) {
+    return res.status(400).json({ message: 'ID inválido.' });
+  }
+
+  // Reutiliza a mesma validação de acesso à página de upload (permite estados docs_enviados)
+  const v = await validateLeadUploadPage(leadId);
+  if (v.error) return res.status(v.error).json({ message: v.message });
+  const lead = v.lead;
+
+  const emailLead = (body.email || '').trim() || (lead.email || '').trim();
+  if (!emailLead) {
+    return res.status(400).json({ message: 'Indique o seu email.' });
+  }
+  if (normalizeEmail(emailLead) !== normalizeEmail(lead.email)) {
+    return res.status(403).json({ message: 'Email incorreto.' });
+  }
+
+  try {
+    await updateLeadDados(leadId, { nome: body.nome });
+  } catch (_) {}
+
+  const vinculo = (body.vinculo_laboral || '').trim();
+  const requiredBase = getRequiredDocFieldsByVinculo(vinculo);
+  const financiamento100 = body.financiamento_100 === '1' || body.financiamento_100 === 'true';
+  let required = financiamento100
+    ? [
+        ...requiredBase,
+        'declaracao_nao_divida_financas',
+        'declaracao_nao_divida_seguranca_social',
+        'declaracao_predial',
+      ]
+    : requiredBase;
+
+  const allDocFields = Object.keys(STANDARD_NAMES);
+  const byField = {};
+  for (const f of files) {
+    if (f.fieldname && allDocFields.includes(f.fieldname) && f.buffer && f.buffer.length) {
+      byField[f.fieldname] = f;
+    }
+  }
+  const missing = required.filter((f) => !byField[f]);
+  if (missing.length) {
+    const listLabels = missing.map((m) => DOC_LABELS[m] || m).join(', ');
+    return res.status(400).json({
+      message: 'Faltam os seguintes documentos: ' + listLabels + '.',
+    });
+  }
+
+  const attachments = required.map((fieldName) => {
+    const file = byField[fieldName];
+    const base = STANDARD_NAMES[fieldName] || fieldName;
+    const ext = getExt(file.originalname);
+    return { filename: base + ext, content: file.buffer };
+  });
+
+  let toEmail = process.env.GESTORA_EMAIL || '';
+  if (lead.gestora_id) {
+    const g = await getGestoraById(lead.gestora_id);
+    if (g) toEmail = (g.email_para_leads && g.email_para_leads.trim()) ? g.email_para_leads.trim() : (g.email || '');
+  } else {
+    const legacy = lead.email ? await getGestoraFromLegacyMap(lead.email) : null;
+    if (legacy && legacy.id) {
+      await updateLeadGestora(leadId, legacy.id);
+      const g = await getGestoraById(legacy.id);
+      if (g) toEmail = (g.email_para_leads && g.email_para_leads.trim()) ? g.email_para_leads.trim() : (g.email || '');
+    } else {
+      const next = await getNextGestoraForLead();
+      if (next) {
+        await updateLeadGestora(leadId, next.id);
+        toEmail = (next.email_para_leads && next.email_para_leads.trim()) ? next.email_para_leads.trim() : (next.email || '');
+      }
+    }
+  }
+  if (!toEmail) {
+    logStartup('Nenhuma gestora ativa nem GESTORA_EMAIL configurado (spouse)');
+    return res.status(503).json({
+      message: 'Envio de email não está configurado. Tente mais tarde.',
+    });
+  }
+
+  const resend = getResendClient();
+  if (!resend) {
+    logStartup('RESEND_API_KEY não configurado (spouse)');
+    return res.status(503).json({
+      message: 'Envio de email não está configurado. Tente mais tarde.',
+    });
+  }
+
+  const mailFrom = process.env.MAIL_FROM || process.env.RESEND_FROM;
+  if (!mailFrom || !mailFrom.includes('@')) {
+    logStartup('MAIL_FROM / RESEND_FROM não configurado (spouse)');
+    return res.status(503).json({
+      message: 'Envio de email não está configurado. Tente mais tarde.',
+    });
+  }
+
+  const estadoCivil = (body.estado_civil || '').trim();
+  const numDependentes = (body.num_dependentes ?? '').toString().trim();
+  const anosEmprego = (body.anos_emprego_atual ?? '').toString().trim();
+  const vinculoLab = (body.vinculo_laboral || '').trim();
+  const dispFiador = (body.disponibilidade_fiador || '').trim();
+  const mensagem = (body.mensagem_gestora || '').trim();
+
+  const textBody = [
+    `ID: ${lead.id || leadId}`,
+    `Nome: ${lead.nome || 'N/A'}`,
+    `Email: ${emailLead}`,
+    `Estado civil: ${estadoCivil || '—'}`,
+    `N.º de dependentes: ${numDependentes || '—'}`,
+    `A quantos anos trabalha no emprego atual: ${anosEmprego || '—'}`,
+    `Vínculo laboral: ${vinculoLab || '—'}`,
+    dispFiador ? `Disponibilidade para apresentar fiador: ${dispFiador}` : '',
+    financiamento100 ? 'Pedido no âmbito do financiamento a 100%.' : '',
+    '---',
+    'Documentos enviados referem-se ao cônjuge.',
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  const nomeLead = (body.nome || lead.nome || 'O lead').trim() || 'O lead';
+  const textWithNote = textBody + '\n\n---\n' + (mensagem ? mensagem : `(${nomeLead} não deixou mensagem)`);
+
+  try {
+    const { error } = await resend.emails.send({
+      from: mailFrom.includes('<') ? mailFrom : `Crédito Habitação <${mailFrom}>`,
+      to: [toEmail],
+      cc: [emailLead],
+      replyTo: emailLead,
+      subject: `[${lead.nome || lead.email || leadId}] Documentos (cônjuge)`,
+      text: textWithNote,
+      attachments: attachments.map((a) => ({ filename: a.filename, content: a.content })),
+    });
+    if (error) {
+      logStartup(`Resend spouse error: ${JSON.stringify(error)}`);
+      return res.status(500).json({
+        message: error.message || 'Erro ao enviar email. Tente novamente.',
+      });
+    }
+  } catch (err) {
+    logStartup(`Resend spouse send error: ${err.message}`);
+    return res.status(500).json({
+      message: err.message || 'Erro ao enviar email. Tente novamente.',
+    });
+  }
+
+  // Não alteramos docs_enviados / estado_docs aqui; já foram marcados no primeiro envio.
+
+  try {
+    await deleteLeadStorage(leadId);
+  } catch (err) {
+    logStartup(`deleteLeadStorage spouse error: ${err.message}`);
   }
 
   res.status(200).json({ ok: true });

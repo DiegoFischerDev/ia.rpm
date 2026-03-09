@@ -218,8 +218,8 @@
           <input type="email" id="email" name="email" autocomplete="email" placeholder="email@exemplo.pt" required>
           <p class="helper-text">Vamos usar este email para te enviar os dados da tua gestora e o link seguro para envio de documentos.</p>
 
-          <label for="telemovel">Telemóvel (com indicativo, ex.: +351912345678 ou +5511999999999) *</label>
-          <input type="tel" id="telemovel" name="telemovel" inputmode="tel" autocomplete="tel" placeholder="+351912345678" required>
+          <label for="telemovel">Telemóvel (com indicativo, ex.: 351912345678 ou 5511999999999) *</label>
+          <input type="tel" id="telemovel" name="telemovel" inputmode="tel" autocomplete="tel" placeholder="351912345678" required>
 
           <div class="checkbox-wrap">
             <label>
@@ -284,7 +284,7 @@
           return;
         }
         if (!telemovel) {
-          showError('Indica o teu telemóvel com indicativo (ex.: +351912345678 ou +5511999999999).');
+          showError('Indica o teu telemóvel com indicativo (ex.: 351912345678 ou 5511999999999).');
           document.getElementById('telemovel').focus();
           return;
         }
