@@ -54,7 +54,7 @@
       text-align: left;
     }
     .page-header img {
-      max-height: 52px;
+      max-height: 120px;
       height: auto;
       max-width: 100%;
       object-fit: contain;
@@ -218,8 +218,8 @@
           <input type="email" id="email" name="email" autocomplete="email" placeholder="email@exemplo.pt" required>
           <p class="helper-text">Vamos usar este email para te enviar os dados da tua gestora e o link seguro para envio de documentos.</p>
 
-          <label for="telemovel">Telemóvel (com indicativo, ex.: 3519...) *</label>
-          <input type="tel" id="telemovel" name="telemovel" inputmode="tel" autocomplete="tel" placeholder="3519..." required>
+          <label for="telemovel">Telemóvel (com indicativo, ex.: +351912345678 ou +5511999999999) *</label>
+          <input type="tel" id="telemovel" name="telemovel" inputmode="tel" autocomplete="tel" placeholder="+351912345678" required>
 
           <div class="checkbox-wrap">
             <label>
@@ -284,7 +284,7 @@
           return;
         }
         if (!telemovel) {
-          showError('Indica o teu telemóvel com indicativo (ex.: 3519...).');
+          showError('Indica o teu telemóvel com indicativo (ex.: +351912345678 ou +5511999999999).');
           document.getElementById('telemovel').focus();
           return;
         }
@@ -320,7 +320,7 @@
             btn.classList.remove('sending');
             btn.classList.add('sent');
             if (btnText) btnText.textContent = 'Registo concluído ✓';
-            showSuccess('Perfeito! A tua gestora vai analisar o teu caso e, em breve, vais receber um email com os dados dela e o link para enviares os documentos.');
+            showSuccess('Perfeito! Vais receber um email com os dados da gestora e o link para enviares os documentos.');
           })
           .catch(function (err) {
             btn.classList.remove('sending');

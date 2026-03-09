@@ -19,6 +19,7 @@ const sharp = require('sharp');
 const { Resend } = require('resend');
 const {
   getLeadById,
+  getLeadByEmail,
   updateLeadDocsEnviados,
   updateLeadDados,
   setEmailVerification,
@@ -363,13 +364,17 @@ app.post('/api/leads/web', async (req, res) => {
   }
 
   try {
-    const lead = await createLeadWeb({
-      nome,
-      email,
-      whatsapp_number: telemovel,
-    });
-    if (!lead || !lead.id) {
-      return res.status(500).json({ message: 'Não foi possível criar o lead. Tente novamente mais tarde.' });
+    // Se já existir um lead com o mesmo email, reutilizamos esse registo
+    let lead = await getLeadByEmail(email);
+    if (!lead) {
+      lead = await createLeadWeb({
+        nome,
+        email,
+        whatsapp_number: telemovel,
+      });
+      if (!lead || !lead.id) {
+        return res.status(500).json({ message: 'Não foi possível criar o lead. Tente novamente mais tarde.' });
+      }
     }
 
     const fullLead = await getLeadById(lead.id).catch(() => lead);
@@ -457,6 +462,11 @@ app.post('/api/leads/web', async (req, res) => {
         `<p style="margin:0;font-size:12px;color:#6b7280;">
           Se o botão não funcionar, copia e cola este link no teu navegador:<br>
           <a href="${uploadLink}" style="color:#2563eb;text-decoration:none;">${uploadLink}</a>
+        </p>`
+      );
+      htmlParts.push(
+        `<p style="margin:8px 0 0 0;font-size:12px;color:#6b7280;">
+          Se preferir, também podes enviar os documentos diretamente para o email da gestora e tirar dúvidas com ela diretamente pelo WhatsApp.
         </p>`
       );
 

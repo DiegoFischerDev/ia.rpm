@@ -27,6 +27,17 @@ async function getLeadById(id) {
   return rows[0] || null;
 }
 
+async function getLeadByEmail(email) {
+  if (!email || typeof email !== 'string') return null;
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return null;
+  const rows = await query(
+    'SELECT * FROM ch_leads WHERE LOWER(TRIM(email)) = ? ORDER BY updated_at DESC LIMIT 1',
+    [normalized]
+  );
+  return rows[0] || null;
+}
+
 async function updateLeadDocsEnviados(id) {
   await query(
     `UPDATE ch_leads SET estado_docs = ?, docs_enviados = 1, docs_enviados_em = NOW(), updated_at = NOW() WHERE id = ?`,
@@ -300,7 +311,7 @@ async function createLeadAdmin(dados) {
 /** Lead vindo diretamente da página web (sem Evo, sem dashboard).
  *  Guarda nome, email e telemóvel e já atribui gestora usando a mesma lógica de distribuição
  *  (entre as gestoras com ativo = 1, escolhe a que tem menos leads).
- *  origem_instancia = 'web', estado_conversa = 'aguardando_escolha', estado_docs = 'aguardando_docs'.
+ *  origem_instancia = 'web', estado_conversa = 'com_gestora', estado_docs = 'aguardando_docs'.
  */
 async function createLeadWeb(dados) {
   const whatsapp_number = (dados.whatsapp_number || '').trim().replace(/\D/g, '');
@@ -318,7 +329,7 @@ async function createLeadWeb(dados) {
 
   await query(
     `INSERT INTO ch_leads (whatsapp_number, nome, email, origem_instancia, estado_conversa, estado_docs, gestora_id, gestora_nome, created_at, updated_at)
-     VALUES (?, ?, ?, 'web', 'aguardando_escolha', 'aguardando_docs', ?, ?, NOW(), NOW())`,
+     VALUES (?, ?, ?, 'web', 'com_gestora', 'aguardando_docs', ?, ?, NOW(), NOW())`,
     [whatsapp_number, nome, email, gestora_id, gestora_nome]
   );
 
@@ -610,6 +621,7 @@ module.exports = {
   getPool,
   query,
   getLeadById,
+  getLeadByEmail,
   updateLeadDocsEnviados,
   updateLeadDados,
   setEmailVerification,
