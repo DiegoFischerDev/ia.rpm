@@ -987,6 +987,7 @@ app.post('/api/leads/:leadId/send-email', uploadMemory.any(), async (req, res) =
   const vinculoLab = (body.vinculo_laboral || '').trim();
   const dispFiador = (body.disponibilidade_fiador || '').trim();
   const mensagem = (body.mensagem_gestora || '').trim();
+  const uploadMode = (body.upload_mode || '').trim() || 'spouse';
   const semDocsLabels = semDocsLabelsRaw
     ? semDocsLabelsRaw.split(',').map((s) => s.trim()).filter(Boolean)
     : [];
@@ -1184,7 +1185,9 @@ app.post('/api/leads/:leadId/send-email-spouse', uploadMemory.any(), async (req,
     dispFiador ? `Disponibilidade para apresentar fiador: ${dispFiador}` : '',
     financiamento100 ? 'Pedido no âmbito do financiamento a 100%.' : '',
     '---',
-    'Documentos enviados referem-se ao cônjuge.',
+    uploadMode === 'extra'
+      ? 'Documentos adicionais do próprio lead.'
+      : 'Documentos enviados referem-se ao cônjuge.',
   ];
 
   if (semDocsLabels.length) {
@@ -1201,9 +1204,13 @@ app.post('/api/leads/:leadId/send-email-spouse', uploadMemory.any(), async (req,
   if (mensagem) {
     try {
       const existingComentario = lead.comentario ? String(lead.comentario).trim() : '';
+      const label =
+        uploadMode === 'extra'
+          ? 'Mensagem do lead (documentos adicionais):\n'
+          : 'Mensagem do lead (cônjuge):\n';
       const novoComentario = existingComentario
-        ? existingComentario + '\n\nMensagem do lead (cônjuge):\n' + mensagem
-        : 'Mensagem do lead (cônjuge):\n' + mensagem;
+        ? existingComentario + '\n\n' + label + mensagem
+        : label + mensagem;
       await updateLeadAdmin(leadId, { comentario: novoComentario });
     } catch (_) {}
   }
@@ -1214,7 +1221,7 @@ app.post('/api/leads/:leadId/send-email-spouse', uploadMemory.any(), async (req,
       to: [toEmail],
       cc: [emailLead],
       replyTo: emailLead,
-      subject: `[${lead.nome || lead.email || leadId}] Documentos (cônjuge)`,
+      subject: `[${lead.nome || lead.email || leadId}] Documentos (${uploadMode === 'extra' ? 'adicionais' : 'cônjuge'})`,
       text: textWithNote,
       attachments: attachments.map((a) => ({ filename: a.filename, content: a.content })),
     });

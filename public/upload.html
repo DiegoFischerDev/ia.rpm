@@ -262,6 +262,33 @@
     }
     .footnote a { color: var(--accent); text-decoration: none; }
     .footnote a:hover { text-decoration: underline; }
+    .help-whatsapp {
+      position: fixed;
+      right: 1rem;
+      bottom: 1rem;
+      z-index: 999;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.5rem 0.9rem;
+      border-radius: 999px;
+      background: #25d366;
+      color: #000;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+    }
+    .help-whatsapp:hover {
+      background: #1ebe5d;
+      text-decoration: none;
+    }
+    .help-whatsapp svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+      flex-shrink: 0;
+    }
     .conditional { display: none; }
     .conditional.visible { display: block; }
     .card-title-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1rem; margin-bottom: 1.25rem; }
@@ -486,6 +513,7 @@
         <p class="doc-hint" id="gestoraNomeWrap" style="display:none;">A sua gestora de crédito: <strong id="gestoraNomeRef"></strong></p>
         <p class="doc-hint" id="gestoraEmailWrap" style="display:none;">Email de contacto da gestora: <a href="#" id="gestoraEmailRef" class="doc-link-contact"></a></p>
         <p class="doc-hint" id="gestoraWhatsappWrap" style="display:none;">Contactar a gestora por <a href="#" id="gestoraWhatsappRef" class="doc-link-contact" target="_blank" rel="noopener">WhatsApp</a></p>
+        <button type="button" class="btn btn-primary" id="btnEnviarMaisDocs" style="margin-bottom:0.5rem;">Enviar mais documentos</button>
         <button type="button" class="btn btn-primary" id="btnEnviarConjuge">Enviar documentos do cônjuge</button>
       </div>
     </div>
@@ -571,6 +599,18 @@
     </form>
     </div>
   </div>
+
+  <a
+    href="https://wa.me/351927398547?text=Ola%2C%20preciso%20de%20ajuda%20em%20rela%C3%A7%C3%A3o%20ao%20contato%20da%20gestora%20de%20cr%C3%A9dito"
+    class="help-whatsapp"
+    target="_blank"
+    rel="noopener"
+  >
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <path d="M16 3C9.383 3 4 8.383 4 15c0 2.106.566 4.047 1.553 5.735L4 29l8.46-1.52A11.86 11.86 0 0 0 16 27c6.617 0 12-5.383 12-12S22.617 3 16 3zm0 2c5.523 0 10 4.477 10 10 0 5.524-4.477 10-10 10-1.658 0-3.22-.4-4.596-1.11l-.33-.17-4.99.897.916-4.87-.19-.316A9.93 9.93 0 0 1 6 15c0-5.523 4.477-10 10-10zm-4.07 5.02a.78.78 0 0 0-.567.28c-.297.34-.783.96-.842 1.6-.147 1.61.84 3.65 2.43 5.24 1.59 1.59 3.63 2.577 5.24 2.43.64-.059 1.26-.545 1.6-.842a.78.78 0 0 0 .028-1.12l-1.43-1.43a.8.8 0 0 0-.89-.17l-1.28.51a.4.4 0 0 1-.39-.05c-.41-.29-1.51-.98-2.37-1.84-.86-.86-1.55-1.96-1.84-2.37a.4.4 0 0 1-.05-.39l.51-1.28a.8.8 0 0 0-.17-.89l-1.43-1.43a.78.78 0 0 0-.55-.23z" />
+    </svg>
+    <span>Precisa de ajuda? Fale com a Rafa no WhatsApp</span>
+  </a>
 
   <script>
     (function () {
@@ -816,7 +856,8 @@
       const VINCULO_TEMPORARIO = 'Contrato temporário';
       const VINCULO_RECIBOS_VERDES = 'Recibos verdes';
 
-      let isSpouseUpload = false;
+      // lead = envio principal; spouse = documentos do cônjuge; extra = documentos adicionais do próprio lead
+      let uploadMode = 'lead';
 
       function getDocsBase(vinculo) {
         const cartao = { field: 'cartao_residencia_ou_passaporte', label: '1. Cartão de residência ou passaporte', description: 'Documento de identificação válido: cartão de residência (titular de autorização de residência) ou passaporte. Deve estar dentro do prazo de validade.' };
@@ -1588,14 +1629,15 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
           fd.append('sem_docs_fields', semDocsFields.join(','));
         }
         fd.append('financiamento_100', document.getElementById('financiamento_100').checked ? '1' : '0');
+        fd.append('upload_mode', uploadMode);
         Promise.all(req.map(function (fieldName) { return idbGet(leadId, fieldName); }))
           .then(function (files) {
             req.forEach(function (fieldName, i) {
               if (files[i]) fd.append(fieldName, files[i]);
             });
-            var endpoint = isSpouseUpload
-              ? '/api/leads/' + leadId + '/send-email-spouse'
-              : '/api/leads/' + leadId + '/send-email';
+            var endpoint = uploadMode === 'lead'
+              ? '/api/leads/' + leadId + '/send-email'
+              : '/api/leads/' + leadId + '/send-email-spouse';
             return fetch(endpoint, { method: 'POST', body: fd });
           })
           .then(function (r) {
@@ -1631,23 +1673,43 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
       // Permitir um segundo envio de documentos (ex.: cônjuge)
       (function () {
         var btnConjuge = document.getElementById('btnEnviarConjuge');
-        if (!btnConjuge) return;
-        btnConjuge.addEventListener('click', function () {
-          var email = getVerifiedEmail();
-          if (!email) return;
-          isSpouseUpload = true;
-          idbClearLead(leadId).then(function () {
-            docsState = {};
-            semDocsSelecionados = {};
-            showStep('mainForm');
-            setSemDocsUI(false);
-            loadDocuments();
-          }).catch(function () {
-            showStep('mainForm');
-            setSemDocsUI(false);
-            loadDocuments();
+        var btnExtra = document.getElementById('btnEnviarMaisDocs');
+        if (btnConjuge) {
+          btnConjuge.addEventListener('click', function () {
+            var email = getVerifiedEmail();
+            if (!email) return;
+            uploadMode = 'spouse';
+            idbClearLead(leadId).then(function () {
+              docsState = {};
+              semDocsSelecionados = {};
+              showStep('mainForm');
+              setSemDocsUI(false);
+              loadDocuments();
+            }).catch(function () {
+              showStep('mainForm');
+              setSemDocsUI(false);
+              loadDocuments();
+            });
           });
-        });
+        }
+        if (btnExtra) {
+          btnExtra.addEventListener('click', function () {
+            var email = getVerifiedEmail();
+            if (!email) return;
+            uploadMode = 'extra';
+            idbClearLead(leadId).then(function () {
+              docsState = {};
+              semDocsSelecionados = {};
+              showStep('mainForm');
+              setSemDocsUI(false);
+              loadDocuments();
+            }).catch(function () {
+              showStep('mainForm');
+              setSemDocsUI(false);
+              loadDocuments();
+            });
+          });
+        }
       })();
     })();
   </script>
