@@ -1634,11 +1634,11 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
           return;
         }
         saveDados();
-        const btn = document.getElementById('submitBtn');
-        var btnText = btn.querySelector('.btn-text');
-        btn.disabled = true;
-        btn.classList.add('sending');
-        btn.classList.remove('sent');
+        var submitBtn = document.getElementById('submitBtn');
+        var btnText = submitBtn.querySelector('.btn-text');
+        submitBtn.disabled = true;
+        submitBtn.classList.add('sending');
+        submitBtn.classList.remove('sent');
         if (btnText) btnText.textContent = 'A enviar...';
         var fd = new FormData();
         fd.append('nome', document.getElementById('nome').value.trim());
@@ -1670,8 +1670,8 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
           })
           .then(function (r) {
             if (r.ok) {
-              btn.classList.remove('sending');
-              btn.classList.add('sent');
+              submitBtn.classList.remove('sending');
+              submitBtn.classList.add('sent');
               if (btnText) btnText.textContent = 'Enviado ✓';
               return idbClearLead(leadId).then(function () {
                 setTimeout(function () { window.location.href = '/upload/' + leadId; }, 700);
@@ -1680,11 +1680,11 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
             return r.json().then(function (d) { throw new Error(d.message || 'Erro ao enviar'); });
           })
           .catch(function (err) {
-            btn.classList.remove('sending');
+            submitBtn.classList.remove('sending');
             errEl.textContent = err.message || 'Erro ao enviar. Tente novamente.';
             errEl.style.display = 'block';
             if (btnText) btnText.textContent = 'Enviar para a gestora';
-            btn.disabled = false;
+            submitBtn.disabled = false;
           });
       });
 
