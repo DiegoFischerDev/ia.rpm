@@ -484,7 +484,7 @@
 
   <div class="container">
     <header class="page-header">
-      <p style="margin:0 0 1rem 0; text-align:center;"><img src="logo_bg_escura.png" alt="" style="max-height:52px; height:auto; max-width:100%; object-fit:contain;"></p>
+      <p style="margin:0 0 1rem 0; text-align:center;"><img src="logo_bg_escura.png" alt="" style="max-height:120px; height:auto; max-width:100%; object-fit:contain;"></p>
       <h1>Envio de documentos</h1>
       <p id="pageIntro">🏡✨ Estás a um passo de iniciar a tua jornada para sair do arrendamento e conquistar a casa própria! 🔑<br><br>
       ✅ Esta plataforma foi criada para te ajudar a organizar, de forma simples e prática, todos os documentos necessários. Assim que tiveres tudo pronto, podes submeter o formulário e enviar os teus documentos por e-mail diretamente para um dos nossos parceiros habilitados em gestão de crédito.<br><br>
@@ -617,7 +617,6 @@
           <input type="checkbox" id="consent_intermediaria" name="consent_intermediaria" required>
           Autorizo o tratamento dos meus dados pessoais e dos documentos enviados para análise do meu pedido de crédito habitação pela gestora, em conformidade com o Regulamento Geral de Proteção de Dados (RGPD). Compreendo que posso retirar o meu consentimento a qualquer momento.
         </label>
-        <button type="button" class="btn btn-outline" id="btnSemDocs" style="display:none;"></button>
         <div id="semDocsPanel" style="margin-top:1rem; padding-top:1rem; border-top:1px solid var(--border);">
           <p style="margin:0 0 0.75rem 0; font-weight:600;">Quais docs você não tem?</p>
           <p style="margin:0 0 1rem 0; font-size:0.875rem; color:var(--text-muted);">Selecione os documentos que ainda não possui. Esta informação será enviada à gestora.</p>
@@ -674,9 +673,7 @@
       function setVerifiedEmail(email) { sessionStorage.setItem(STORAGE_KEY, email); }
       function setSemDocsUI(showDisclaimer) {
         var disc = document.getElementById('semDocsDisclaimer');
-        var btn = document.getElementById('btnSemDocs');
         if (disc) disc.style.display = showDisclaimer ? 'block' : 'none';
-        if (btn) btn.style.display = showDisclaimer ? 'none' : 'block';
       }
 
       function idbOpen() {
@@ -978,9 +975,19 @@
         const out = [];
         base.forEach(function (d) {
           if (d.field) out.push({ field: d.field, label: d.label });
+          // Para blocos de recibos, mostrar apenas um item agregado "2. Recibos"
           if (d.fields && d.fields.length) {
-            var labels = ['Recibo 1', 'Recibo 2', 'Recibo 3'];
-            d.fields.forEach(function (f, i) { out.push({ field: f, label: labels[i] || f }); });
+            var reciboFields = d.fields.filter(function (f) {
+              return f === 'recibo_vencimento_1' || f === 'recibo_vencimento_2' || f === 'recibo_vencimento_3';
+            });
+            if (reciboFields.length) {
+              out.push({
+                field: reciboFields.join(','), // campo agregado, não usado diretamente no docsState
+                label: '2. Recibos'
+              });
+            } else {
+              d.fields.forEach(function (f) { out.push({ field: f, label: f }); });
+            }
           }
         });
         if (hasRgpdTemplate) out.push({ field: DOC_RGPD.field, label: DOC_RGPD.label });
@@ -1215,7 +1222,7 @@
               var zone = blockEl.querySelector('.doc-upload-zone');
               removeBlockDescriptiveContent(blockEl);
               var vinculoVal = document.getElementById('vinculo_laboral') ? document.getElementById('vinculo_laboral').value : '';
-var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldName; }) || DOCS_100.find(function (d) { return d.field === fieldName; }) || (DOC_RGPD.field === fieldName ? DOC_RGPD : null);
+              var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldName; }) || DOCS_100.find(function (d) { return d.field === fieldName; }) || (DOC_RGPD.field === fieldName ? DOC_RGPD : null);
               if (item && blockEl.querySelector('.doc-upload-zone')) {
                 var wrap = document.createElement('div');
                 wrap.className = 'doc-hint-wrap';
@@ -1230,6 +1237,8 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
               zone.innerHTML = '<input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + escapeHtml(fieldName) + '">';
               zone.querySelector('input[type="file"]').addEventListener('change', function () { uploadOne(leadId, fieldName, zone.querySelector('input[type="file"]'), blockEl); });
               updateProgress();
+              // Recalcula a lista de "Quais docs você não tem?" para voltar a mostrar este documento
+              renderSemDocsPanel();
             }).catch(function () {});
           });
         }
@@ -1255,6 +1264,8 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
             zone.innerHTML = uploadedZoneHtml(fieldName);
             attachUploadedZoneHandlers(zone, leadId, fieldName, blockEl);
             updateProgress();
+            // Atualiza a lista "Quais docs você não tem?" removendo este documento da lista
+            renderSemDocsPanel();
           })
           .catch(function () {
             blockEl.querySelector('.doc-upload-zone').innerHTML = '<span class="error-msg">Erro ao guardar. Tente novamente.</span><input type="file" accept=".pdf,.jpg,.jpeg,.png" data-field="' + fieldName + '">';
@@ -1287,8 +1298,11 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         }
 
         document.getElementById('financiamento_100').addEventListener('change', () => {
-          document.getElementById('docs_100').classList.toggle('visible', document.getElementById('financiamento_100').checked);
+          const is100 = document.getElementById('financiamento_100').checked;
+          document.getElementById('docs_100').classList.toggle('visible', is100);
           updateProgress();
+          // Sempre que o financiamento a 100% é (des)marcado, recalcular a lista de "Quais docs você não tem?"
+          renderSemDocsPanel();
         });
         document.getElementById('docs_100').classList.toggle('visible', document.getElementById('financiamento_100').checked);
         var vinculoEl = document.getElementById('vinculo_laboral');
@@ -1299,6 +1313,8 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
             var fiadorWrap = document.getElementById('fiadorWrap');
             if (fiadorWrap) fiadorWrap.style.display = (v === VINCULO_TEMPORARIO || v === VINCULO_RECIBOS_VERDES) ? 'block' : 'none';
             renderAll();
+            // Sempre que o vínculo laboral muda, recalcular a lista de "Quais docs você não tem?"
+            renderSemDocsPanel();
           });
         }
         updateProgress();
@@ -1608,6 +1624,12 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
         if (!container) return;
         container.innerHTML = '';
         var list = getRequiredDocLabels().filter(function (item) {
+          // Item agregado de recibos: só aparece se nenhum dos recibos foi anexado
+          if (item.field && item.field.indexOf('recibo_vencimento_1,recibo_vencimento_2,recibo_vencimento_3') === 0) {
+            var anyReciboUploaded = docsState['recibo_vencimento_1'] || docsState['recibo_vencimento_2'] || docsState['recibo_vencimento_3'];
+            return !anyReciboUploaded;
+          }
+          // Regra padrão: só mostra se o campo específico ainda não foi anexado
           return !docsState[item.field];
         });
         list.forEach(function (item) {
@@ -1678,10 +1700,7 @@ var item = getDocsBase(vinculoVal).find(function (d) { return d.field === fieldN
             req.forEach(function (fieldName, i) {
               if (files[i]) fd.append(fieldName, files[i]);
             });
-            var endpoint = uploadMode === 'lead'
-              ? '/api/leads/' + leadId + '/send-email'
-              : '/api/leads/' + leadId + '/send-email-spouse';
-            return fetch(endpoint, { method: 'POST', body: fd });
+            return fetch('/api/leads/' + leadId + '/send-email', { method: 'POST', body: fd });
           })
           .then(function (r) {
             if (r.ok) {
