@@ -200,25 +200,59 @@
       z-index: 999;
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.5rem 0.9rem;
+      justify-content: center;
+      width: 48px;
+      height: 48px;
+      padding: 0;
       border-radius: 999px;
       background: #25d366;
       color: #000;
-      font-size: 0.875rem;
-      font-weight: 600;
       text-decoration: none;
       box-shadow: 0 4px 10px rgba(0,0,0,0.18);
+      border: none;
+      cursor: pointer;
     }
     .help-whatsapp:hover {
       background: #1ebe5d;
       text-decoration: none;
     }
     .help-whatsapp svg {
-      width: 18px;
-      height: 18px;
+      width: 22px;
+      height: 22px;
       fill: currentColor;
       flex-shrink: 0;
+    }
+    .help-whatsapp-modal {
+      position: fixed;
+      right: 1rem;
+      bottom: 4.25rem;
+      z-index: 999;
+      display: none;
+    }
+    .help-whatsapp-card {
+      background: #ffffff;
+      color: #111827;
+      border-radius: 12px;
+      padding: 0.9rem 1rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+      max-width: 260px;
+      font-size: 0.875rem;
+    }
+    .help-whatsapp-card p {
+      margin: 0 0 0.75rem 0;
+    }
+    .help-whatsapp-cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.45rem 0.9rem;
+      border-radius: 999px;
+      border: none;
+      background: #25d366;
+      color: #000;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
     }
   </style>
 </head>
@@ -270,17 +304,26 @@
     </main>
   </div>
 
-  <a
-    href="https://wa.me/351927398547?text=Ola%2C%20preciso%20de%20ajuda%20em%20rela%C3%A7%C3%A3o%20ao%20contato%20da%20gestora%20de%20cr%C3%A9dito"
-    class="help-whatsapp"
-    target="_blank"
-    rel="noopener"
-  >
+  <button type="button" class="help-whatsapp" id="helpWhatsappBtnCredito" aria-label="Falar com a Rafa no WhatsApp">
     <svg viewBox="0 0 32 32" aria-hidden="true">
       <path d="M16 3C9.383 3 4 8.383 4 15c0 2.106.566 4.047 1.553 5.735L4 29l8.46-1.52A11.86 11.86 0 0 0 16 27c6.617 0 12-5.383 12-12S22.617 3 16 3zm0 2c5.523 0 10 4.477 10 10 0 5.524-4.477 10-10 10-1.658 0-3.22-.4-4.596-1.11l-.33-.17-4.99.897.916-4.87-.19-.316A9.93 9.93 0 0 1 6 15c0-5.523 4.477-10 10-10zm-4.07 5.02a.78.78 0 0 0-.567.28c-.297.34-.783.96-.842 1.6-.147 1.61.84 3.65 2.43 5.24 1.59 1.59 3.63 2.577 5.24 2.43.64-.059 1.26-.545 1.6-.842a.78.78 0 0 0 .028-1.12l-1.43-1.43a.8.8 0 0 0-.89-.17l-1.28.51a.4.4 0 0 1-.39-.05c-.41-.29-1.51-.98-2.37-1.84-.86-.86-1.55-1.96-1.84-2.37a.4.4 0 0 1-.05-.39l.51-1.28a.8.8 0 0 0-.17-.89l-1.43-1.43a.78.78 0 0 0-.55-.23z" />
     </svg>
-    <span>Precisa de ajuda? Fale com a Rafa no WhatsApp</span>
-  </a>
+  </button>
+
+  <div id="helpWhatsappModalCredito" class="help-whatsapp-modal" style="display:none;">
+    <div class="help-whatsapp-card">
+      <p>Precisa de ajuda? Fale com a Rafa no WhatsApp.</p>
+      <p style="margin:0 0 0.75rem 0;font-weight:600;">
+        <a href="https://wa.me/351927398547?text=Ola%2C%20preciso%20de%20ajuda%20em%20rela%C3%A7%C3%A3o%20ao%20contato%20da%20gestora%20de%20cr%C3%A9dito"
+           target="_blank"
+           rel="noopener"
+           style="color:#16a34a;text-decoration:none;">
+          351927398547
+        </a>
+      </p>
+      <button type="button" class="help-whatsapp-cta" id="helpWhatsappOpenCredito">WhatsApp Rafa</button>
+    </div>
+  </div>
 
   <script>
     (function () {
@@ -368,6 +411,24 @@
             showError(err.message);
           });
       });
+
+      // Help WhatsApp
+      (function () {
+        var btn = document.getElementById('helpWhatsappBtnCredito');
+        var modal = document.getElementById('helpWhatsappModalCredito');
+        var cta = document.getElementById('helpWhatsappOpenCredito');
+        if (!btn || !modal || !cta) return;
+        btn.addEventListener('click', function () {
+          modal.style.display = modal.style.display === 'none' || !modal.style.display ? 'block' : 'none';
+        });
+        cta.addEventListener('click', function () {
+          window.open(
+            'https://wa.me/351927398547?text=Ola%2C%20preciso%20de%20ajuda%20em%20rela%C3%A7%C3%A3o%20ao%20contato%20da%20gestora%20de%20cr%C3%A9dito',
+            '_blank',
+            'noopener'
+          );
+        });
+      })();
     })();
   </script>
 </body>
