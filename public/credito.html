@@ -284,7 +284,7 @@
           <div class="checkbox-wrap">
             <label>
               <input type="checkbox" id="consent" name="consent" value="1" required>
-              Aceito partilhar estas informações com a Rafa.
+              Aceito partilhar estas informações com a Rafa e a gestora.
             </label>
           </div>
 
@@ -400,6 +400,11 @@
             btn.classList.add('sent');
             if (btnText) btnText.textContent = 'Registo concluído ✓';
             showSuccess('Perfeito! Vais receber um email com os dados da gestora e o link para enviares os documentos.');
+
+            var uploadUrl = (data && data.upload_url) || (data && data.lead_id ? '/upload/' + data.lead_id : null);
+            if (uploadUrl) {
+              window.location.href = uploadUrl;
+            }
           })
           .catch(function (err) {
             btn.classList.remove('sending');
