@@ -401,6 +401,16 @@
             if (btnText) btnText.textContent = 'Registo concluído ✓';
             showSuccess('Perfeito! Vais receber um email com os dados da gestora e o link para enviares os documentos.');
 
+            // Guardar email verificado em sessão para saltar a etapa de confirmação em /upload
+            try {
+              if (data && data.lead_id && email) {
+                var storageKey = 'lead_' + data.lead_id + '_email';
+                sessionStorage.setItem(storageKey, email);
+              }
+            } catch (e) {
+              // Ignorar erros de storage (ex.: navegação privada bloqueando sessionStorage)
+            }
+
             var uploadUrl = (data && data.upload_url) || (data && data.lead_id ? '/upload/' + data.lead_id : null);
             if (uploadUrl) {
               window.location.href = uploadUrl;
