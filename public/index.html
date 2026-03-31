@@ -559,6 +559,7 @@
       <div class="sidebar-footer-version">versão 4.0</div>
       <a href="#leads" class="sidebar-logo" aria-label="Início"><img src="logo_bg_clara.png" alt=""><span class="sidebar-tagline">Crédito Habitação</span></a>
       <a href="#leads" id="navLeads" class="sidebar-nav-item active">Leads</a>
+      <a href="#proximo-contacto" id="navProximoContacto" class="sidebar-nav-item">Próximo contacto</a>
       <a href="#gestoras" id="navGestoras" class="sidebar-nav-item">Gestoras</a>
       <a href="#perfil" id="navPerfil" class="sidebar-nav-item" style="display:none;">Perfil</a>
       <div id="sidebarImpersonateWrap" class="sidebar-impersonate-wrap" style="display:none;">
@@ -625,6 +626,11 @@
             <tbody id="leadsBody"></tbody>
           </table>
         </div>
+      </div>
+      <div id="screenProximoContacto" class="screen">
+        <h2 class="page-title">Próximo contacto</h2>
+        <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1.25rem;">Leads com contacto agendado, ordenados por data e agrupados por mês.</p>
+        <div id="proximoContactoWrap"></div>
       </div>
       <!-- Ecrãs "Falar com Rafa", "Perguntas pendentes" e "FAQ" removidos na simplificação -->
       <div id="screenGestoras" class="screen">
@@ -801,6 +807,8 @@
       <input type="email" id="editLeadEmail">
       <label>Comentário interno</label>
       <textarea id="editLeadComentario" rows="3" placeholder="Notas internas sobre este lead (visível apenas no dashboard)" style="width:100%;box-sizing:border-box;"></textarea>
+      <label>Próximo contacto</label>
+      <input type="date" id="editLeadProximoContacto" style="width:100%;box-sizing:border-box;">
       <label>Estado conversa</label>
       <select id="editLeadEstadoConversa">
         <option value="aguardando_escolha">aguardando_escolha</option>
@@ -809,7 +817,7 @@
         <option value="em_pausa">em_pausa</option>
         <option value="em_boas_vindas">em_boas_vindas</option>
       </select>
-      <label style="display:block; margin-top:0.75rem;"><input type="checkbox" id="editLeadQuerFalarComRafa"> Quer falar com Rafa</label>
+      <!-- "Quer falar com Rafa" removido na simplificação -->
       <label>Estado docs</label>
       <select id="editLeadEstadoDocs">
         <option value="aguardando_docs">aguardando_docs</option>
@@ -889,7 +897,7 @@
       // Simplificação: funcionalidades de FAQ/dúvidas removidas
 
       function hashToScreenId(hash) {
-        var map = { gestoras: 'gestoras', perfil: 'perfil' };
+        var map = { gestoras: 'gestoras', perfil: 'perfil', 'proximo-contacto': 'proximoContacto' };
         return map[hash] || 'leads';
       }
       function showScreen(id) {
@@ -900,6 +908,7 @@
         if (s) s.classList.add('visible');
         if (a) a.classList.add('active');
         if (id === 'leads') loadLeads();
+        if (id === 'proximoContacto') loadProximoContacto();
         if (id === 'gestoras') loadGestoras();
         if (id === 'perfil') loadProfile();
       }
@@ -1173,7 +1182,7 @@
       function renderLeads() {
         const tbody = document.getElementById('leadsBody');
         const isGestora = user && user.role === 'gestora';
-        const colCount = isGestora ? 8 : 10;
+        const colCount = isGestora ? 9 : 11;
         var rows = _leadsRows.slice();
 
         // Agrupamento por estado_docs
@@ -1195,7 +1204,7 @@
         var filterVal = (document.getElementById('leadsFilterInput') && document.getElementById('leadsFilterInput').value) ? document.getElementById('leadsFilterInput').value.trim().toLowerCase() : '';
         if (filterVal) {
           rows = rows.filter(function (r) {
-            var text = [r.id, r.whatsapp_number, r.nome, r.email, r.estado_conversa, r.estado_docs, r.gestora_nome, formatDate(r.updated_at)].join(' ').toLowerCase();
+            var text = [r.id, r.whatsapp_number, r.nome, r.email, r.estado_conversa, r.estado_docs, r.gestora_nome, r.proximo_contacto_em, formatDate(r.updated_at)].join(' ').toLowerCase();
             return text.indexOf(filterVal) !== -1;
           });
         }
@@ -1224,23 +1233,29 @@
             var docsBadge = '<span class="' + leadBadgeClass('docs', docsVal) + '">' + escapeHtml(docsVal || '—') + '</span>';
             var comentario = (r.comentario || '').trim();
             var comentarioCell = comentario ? '<span title="' + escapeHtml(comentario) + '">' + escapeHtml(comentario) + '</span>' : '<span class="text-muted">—</span>';
+            var prox = (r.proximo_contacto_em || '').toString().slice(0, 10);
+            var proxCell = prox ? escapeHtml(prox) : '<span class="text-muted">—</span>';
             tr.innerHTML =
               '<td data-label="ID" class="cell-id">' + r.id + '</td><td data-label="Atualizado">' + escapeHtml(formatDate(r.updated_at)) +
               '</td><td data-label="WhatsApp">' + escapeHtml(r.whatsapp_number || '') +
               '</td><td data-label="Nome">' + escapeHtml(r.nome || '') +
               '</td><td data-label="Email">' + escapeHtml(r.email || '') +
               '</td><td data-label="Comentário">' + comentarioCell +
+              '</td><td data-label="Próximo contacto">' + proxCell +
               '</td><td data-label="Estado docs">' + docsBadge + '</td><td class="actions" data-label="Ações">' + waBtn + ' ' + editBtn + '</td>';
           } else {
             var convVal = r.estado_conversa || '';
             var docsVal = r.estado_docs || '';
             var convBadge = '<span class="' + leadBadgeClass('conv', convVal) + '">' + escapeHtml(convVal || '—') + '</span>';
             var docsBadge = '<span class="' + leadBadgeClass('docs', docsVal) + '">' + escapeHtml(docsVal || '—') + '</span>';
+            var prox = (r.proximo_contacto_em || '').toString().slice(0, 10);
+            var proxCell = prox ? escapeHtml(prox) : '<span class="text-muted">—</span>';
             tr.innerHTML =
               '<td data-label="ID" class="cell-id">' + r.id + '</td><td data-label="WhatsApp">' +
               escapeHtml(r.whatsapp_number || '') + '</td><td data-label="Nome">' + escapeHtml(r.nome || '') + '</td><td data-label="Email">' + escapeHtml(r.email || '') +
               '</td><td data-label="Estado conversa">' + convBadge + '</td><td data-label="Estado docs">' + docsBadge + '</td>' +
               '<td data-label="Docs enviados">' + (r.docs_enviados ? 'Sim' : 'Não') + '</td><td data-label="Gestora">' + escapeHtml(r.gestora_nome || '—') +
+              '</td><td data-label="Próximo contacto">' + proxCell +
               '</td><td data-label="Atualizado">' + escapeHtml(formatDate(r.updated_at)) +
               '</td><td class="actions" data-label="Ações">' +
               '<button type="button" class="btn btn-secondary btn-sm btn-edit-lead" data-id="' + r.id + '">Editar</button>' +
@@ -1272,17 +1287,120 @@
         }
       }
 
+      function parseDateYYYYMMDD(s) {
+        if (!s || typeof s !== 'string') return null;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+        const d = new Date(s + 'T00:00:00');
+        return isNaN(d.getTime()) ? null : d;
+      }
+
+      function formatMonthTitle(dateObj) {
+        const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        return meses[dateObj.getMonth()] + ' ' + dateObj.getFullYear();
+      }
+
+      function renderProximoContacto(rows) {
+        const wrap = document.getElementById('proximoContactoWrap');
+        if (!wrap) return;
+        const list = Array.isArray(rows) ? rows : [];
+        const scheduled = list
+          .filter(function (r) { return !!(r && r.proximo_contacto_em); })
+          .map(function (r) {
+            const ds = String(r.proximo_contacto_em).slice(0, 10);
+            return { row: r, ds: ds, d: parseDateYYYYMMDD(ds) };
+          })
+          .filter(function (x) { return !!x.d; })
+          .sort(function (a, b) { return a.d.getTime() - b.d.getTime(); });
+
+        wrap.innerHTML = '';
+        if (!scheduled.length) {
+          wrap.innerHTML = '<div class="card"><p class="text-muted" style="margin:0;">Nenhum lead com próximo contacto agendado.</p></div>';
+          return;
+        }
+
+        let currentKey = '';
+        let currentTbody = null;
+
+        scheduled.forEach(function (item) {
+          const d = item.d;
+          const key = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+          if (key !== currentKey) {
+            currentKey = key;
+            const section = document.createElement('div');
+            section.className = 'card';
+            section.style.marginBottom = '1rem';
+            section.innerHTML =
+              '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;">' +
+              '<h3 style="margin:0;font-size:1.05rem;">' + escapeHtml(formatMonthTitle(d)) + '</h3>' +
+              '</div>' +
+              '<div class="table-wrap">' +
+              '<table class="responsive-table">' +
+              '<thead><tr>' +
+              '<th>Data</th><th>ID</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Comentário</th><th></th>' +
+              '</tr></thead>' +
+              '<tbody></tbody>' +
+              '</table>' +
+              '</div>';
+            wrap.appendChild(section);
+            currentTbody = section.querySelector('tbody');
+          }
+
+          const r = item.row;
+          const tr = document.createElement('tr');
+          const num = (r.whatsapp_number || '').replace(/\D/g, '');
+          const waUrl = num ? 'https://wa.me/' + num : '#';
+          const waBtn = num ? '<a href="' + waUrl + '" target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp btn-sm">WhatsApp</a>' : '<span class="text-muted">—</span>';
+          const editBtn = '<button type="button" class="btn btn-secondary btn-sm btn-edit-lead" data-id="' + r.id + '">Editar</button>';
+          const comentario = (r.comentario || '').trim();
+          const comentarioCell = comentario ? '<span title="' + escapeHtml(comentario) + '">' + escapeHtml(comentario) + '</span>' : '<span class="text-muted">—</span>';
+          tr.innerHTML =
+            '<td data-label="Data">' + escapeHtml(item.ds) + '</td>' +
+            '<td data-label="ID" class="cell-id">' + r.id + '</td>' +
+            '<td data-label="WhatsApp">' + escapeHtml(r.whatsapp_number || '') + '</td>' +
+            '<td data-label="Nome">' + escapeHtml(r.nome || '') + '</td>' +
+            '<td data-label="Email">' + escapeHtml(r.email || '') + '</td>' +
+            '<td data-label="Comentário">' + comentarioCell + '</td>' +
+            '<td class="actions" data-label="Ações">' + waBtn + ' ' + editBtn + '</td>';
+
+          if (currentTbody) currentTbody.appendChild(tr);
+        });
+
+        // handlers "Editar" reutilizam o modal existente
+        wrap.querySelectorAll('.btn-edit-lead').forEach(function (b) {
+          b.addEventListener('click', function () {
+            const id = parseInt(this.dataset.id, 10);
+            const lead = _leadsRows.find(function (x) { return x.id === id; });
+            if (lead) openEditLead(lead);
+          });
+        });
+      }
+
+      function loadProximoContacto() {
+        const wrap = document.getElementById('proximoContactoWrap');
+        if (wrap) wrap.innerHTML = '<div class="card"><p class="text-muted" style="margin:0;">A carregar…</p></div>';
+        // Reutiliza a mesma fonte de dados dos Leads (e também refresca _leadsRows)
+        return fetch(API + '/leads', { credentials: 'include' })
+          .then(function (r) { return r.ok ? r.json() : []; })
+          .then(function (rows) {
+            _leadsRows = rows || [];
+            renderProximoContacto(_leadsRows);
+          })
+          .catch(function () {
+            if (wrap) wrap.innerHTML = '<div class="card"><p class="error-msg" style="margin:0;">Erro ao carregar.</p></div>';
+          });
+      }
+
       function loadLeads() {
         const tbody = document.getElementById('leadsBody');
         const isGestora = user && user.role === 'gestora';
-        const colCount = isGestora ? 8 : 10;
+        const colCount = isGestora ? 9 : 11;
         const headRow = document.getElementById('leadsHeadRow');
         const toolbarEl = document.getElementById('leadsToolbar');
         var sortThHtml = '<th class="leads-sort-th">Atualizado <span class="sort-icons"><button type="button" id="leadsSortAsc" title="Mais antigo primeiro"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg></button><button type="button" id="leadsSortDesc" title="Mais recente primeiro"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button></span></th>';
         if (headRow) {
           headRow.innerHTML = isGestora
-            ? '<th>ID</th><th>Atualizado</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Comentário</th><th>Estado docs</th><th></th>'
-            : '<th>ID</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Estado conversa</th><th>Estado docs</th><th>Docs enviados</th><th>Gestora</th>' + sortThHtml + '<th></th>';
+            ? '<th>ID</th><th>Atualizado</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Comentário</th><th>Próximo contacto</th><th>Estado docs</th><th></th>'
+            : '<th>ID</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Estado conversa</th><th>Estado docs</th><th>Docs enviados</th><th>Gestora</th><th>Próximo contacto</th>' + sortThHtml + '<th></th>';
         }
         // Toolbar (filtro + grupos) disponível para admin e gestora
         if (toolbarEl) toolbarEl.style.display = 'flex';
@@ -2104,9 +2222,10 @@
         document.getElementById('editLeadNome').value = lead.nome || '';
         document.getElementById('editLeadEmail').value = lead.email || '';
         document.getElementById('editLeadComentario').value = lead.comentario || '';
+        var pc = (lead && lead.proximo_contacto_em) ? String(lead.proximo_contacto_em).slice(0, 10) : '';
+        document.getElementById('editLeadProximoContacto').value = pc;
         document.getElementById('editLeadEstadoConversa').value = lead.estado_conversa || 'aguardando_escolha';
         document.getElementById('editLeadEstadoDocs').value = lead.estado_docs || 'sem_docs';
-        document.getElementById('editLeadQuerFalarComRafa').checked = !!lead.quer_falar_com_rafa;
         document.getElementById('modalLead').classList.add('visible');
       }
 
@@ -2115,13 +2234,15 @@
       });
       document.getElementById('modalLeadSave').addEventListener('click', function () {
         const id = document.getElementById('editLeadId').value;
+        const pcVal = document.getElementById('editLeadProximoContacto').value;
         const payload = {
           nome: document.getElementById('editLeadNome').value.trim() || null,
           email: document.getElementById('editLeadEmail').value.trim() || null,
           comentario: document.getElementById('editLeadComentario').value.trim() || null,
+          proximo_contacto_em: pcVal ? pcVal : null,
           estado_conversa: document.getElementById('editLeadEstadoConversa').value,
           estado_docs: document.getElementById('editLeadEstadoDocs').value,
-          quer_falar_com_rafa: document.getElementById('editLeadQuerFalarComRafa').checked ? 1 : 0,
+          // quer_falar_com_rafa removido na simplificação
         };
         fetch(API + '/leads/' + id, {
           method: 'PATCH',

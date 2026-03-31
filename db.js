@@ -110,7 +110,7 @@ async function getGestoraByEmail(email) {
 /** Lista leads atribuídos a uma gestora (dashboard gestora). */
 async function getLeadsByGestoraId(gestoraId) {
   const rows = await query(
-    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, quer_falar_com_rafa, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, created_at, updated_at FROM ch_leads WHERE gestora_id = ? ORDER BY updated_at DESC',
+    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, quer_falar_com_rafa, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, proximo_contacto_em, created_at, updated_at FROM ch_leads WHERE gestora_id = ? ORDER BY updated_at DESC',
     [gestoraId]
   );
   return rows;
@@ -219,7 +219,7 @@ async function getLeadsForRafaCount() {
 /** Dashboard: lista todos os leads. */
 async function getAllLeads() {
   const rows = await query(
-    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, quer_falar_com_rafa, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, created_at, updated_at FROM ch_leads ORDER BY updated_at DESC'
+    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, quer_falar_com_rafa, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, proximo_contacto_em, created_at, updated_at FROM ch_leads ORDER BY updated_at DESC'
   );
   return rows;
 }
@@ -232,13 +232,17 @@ async function updateLeadAdmin(id, dados) {
     dados.estado_conversa = 'aguardando_escolha';
     dados.quer_falar_com_rafa = 1;
   }
-  const allowed = ['nome', 'email', 'estado_conversa', 'estado_docs', 'gestora_id', 'gestora_nome', 'comentario', 'quer_falar_com_rafa'];
+  const allowed = ['nome', 'email', 'estado_conversa', 'estado_docs', 'gestora_id', 'gestora_nome', 'comentario', 'proximo_contacto_em', 'quer_falar_com_rafa'];
   const set = [];
   const values = [];
   for (const key of allowed) {
     if (!(key in dados)) continue;
     let val = dados[key];
     if (typeof val === 'string') val = val.trim() || null;
+    if (key === 'proximo_contacto_em') {
+      // Aceita 'YYYY-MM-DD' (input type=date). Qualquer outro valor vira null.
+      if (val && typeof val === 'string' && !/^\d{4}-\d{2}-\d{2}$/.test(val)) val = null;
+    }
     else if (key === 'gestora_id' && (val === '' || val === null)) val = null;
     else if (key === 'gestora_id') val = parseInt(val, 10) || null;
     else if (key === 'quer_falar_com_rafa') val = val ? 1 : 0;

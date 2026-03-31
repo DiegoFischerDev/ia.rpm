@@ -1252,6 +1252,9 @@ app.patch('/api/dashboard/leads/:id', requireDashboardAuth, async (req, res) => 
       comentario: req.body && typeof req.body.comentario === 'string'
         ? req.body.comentario.trim()
         : (req.body && req.body.comentario === null ? null : undefined),
+      proximo_contacto_em: req.body && typeof req.body.proximo_contacto_em === 'string'
+        ? req.body.proximo_contacto_em.trim()
+        : (req.body && req.body.proximo_contacto_em === null ? null : undefined),
     };
   }
   try {
