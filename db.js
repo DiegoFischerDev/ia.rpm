@@ -22,6 +22,8 @@ async function query(sql, params) {
   return rows;
 }
 
+// (sem compatibilidade) a coluna proximo_contacto_em já existe na BD
+
 async function getLeadById(id) {
   const rows = await query('SELECT * FROM ch_leads WHERE id = ?', [id]);
   return rows[0] || null;

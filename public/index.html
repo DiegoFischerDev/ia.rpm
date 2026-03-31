@@ -556,7 +556,7 @@
 
   <div id="dashboardApp" class="app screen">
     <nav class="sidebar">
-      <div class="sidebar-footer-version">versão 4.0</div>
+      <div class="sidebar-footer-version">versão 5.0</div>
       <a href="#leads" class="sidebar-logo" aria-label="Início"><img src="logo_bg_clara.png" alt=""><span class="sidebar-tagline">Crédito Habitação</span></a>
       <a href="#leads" id="navLeads" class="sidebar-nav-item active">Leads</a>
       <a href="#proximo-contacto" id="navProximoContacto" class="sidebar-nav-item">Próximo contacto</a>
@@ -583,7 +583,7 @@
           <span></span><span></span><span></span>
         </button>
         <div style="display:flex;flex-direction:column;gap:0.15rem;align-items:flex-start;">
-          <div class="sidebar-footer-version" style="margin-top:0;">versão 4.0</div>
+          <div class="sidebar-footer-version" style="margin-top:0;">versão 5.0</div>
           <a href="#leads" class="main-header-logo"><img src="logo_bg_escura.png" alt=""></a>
         </div>
       </header>
@@ -749,6 +749,8 @@
           <select id="editLeadEstadoDocsSelect"></select>
           <label for="editLeadEstadoDocsComentario">Comentário interno</label>
           <textarea id="editLeadEstadoDocsComentario" rows="3" placeholder="Notas internas sobre este lead (visível apenas no dashboard)" style="width:100%;box-sizing:border-box;"></textarea>
+          <label for="editLeadEstadoDocsProximoContacto">Próximo contacto</label>
+          <input type="date" id="editLeadEstadoDocsProximoContacto" style="width:100%;box-sizing:border-box;">
           <div class="modal-actions">
             <button type="button" class="btn btn-secondary" id="modalLeadEstadoDocsCancel">Cancelar</button>
             <button type="button" class="btn btn-primary" id="modalLeadEstadoDocsSave">Guardar</button>
@@ -2193,6 +2195,8 @@
           sel.appendChild(opt);
         });
         document.getElementById('editLeadEstadoDocsComentario').value = lead.comentario || '';
+        var pc = (lead && lead.proximo_contacto_em) ? String(lead.proximo_contacto_em).slice(0, 10) : '';
+        document.getElementById('editLeadEstadoDocsProximoContacto').value = pc;
         document.getElementById('modalLeadEstadoDocs').classList.add('visible');
       }
 
@@ -2203,11 +2207,12 @@
         var id = document.getElementById('editLeadEstadoDocsLeadId').value;
         var val = document.getElementById('editLeadEstadoDocsSelect').value;
         var comentario = document.getElementById('editLeadEstadoDocsComentario').value.trim() || null;
+        var pcVal = document.getElementById('editLeadEstadoDocsProximoContacto').value;
         fetch(API + '/leads/' + id, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ estado_docs: val, comentario: comentario }),
+          body: JSON.stringify({ estado_docs: val, comentario: comentario, proximo_contacto_em: pcVal ? pcVal : null }),
         })
           .then(function (r) { return r.ok ? undefined : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
           .then(function () {
