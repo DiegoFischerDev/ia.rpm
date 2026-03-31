@@ -318,6 +318,7 @@
     .lead-badge--docs-sem_docs { background: #fef3c7; color: #b45309; }
     .lead-badge--docs-docs_enviados { background: #ccfbf1; color: #0f766e; }
     .lead-badge--docs-inviavel { background: #fee2e2; color: #b91c1c; }
+    .lead-badge--docs-pre_aprovado { background: #dbeafe; color: #1d4ed8; }
     .lead-badge--docs-credito_aprovado { background: #dcfce7; color: #166534; }
     .lead-badge--docs-agendado_escritura { background: #e0e7ff; color: #3730a3; }
     .lead-badge--docs-escritura_realizada { background: #a7f3d0; color: #064e3b; }
@@ -533,26 +534,7 @@
     </div>
   </div>
 
-  <button type="button" class="help-whatsapp" id="helpWhatsappBtnDashboard" aria-label="Falar com a Rafa no WhatsApp">
-    <svg viewBox="0 0 32 32" aria-hidden="true">
-      <path d="M16 3C9.383 3 4 8.383 4 15c0 2.106.566 4.047 1.553 5.735L4 29l8.46-1.52A11.86 11.86 0 0 0 16 27c6.617 0 12-5.383 12-12S22.617 3 16 3zm0 2c5.523 0 10 4.477 10 10 0 5.524-4.477 10-10 10-1.658 0-3.22-.4-4.596-1.11l-.33-.17-4.99.897.916-4.87-.19-.316A9.93 9.93 0 0 1 6 15c0-5.523 4.477-10 10-10zm-4.07 5.02a.78.78 0 0 0-.567.28c-.297.34-.783.96-.842 1.6-.147 1.61.84 3.65 2.43 5.24 1.59 1.59 3.63 2.577 5.24 2.43.64-.059 1.26-.545 1.6-.842a.78.78 0 0 0 .028-1.12l-1.43-1.43a.8.8 0 0 0-.89-.17l-1.28.51a.4.4 0 0 1-.39-.05c-.41-.29-1.51-.98-2.37-1.84-.86-.86-1.55-1.96-1.84-2.37a.4.4 0 0 1-.05-.39l.51-1.28a.8.8 0 0 0-.17-.89l-1.43-1.43a.78.78 0 0 0-.55-.23z" />
-    </svg>
-  </button>
-
-  <div id="helpWhatsappModalDashboard" class="help-whatsapp-modal">
-    <div class="help-whatsapp-card">
-      <p>Precisa de ajuda? Fale com a Rafa no WhatsApp.</p>
-      <p style="margin:0 0 0.75rem 0;font-weight:600;">
-        <a href="https://wa.me/351927398547?text=Ola%2C%20preciso%20de%20ajuda%20em%20rela%C3%A7%C3%A3o%20ao%20contato%20da%20gestora%20de%20cr%C3%A9dito"
-           target="_blank"
-           rel="noopener"
-           style="color:#16a34a;text-decoration:none;">
-          351927398547
-        </a>
-      </p>
-      <button type="button" class="help-whatsapp-cta" id="helpWhatsappOpenDashboard">WhatsApp Rafa</button>
-    </div>
-  </div>
+  <!-- Ajuda via WhatsApp removida na simplificação do dashboard -->
 
   <div id="resetPasswordScreen" class="login-wrap screen" style="display:none;">
     <div class="login-logo-wrap" style="text-align:center;margin-bottom:1.5rem;"><img src="logo_bg_escura.png" alt="" style="max-height:156px;height:auto;max-width:100%;"></div>
@@ -577,16 +559,7 @@
       <div class="sidebar-footer-version">versão 4.0</div>
       <a href="#leads" class="sidebar-logo" aria-label="Início"><img src="logo_bg_clara.png" alt=""><span class="sidebar-tagline">Crédito Habitação</span></a>
       <a href="#leads" id="navLeads" class="sidebar-nav-item active">Leads</a>
-      <a href="#rafa" id="navRafa" class="sidebar-nav-item">
-        <span class="nav-label">Falar com Rafa</span>
-        <span id="navRafaBadge" class="nav-badge hidden">0</span>
-      </a>
       <a href="#gestoras" id="navGestoras" class="sidebar-nav-item">Gestoras</a>
-      <a href="#duvidas-pendentes" id="navDuvidasPendentes" class="sidebar-nav-item">
-        <span class="nav-label">Perguntas pendentes</span>
-        <span id="navDuvidasPendentesBadge" class="nav-badge hidden">0</span>
-      </a>
-      <a href="#duvidas-respondidas" id="navDuvidasRespondidas" class="sidebar-nav-item">FAQ</a>
       <a href="#perfil" id="navPerfil" class="sidebar-nav-item" style="display:none;">Perfil</a>
       <div id="sidebarImpersonateWrap" class="sidebar-impersonate-wrap" style="display:none;">
         <button type="button" id="btnImpersonateExit" class="sidebar-impersonate-exit">Sair do modo gestora</button>
@@ -653,84 +626,7 @@
           </table>
         </div>
       </div>
-      <div id="screenRafa" class="screen">
-        <h2 class="page-title">Falar com Rafa</h2>
-        <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1.25rem;">Leads que pediram para falar contigo. Abre a conversa no WhatsApp ou devolve o lead a aguardar escolha.</p>
-        <div class="table-wrap card">
-          <table class="responsive-table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>WhatsApp</th>
-                <th>Email</th>
-                <th>Atualizado</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="rafaBody"></tbody>
-          </table>
-        </div>
-      </div>
-      <div id="screenDuvidasPendentes" class="screen">
-        <h2 class="page-title">Perguntas pendentes</h2>
-        <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Perguntas dos leads sem resposta no FAQ. Responda para criar a pergunta no FAQ e enviar ao lead.</p>
-        <div class="section-toolbar">
-          <div class="leads-filter-wrap">
-            <div class="filter-input-wrap">
-              <input type="text" id="duvidasPendentesFilterInput" placeholder="Filtrar por palavra...">
-              <button type="button" class="filter-clear-btn" id="duvidasPendentesFilterClear" title="Limpar filtro">×</button>
-            </div>
-            <button type="button" class="btn btn-secondary btn-sm" id="duvidasPendentesFilterBtn">Filtrar</button>
-          </div>
-          <button type="button" class="btn btn-primary btn-sm" id="btnNovaDuvida" style="display:none;">Nova pergunta</button>
-        </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table id="tblDuvidasPendentes" class="responsive-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Pergunta do lead</th>
-                  <th class="th-contacto">Contacto</th>
-                  <th>Data</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody id="duvidasPendentesBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-      <div id="screenDuvidasRespondidas" class="screen">
-        <h2 class="page-title">FAQ</h2>
-        <p class="text-muted" style="margin-top:-0.5rem; margin-bottom:1rem;">Ordenadas por frequência (mais perguntadas primeiro). Clique para ver respostas e adicionar ou editar a sua.</p>
-        <div class="section-toolbar" style="margin-bottom:0.75rem;">
-          <div class="leads-filter-wrap">
-            <div class="filter-input-wrap">
-              <input type="text" id="faqFilterInput" placeholder="Filtrar por palavra...">
-              <button type="button" class="filter-clear-btn" id="faqFilterClear" title="Limpar filtro">×</button>
-            </div>
-            <button type="button" class="btn btn-secondary btn-sm" id="faqFilterBtn">Filtrar</button>
-          </div>
-          <div></div>
-        </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table id="tblPerguntasRespondidas" class="responsive-table">
-              <thead>
-                <tr id="tblPerguntasRespondidasHead">
-                  <th>#</th>
-                  <th>Pergunta</th>
-                  <th>Frequencia</th>
-                  <th>Resposta</th>
-                  <th class="th-acoes-admin">Ações (admin)</th>
-                </tr>
-              </thead>
-              <tbody id="perguntasBody"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+      <!-- Ecrãs "Falar com Rafa", "Perguntas pendentes" e "FAQ" removidos na simplificação -->
       <div id="screenGestoras" class="screen">
         <div class="toolbar">
           <h2 class="page-title" style="margin:0;">Gestoras de crédito</h2>
@@ -879,6 +775,7 @@
         <option value="sem_docs">sem_docs</option>
         <option value="docs_enviados">docs_enviados</option>
         <option value="inviavel">inviavel</option>
+        <option value="pre_aprovado">pre_aprovado</option>
         <option value="credito_aprovado">credito_aprovado</option>
         <option value="agendado_escritura">agendado_escritura</option>
         <option value="escritura_realizada">escritura_realizada</option>
@@ -919,6 +816,7 @@
         <option value="sem_docs">sem_docs</option>
         <option value="docs_enviados">docs_enviados</option>
         <option value="inviavel">inviavel</option>
+        <option value="pre_aprovado">pre_aprovado</option>
         <option value="credito_aprovado">credito_aprovado</option>
         <option value="agendado_escritura">agendado_escritura</option>
         <option value="escritura_realizada">escritura_realizada</option>
@@ -1029,7 +927,7 @@
       let duvidaRecorderStopResolvers = [];
 
       function hashToScreenId(hash) {
-        var map = { gestoras: 'gestoras', rafa: 'rafa', perfil: 'perfil', 'duvidas-pendentes': 'duvidasPendentes', 'duvidas-respondidas': 'duvidasRespondidas' };
+        var map = { gestoras: 'gestoras', perfil: 'perfil' };
         return map[hash] || 'leads';
       }
       function showScreen(id) {
@@ -1041,43 +939,10 @@
         if (a) a.classList.add('active');
         if (id === 'leads') loadLeads();
         if (id === 'gestoras') loadGestoras();
-        if (id === 'rafa') loadRafa();
         if (id === 'perfil') loadProfile();
-        if (id === 'duvidasPendentes') loadDuvidasPendentes();
-        if (id === 'duvidasRespondidas') loadDuvidasRespondidas();
       }
 
-      function updateRafaBadge() {
-        fetch(API + '/leads/rafa/count', { credentials: 'include' })
-          .then((r) => (r.ok ? r.json() : { count: 0 }))
-          .then((data) => {
-            const badge = document.getElementById('navRafaBadge');
-            const n = data.count || 0;
-            badge.textContent = n > 99 ? '99+' : String(n);
-            badge.classList.toggle('hidden', n === 0);
-          })
-          .catch(() => {
-            document.getElementById('navRafaBadge').classList.add('hidden');
-          });
-      }
-
-      function updateDuvidasPendentesBadge(count) {
-        const badge = document.getElementById('navDuvidasPendentesBadge');
-        if (!badge) return;
-        if (typeof count === 'number') {
-          badge.textContent = count > 99 ? '99+' : String(count);
-          badge.classList.toggle('hidden', count === 0);
-          return;
-        }
-        fetch(API + '/duvidas-pendentes/count', { credentials: 'include' })
-          .then((r) => (r.ok ? r.json() : { count: 0 }))
-          .then((data) => {
-            const n = data.count || 0;
-            badge.textContent = n > 99 ? '99+' : String(n);
-            badge.classList.toggle('hidden', n === 0);
-          })
-          .catch(() => { badge.classList.add('hidden'); });
-      }
+      // Funções de badge para "Falar com Rafa" e "Perguntas pendentes" removidas na simplificação
 
       function checkAuth() {
         return fetch(API + '/me', { credentials: 'include' })
@@ -1120,13 +985,8 @@
               document.getElementById('navGestoras').style.display = 'none';
               document.getElementById('navPerfil').style.display = '';
             }
-            updateDuvidasPendentesBadge();
-            document.getElementById('navDuvidasPendentes').style.display = '';
-            document.getElementById('navDuvidasRespondidas').style.display = '';
             const hashRaw = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
-            const hash = (hashRaw === 'duvidas' || hashRaw === 'duvidas-spam') ? 'duvidas-pendentes' : hashRaw;
-            const screenId = hashToScreenId(hash);
-            if (hash !== hashRaw && hashRaw === 'duvidas') window.location.hash = 'duvidas-pendentes';
+            const screenId = hashToScreenId(hashRaw);
             showScreen(screenId);
           })
           .catch(() => {
@@ -1297,12 +1157,10 @@
         showScreen(screenId);
       });
 
-      var ESTADO_DOCS_OPCOES = ['aguardando_docs', 'sem_docs', 'docs_enviados', 'inviavel', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
+      var ESTADO_DOCS_OPCOES = ['aguardando_docs', 'sem_docs', 'docs_enviados', 'inviavel', 'pre_aprovado', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
       var _leadsRows = [];
       var _leadsSort = '';
       var _leadsGroup = 'todos'; // todos | sem_docs | com_docs | aprovados
-      var _duvidasPendentesRows = [];
-      var _faqRows = [];
 
       function leadBadgeClass(prefix, value) {
         if (!value || typeof value !== 'string') return 'lead-badge lead-badge--neutral';
@@ -2228,56 +2086,6 @@
         document.getElementById('modalDuvidaResponder').classList.remove('visible');
       });
       document.getElementById('modalDuvidaResponderSubmit').addEventListener('click', submitResponderDuvida);
-
-      // Áudio na resposta de dúvida (dashboard gestora) removido: respostas passam a ser só em texto.
-
-      function loadRafa() {
-        const tbody = document.getElementById('rafaBody');
-        tbody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
-        fetch(API + '/leads/rafa', { credentials: 'include' })
-          .then((r) => r.json().then((data) => (r.ok ? data : Promise.reject(data))))
-          .then((rows) => {
-            tbody.innerHTML = '';
-            updateRafaBadge();
-            if (!rows.length) {
-              tbody.innerHTML = '<tr><td colspan="5">Nenhum lead a aguardar. Quando alguém pedir "Falar com Rafa", aparece aqui.</td></tr>';
-              return;
-            }
-            rows.forEach((r) => {
-              const tr = document.createElement('tr');
-              const num = (r.whatsapp_number || '').replace(/\D/g, '');
-              const waUrl = num ? 'https://wa.me/' + num : '#';
-              tr.innerHTML =
-                '<td data-label="Nome">' + escapeHtml(r.nome || '—') + '</td>' +
-                '<td data-label="WhatsApp">' + escapeHtml(r.whatsapp_number || '—') + '</td>' +
-                '<td data-label="Email">' + escapeHtml(r.email || '—') + '</td>' +
-                '<td data-label="Atualizado">' + escapeHtml(formatDate(r.updated_at)) + '</td>' +
-                '<td class="actions" data-label="Ações">' +
-                '<a href="' + waUrl + '" target="_blank" rel="noopener noreferrer" class="btn btn-whatsapp btn-sm">WhatsApp</a>' +
-                '<button type="button" class="btn btn-devolver btn-sm btn-rafa-devolver" data-id="' + r.id + '">Devolver a aguardar</button>' +
-                '</td>';
-              tbody.appendChild(tr);
-            });
-            tbody.querySelectorAll('.btn-rafa-devolver').forEach((btn) => {
-              btn.addEventListener('click', function () {
-                const id = this.dataset.id;
-                if (!confirm('Devolver este lead ao estado «aguardando escolha»?')) return;
-                fetch(API + '/leads/' + id, {
-                  method: 'PATCH',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({ estado_conversa: 'aguardando_escolha', quer_falar_com_rafa: 0 }),
-                })
-                  .then((res) => (res.ok ? loadRafa() : res.json().then((d) => Promise.reject(new Error(d.message || 'Erro')))))
-                  .catch((err) => alert(err.message || 'Erro ao atualizar'));
-              });
-            });
-          })
-          .catch((err) => {
-            const msg = (err && (err.detail || err.message)) || 'Erro ao carregar.';
-            tbody.innerHTML = '<tr><td colspan="5" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
-          });
-      }
 
       function loadProfile() {
         if (user && user.role !== 'gestora') return;

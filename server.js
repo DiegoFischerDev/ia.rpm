@@ -35,8 +35,6 @@ const {
   updateLeadGestora,
   getGestoraFromLegacyMap,
   updateLeadEstadoDocs,
-  getLeadsForRafa,
-  getLeadsForRafaCount,
   getAllLeads,
   updateLeadAdmin,
   deleteLead,
@@ -59,9 +57,6 @@ const {
   listRespostasByPerguntaId,
   getRespostaByPerguntaAndGestora,
   upsertResposta,
-  listDuvidasPendentes,
-  getDuvidasPendentesCount,
-  listDuvidasPendentesTextos,
   createDuvidaPendente,
   getDuvidaPendenteById,
   markDuvidaRespondida,
@@ -259,7 +254,7 @@ async function validateLeadUploadPage(leadId) {
     return { error: 500, message: 'Erro ao verificar dados.' };
   }
   if (!lead) return { error: 404, message: 'Link não encontrado.' };
-  const estadosComAcessoUpload = ['aguardando_docs', 'docs_enviados', 'sem_docs', 'inviavel', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
+  const estadosComAcessoUpload = ['aguardando_docs', 'docs_enviados', 'sem_docs', 'inviavel', 'pre_aprovado', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
   const docsOk = estadosComAcessoUpload.includes(lead.estado_docs);
   if (!docsOk) {
     return { error: 403, message: 'Este link já não está disponível.' };
@@ -323,6 +318,7 @@ async function validateLeadCanSendDocs(leadId) {
     'docs_enviados',
     'sem_docs',
     'inviavel',
+    'pre_aprovado',
     'credito_aprovado',
     'agendado_escritura',
     'escritura_realizada',
@@ -1236,26 +1232,6 @@ app.post('/api/dashboard/leads', requireDashboardAuth, requireAdminAuth, async (
   } catch (err) {
     logStartup(`createLeadAdmin error: ${err.message}`);
     res.status(500).json({ message: err.message || 'Erro ao criar lead.' });
-  }
-});
-
-app.get('/api/dashboard/leads/rafa', requireDashboardAuth, requireAdminAuth, async (req, res) => {
-  try {
-    const rows = await getLeadsForRafa();
-    res.json(rows);
-  } catch (err) {
-    logStartup(`getLeadsForRafa error: ${err.message}`);
-    res.status(500).json({ message: 'Erro ao listar leads.', detail: err.message });
-  }
-});
-
-app.get('/api/dashboard/leads/rafa/count', requireDashboardAuth, requireAdminAuth, async (req, res) => {
-  try {
-    const count = await getLeadsForRafaCount();
-    res.json({ count });
-  } catch (err) {
-    logStartup(`getLeadsForRafaCount error: ${err.message}`);
-    res.status(500).json({ count: 0 });
   }
 });
 
