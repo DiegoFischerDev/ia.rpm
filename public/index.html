@@ -880,51 +880,13 @@
     </div>
   </div>
 
-  <div id="modalVerDuvida" class="modal-overlay">
-    <div class="modal" style="max-width:560px;">
-      <h3>Pergunta completa</h3>
-      <p id="modalVerDuvidaTexto" class="text-muted" style="white-space:pre-wrap;margin-bottom:1rem;"></p>
-      <div class="modal-actions">
-        <button type="button" class="btn btn-secondary" id="modalVerDuvidaFechar">Fechar</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="modalEditarDuvida" class="modal-overlay">
-    <div class="modal" style="max-width:560px;">
-      <h3 id="modalEditarDuvidaTitle">Editar dúvida pendente</h3>
-      <label for="modalEditarDuvidaTexto">Texto da dúvida</label>
-      <textarea id="modalEditarDuvidaTexto" rows="4" placeholder="Texto da dúvida..." style="width:100%; box-sizing:border-box;"></textarea>
-      <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="btn btn-secondary" id="modalEditarDuvidaCancel">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="modalEditarDuvidaSave">Guardar</button>
-      </div>
-    </div>
-  </div>
-
-  <div id="modalDuvidaResponder" class="modal-overlay">
-    <div class="modal" style="max-width:520px;">
-      <h3>Responder dúvida pendente</h3>
-      <p id="modalDuvidaTexto" class="text-muted" style="white-space:pre-wrap;margin-bottom:1rem;"></p>
-      <div class="form-group">
-        <label for="modalDuvidaRespostaTexto">Resposta da gestora</label>
-        <textarea id="modalDuvidaRespostaTexto" rows="4" style="width:100%;" placeholder="Escreve a tua resposta para o lead..."></textarea>
-      </div>
-      <div class="modal-actions" style="margin-top:1rem;">
-        <button type="button" class="btn btn-secondary" id="modalDuvidaResponderCancel">Cancelar</button>
-        <button type="button" class="btn btn-primary" id="modalDuvidaResponderSubmit">Enviar resposta</button>
-      </div>
-    </div>
-  </div>
+  <!-- Modais de FAQ/dúvidas removidos na simplificação -->
 
   <script>
     (function () {
       const API = '/api/dashboard';
       let user = null;
-      let duvidaAudioBlob = null;
-      let duvidaMediaRecorder = null;
-      let duvidaRecorderChunks = [];
-      let duvidaRecorderStopResolvers = [];
+      // Simplificação: funcionalidades de FAQ/dúvidas removidas
 
       function hashToScreenId(hash) {
         var map = { gestoras: 'gestoras', perfil: 'perfil' };
@@ -975,15 +937,18 @@
             document.getElementById('resetPasswordScreen').style.display = 'none';
             document.getElementById('dashboardApp').classList.add('visible');
             document.getElementById('dashboardApp').style.display = 'flex';
+            // Simplificação: removemos "Falar com Rafa" e FAQ/dúvidas do dashboard.
+            // Admin continua a ver "Gestoras"; gestora continua a ver "Perfil".
             if (user.role === 'admin') {
-              updateRafaBadge();
-              document.getElementById('navRafa').style.display = '';
-              document.getElementById('navGestoras').style.display = '';
-              document.getElementById('navPerfil').style.display = 'none';
+              var navGestoras = document.getElementById('navGestoras');
+              var navPerfil = document.getElementById('navPerfil');
+              if (navGestoras) navGestoras.style.display = '';
+              if (navPerfil) navPerfil.style.display = 'none';
             } else {
-              document.getElementById('navRafa').style.display = 'none';
-              document.getElementById('navGestoras').style.display = 'none';
-              document.getElementById('navPerfil').style.display = '';
+              var navGestoras2 = document.getElementById('navGestoras');
+              var navPerfil2 = document.getElementById('navPerfil');
+              if (navGestoras2) navGestoras2.style.display = 'none';
+              if (navPerfil2) navPerfil2.style.display = '';
             }
             const hashRaw = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
             const screenId = hashToScreenId(hashRaw);
@@ -2303,7 +2268,7 @@
           .then(function () {
             document.getElementById('modalLead').classList.remove('visible');
             loadLeads();
-            updateRafaBadge();
+            // updateRafaBadge removido na simplificação
           })
           .catch(function (err) { alert(err.message || 'Erro ao guardar'); });
       });
