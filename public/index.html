@@ -1116,9 +1116,7 @@
         if (!user) return;
         dashboardApp.classList.remove('nav-open');
         const hashRaw = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
-        const hash = (hashRaw === 'duvidas' || hashRaw === 'duvidas-spam') ? 'duvidas-pendentes' : hashRaw;
-        if (hash !== hashRaw) window.location.hash = 'duvidas-pendentes';
-        const screenId = hashToScreenId(hash);
+        const screenId = hashToScreenId(hashRaw);
         showScreen(screenId);
       });
 
@@ -1338,45 +1336,7 @@
         });
       })();
 
-      (function initDuvidasPendentesFilter() {
-        var input = document.getElementById('duvidasPendentesFilterInput');
-        var btn = document.getElementById('duvidasPendentesFilterBtn');
-        var clearBtn = document.getElementById('duvidasPendentesFilterClear');
-        if (!input || !btn) return;
-        btn.addEventListener('click', function () {
-          if (_duvidasPendentesRows.length) loadDuvidasPendentes();
-        });
-        input.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            if (_duvidasPendentesRows.length) loadDuvidasPendentes();
-          }
-        });
-        if (clearBtn) clearBtn.addEventListener('click', function () {
-          input.value = '';
-          if (_duvidasPendentesRows.length) loadDuvidasPendentes();
-        });
-      })();
-
-      (function initFaqFilter() {
-        var input = document.getElementById('faqFilterInput');
-        var btn = document.getElementById('faqFilterBtn');
-        var clearBtn = document.getElementById('faqFilterClear');
-        if (!input || !btn) return;
-        btn.addEventListener('click', function () {
-          if (_faqRows.length) loadDuvidasRespondidas();
-        });
-        input.addEventListener('keydown', function (e) {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            if (_faqRows.length) loadDuvidasRespondidas();
-          }
-        });
-        if (clearBtn) clearBtn.addEventListener('click', function () {
-          input.value = '';
-          if (_faqRows.length) loadDuvidasRespondidas();
-        });
-      })();
+      // Simplificação: filtros e carregamento de dúvidas/FAQ removidos
 
       (function initProfileFotoPreview() {
         var input = document.getElementById('profileFotoInput');
@@ -1423,6 +1383,7 @@
       var _duvidaModalId = null;
 
       function loadDuvidasPendentes() {
+        return; // Simplificação: dúvidas pendentes removidas
         const duvidasBody = document.getElementById('duvidasPendentesBody');
         if (!duvidasBody) return;
         duvidasBody.innerHTML = '<tr><td colspan="5">A carregar…</td></tr>';
@@ -1516,6 +1477,7 @@
       }
 
       function loadDuvidasRespondidas() {
+        return; // Simplificação: FAQ removido
         const perguntasBody = document.getElementById('perguntasBody');
         if (!perguntasBody) return;
         const isAdmin = user && user.role === 'admin';
@@ -1956,101 +1918,7 @@
           .catch(function (err) { alert(err.message || 'Erro ao guardar.'); });
       }
 
-      function openVerDuvida(duvida) {
-        document.getElementById('modalVerDuvidaTexto').textContent = (duvida && duvida.texto) ? duvida.texto : '';
-        document.getElementById('modalVerDuvida').classList.add('visible');
-      }
-
-      var _duvidaEditarId = null;
-
-      function openEditarDuvida(duvida) {
-        if (!duvida || !duvida.id) return;
-        _duvidaEditarId = duvida.id;
-        document.getElementById('modalEditarDuvidaTitle').textContent = 'Editar dúvida #' + duvida.id;
-        document.getElementById('modalEditarDuvidaTexto').value = (duvida.texto || '').trim();
-        document.getElementById('modalEditarDuvida').classList.add('visible');
-      }
-
-      function saveEditarDuvida() {
-        if (!_duvidaEditarId) return;
-        var texto = document.getElementById('modalEditarDuvidaTexto').value.trim();
-        if (!texto) { alert('Escreva o texto da dúvida.'); return; }
-        fetch(API + '/duvidas-pendentes/' + _duvidaEditarId, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ texto: texto }),
-        })
-          .then(function (r) { return r.ok ? Promise.resolve() : r.json().then(function (d) { return Promise.reject(new Error(d.message || 'Erro')); }); })
-          .then(function () {
-            document.getElementById('modalEditarDuvida').classList.remove('visible');
-            _duvidaEditarId = null;
-            loadDuvidasPendentes();
-          })
-          .catch(function (err) { alert(err.message || 'Erro ao guardar.'); });
-      }
-
-      function openResponderDuvida(duvidaId) {
-        _duvidaModalId = duvidaId;
-        fetch(API + '/duvidas-pendentes', { credentials: 'include' })
-          .then((r) => r.json())
-          .then(function (list) {
-            const d = list.find(function (x) { return x.id === duvidaId; });
-            if (!d) { alert('Dúvida não encontrada.'); return; }
-            document.getElementById('modalDuvidaTexto').textContent = (d.id != null ? d.id + ' - ' : '') + (d.texto || '');
-            if (typeof resetDuvidaAudioState === 'function') resetDuvidaAudioState();
-            document.getElementById('modalDuvidaResponder').classList.add('visible');
-          })
-          .catch(function () { alert('Erro ao carregar.'); });
-      }
-
-      async function submitResponderDuvida() {
-        if (!_duvidaModalId) return;
-        var respostaTextoEl = document.getElementById('modalDuvidaRespostaTexto');
-        var respostaTexto = respostaTextoEl ? respostaTextoEl.value.trim() : '';
-        if (!respostaTexto) { alert('Escreve a tua resposta para o lead.'); return; }
-        const submitBtn = document.getElementById('modalDuvidaResponderSubmit');
-        const originalText = submitBtn ? submitBtn.textContent : '';
-        if (submitBtn) {
-          submitBtn.disabled = true;
-          submitBtn.textContent = 'Enviando...';
-        }
-        fetch(API + '/duvidas-pendentes/' + _duvidaModalId + '/responder', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ texto: respostaTexto }),
-        })
-          .then((r) => (r.ok ? Promise.resolve() : r.json().then((d) => Promise.reject(new Error(d.message || 'Erro')))))
-          .then(function () {
-            document.getElementById('modalDuvidaResponder').classList.remove('visible');
-            if (respostaTextoEl) respostaTextoEl.value = '';
-            loadDuvidasPendentes();
-            loadDuvidasRespondidas();
-            const nome = user && user.nome && user.nome.trim() ? user.nome.trim() : 'Gestora';
-            alert('Obrigado pela ajuda, ' + nome + ' 😊👍');
-          })
-          .catch(function (err) { alert(err.message || 'Erro ao responder'); })
-          .finally(function () {
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.textContent = originalText || 'Enviar resposta';
-            }
-          });
-      }
-
-      document.getElementById('modalEditarPerguntaCancel').addEventListener('click', function () { document.getElementById('modalEditarPergunta').classList.remove('visible'); _perguntaEditarId = null; });
-      document.getElementById('modalEditarPerguntaSave').addEventListener('click', saveEditarPergunta);
-      document.getElementById('modalPerguntaCancel').addEventListener('click', function () { document.getElementById('modalPergunta').classList.remove('visible'); });
-      document.getElementById('modalPerguntaSave').addEventListener('click', saveRespostaPergunta);
-      document.getElementById('modalPerguntaClose').addEventListener('click', function () { document.getElementById('modalPergunta').classList.remove('visible'); });
-      document.getElementById('modalVerDuvidaFechar').addEventListener('click', function () { document.getElementById('modalVerDuvida').classList.remove('visible'); });
-      document.getElementById('modalEditarDuvidaCancel').addEventListener('click', function () { document.getElementById('modalEditarDuvida').classList.remove('visible'); _duvidaEditarId = null; });
-      document.getElementById('modalEditarDuvidaSave').addEventListener('click', saveEditarDuvida);
-      document.getElementById('modalDuvidaResponderCancel').addEventListener('click', function () {
-        document.getElementById('modalDuvidaResponder').classList.remove('visible');
-      });
-      document.getElementById('modalDuvidaResponderSubmit').addEventListener('click', submitResponderDuvida);
+      // Simplificação: bloco de FAQ/dúvidas removido (modais + handlers + requests)
 
       function loadProfile() {
         if (user && user.role !== 'gestora') return;
