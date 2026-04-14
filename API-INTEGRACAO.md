@@ -46,6 +46,7 @@ Em ambos os casos o cliente recebe **`id`**, **`upload_url`** e **`lead`**.
 |-------|-------------|-----------|
 | `whatsapp_number` ou `whatsapp` | **Sim** | Número de WhatsApp; o servidor normaliza para **apenas dígitos**. |
 | `nome` | **Sim** | Nome do lead (texto não vazio). |
+| `comentario` | Não | Texto gravado no campo `comentario` do lead (visível no dashboard). Só é aplicado quando é criado um **novo** registo; se a resposta for `existing: true` (WhatsApp já existia), o comentário deste pedido **não** altera o registo existente. |
 
 ### Resposta **201** (conta criada agora)
 
@@ -91,7 +92,8 @@ curl -sS -X POST "https://ia.rafaapelomundo.com/api/integration/leads" \
   -H "X-Integration-Secret: SEGREDO" \
   -d '{
     "whatsapp": "+351 912 345 678",
-    "nome": "Maria Silva"
+    "nome": "Maria Silva",
+    "comentario": "Resultado 100%"
   }'
 ```
 
@@ -101,7 +103,7 @@ curl -sS -X POST "https://ia.rafaapelomundo.com/api/integration/leads" \
 
 1. Definir `IA_APP_INTEGRATION_SECRET` no servidor e reiniciar Node.
 2. Opcional: `IA_APP_PUBLIC_BASE_URL` se o domínio público for diferente do default.
-3. `POST /api/integration/leads` com JSON `{ "whatsapp" ou "whatsapp_number", "nome" }` e cabeçalho de segredo.
+3. `POST /api/integration/leads` com JSON `{ "whatsapp" ou "whatsapp_number", "nome" [, "comentario"] }` e cabeçalho de segredo.
 4. Usar `upload_url` (ou `https://ia.rafaapelomundo.com/upload/` + `id`) para o utilizador; tratar `existing === true` como “já existia conta para esse WhatsApp” (mesmo link).
 
 Não exponha o segredo em repositórios públicos nem em frontend; use variáveis de ambiente no serviço que chama a API.

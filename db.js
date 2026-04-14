@@ -354,7 +354,7 @@ function randomLeadIdSevenDigits() {
 }
 
 /**
- * Integração externa (outra app): WhatsApp + nome; o servidor gera id único de 7 dígitos.
+ * Integração externa (outra app): WhatsApp + nome; opcional comentario; o servidor gera id único de 7 dígitos.
  * Um número de WhatsApp só pode ter uma conta: se já existir lead com esse número, devolve o registo existente (existing: true).
  * Sem gestora até confirmar email em /upload. origem_instancia = 'api_integracao'.
  */
@@ -365,6 +365,12 @@ async function createLeadIntegration(dados) {
 
   const nome = (dados.nome != null ? String(dados.nome) : '').trim();
   if (!nome) return { error: 'nome_obrigatorio' };
+
+  const comentarioRaw = dados.comentario;
+  const comentario =
+    comentarioRaw != null && String(comentarioRaw).trim() !== ''
+      ? String(comentarioRaw).trim()
+      : null;
 
   const existingRows = await query(
     `${LEAD_INTEGRATION_SELECT}whatsapp_number = ? ORDER BY id DESC LIMIT 1`,
@@ -383,9 +389,9 @@ async function createLeadIntegration(dados) {
     const id = randomLeadIdSevenDigits();
     try {
       await query(
-        `INSERT INTO ch_leads (id, whatsapp_number, nome, email, origem_instancia, estado_conversa, estado_docs, gestora_id, gestora_nome, created_at, updated_at)
-         VALUES (?, ?, ?, NULL, 'api_integracao', ?, ?, NULL, NULL, NOW(), NOW())`,
-        [id, whatsapp_number, nome, estado_conversa, estado_docs]
+        `INSERT INTO ch_leads (id, whatsapp_number, nome, email, origem_instancia, estado_conversa, estado_docs, gestora_id, gestora_nome, comentario, created_at, updated_at)
+         VALUES (?, ?, ?, NULL, 'api_integracao', ?, ?, NULL, NULL, ?, NOW(), NOW())`,
+        [id, whatsapp_number, nome, estado_conversa, estado_docs, comentario]
       );
       const rows = await query(`${LEAD_INTEGRATION_SELECT}id = ?`, [id]);
       return { ok: true, existing: false, lead: rows[0] };
