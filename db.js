@@ -345,6 +345,51 @@ async function createLeadWeb(dados) {
   return rows[0] || null;
 }
 
+const LEAD_INTEGRATION_SELECT =
+  'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, gestora_id, gestora_nome, comentario, proximo_contacto_em, created_at, updated_at FROM ch_leads WHERE ';
+
+/** ID aleatório entre 1_000_000 e 9_999_999 (sempre 7 dígitos). */
+function randomLeadIdSevenDigits() {
+  return 1000000 + Math.floor(Math.random() * 9000000);
+}
+
+/**
+ * Integração externa (outra app): WhatsApp + nome; o servidor gera id único de 7 dígitos.
+ * Sem gestora até confirmar email em /upload. origem_instancia = 'api_integracao'.
+ */
+async function createLeadIntegration(dados) {
+  if (!dados || typeof dados !== 'object') return { error: 'dados_invalidos' };
+  const whatsapp_number = (dados.whatsapp_number || dados.whatsapp || '').trim().replace(/\D/g, '');
+  if (!whatsapp_number) return { error: 'whatsapp_obrigatorio' };
+
+  const nome = (dados.nome != null ? String(dados.nome) : '').trim();
+  if (!nome) return { error: 'nome_obrigatorio' };
+
+  const estado_conversa = 'aguardando_escolha';
+  const estado_docs = 'aguardando_docs';
+
+  const MAX_ATTEMPTS = 50;
+  let lastErr;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const id = randomLeadIdSevenDigits();
+    try {
+      await query(
+        `INSERT INTO ch_leads (id, whatsapp_number, nome, email, origem_instancia, estado_conversa, estado_docs, gestora_id, gestora_nome, created_at, updated_at)
+         VALUES (?, ?, ?, NULL, 'api_integracao', ?, ?, NULL, NULL, NOW(), NOW())`,
+        [id, whatsapp_number, nome, estado_conversa, estado_docs]
+      );
+      const rows = await query(`${LEAD_INTEGRATION_SELECT}id = ?`, [id]);
+      return { ok: true, lead: rows[0] };
+    } catch (err) {
+      lastErr = err;
+      const dup = err && (err.code === 'ER_DUP_ENTRY' || err.errno === 1062);
+      if (dup) continue;
+      throw err;
+    }
+  }
+  return { error: 'id_generation_failed', cause: lastErr && lastErr.message };
+}
+
 /** Dashboard: lista todas as gestoras. */
 async function getAllGestoras() {
   const rows = await query('SELECT id, nome, email, email_para_leads, whatsapp, foto_perfil, boas_vindas, ativo, created_at, updated_at FROM ch_gestoras ORDER BY id ASC');
@@ -653,6 +698,7 @@ module.exports = {
   deleteLead,
   createLeadAdmin,
   createLeadWeb,
+  createLeadIntegration,
   getAllGestoras,
   getGestorasWithLeadCounts,
   createGestora,

@@ -40,6 +40,7 @@ const {
   deleteLead,
   createLeadAdmin,
   createLeadWeb,
+  createLeadIntegration,
   getAllGestoras,
   getGestorasWithLeadCounts,
   createGestora,
@@ -90,9 +91,55 @@ logStartup('server.js carregou');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+/** Integração máquina-a-máquina (outra app): header X-Integration-Secret ou Authorization: Bearer */
+function requireIntegrationSecret(req, res, next) {
+  const expected = (process.env.IA_APP_INTEGRATION_SECRET || '').trim();
+  if (!expected) {
+    logStartup('POST /api/integration/leads: IA_APP_INTEGRATION_SECRET não definido');
+    return res.status(503).json({ message: 'Integração não configurada no servidor.' });
+  }
+  let provided = (req.headers['x-integration-secret'] || '').trim();
+  if (!provided) {
+    const auth = (req.headers.authorization || '').trim();
+    if (auth.toLowerCase().startsWith('bearer ')) provided = auth.slice(7).trim();
+  }
+  if (provided !== expected) return res.status(403).json({ message: 'Credenciais inválidas.' });
+  next();
+}
+
 app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Integração externa: criar lead (outra aplicação) — autenticação por IA_APP_INTEGRATION_SECRET
+app.post('/api/integration/leads', requireIntegrationSecret, async (req, res) => {
+  try {
+    const result = await createLeadIntegration(req.body || {});
+    if (result.error === 'dados_invalidos') {
+      return res.status(400).json({ message: 'Body inválido.', code: result.error });
+    }
+    if (result.error === 'whatsapp_obrigatorio') {
+      return res.status(400).json({ message: 'WhatsApp é obrigatório (whatsapp_number ou whatsapp).', code: result.error });
+    }
+    if (result.error === 'nome_obrigatorio') {
+      return res.status(400).json({ message: 'Nome é obrigatório (campo nome).', code: result.error });
+    }
+    if (result.error === 'id_generation_failed') {
+      logStartup(`createLeadIntegration: id_generation_failed ${result.cause || ''}`);
+      return res.status(503).json({ message: 'Não foi possível gerar um id único. Tente novamente.', code: result.error });
+    }
+    if (!result.ok || !result.lead) {
+      return res.status(500).json({ message: 'Erro ao criar lead.' });
+    }
+    const base = (process.env.IA_APP_PUBLIC_BASE_URL || 'https://ia.rafaapelomundo.com').replace(/\/$/, '');
+    const id = result.lead.id;
+    const upload_url = `${base}/upload/${id}`;
+    res.status(201).json({ ok: true, id, upload_url, lead: result.lead });
+  } catch (err) {
+    logStartup(`POST /api/integration/leads: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao criar lead.' });
+  }
+});
 
 // Ficheiros de áudio de respostas das gestoras (FAQ) – rota customizada para servir ficheiro ou 404 JSON
 // (após deploy os ficheiros podem não existir; 404 em JSON permite ao dashboard mostrar mensagem e "Substituir áudio")
