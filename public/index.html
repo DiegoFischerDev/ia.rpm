@@ -395,6 +395,19 @@
     /* Títulos das colunas da tabela de leads: visíveis em desktop, ocultos em mobile (cards) */
     @media (min-width: 769px) {
       #screenLeads table.responsive-table thead { display: table-header-group; }
+      #screenLeads table.responsive-table td.cell-comentario {
+        max-width: 14rem;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        vertical-align: top;
+      }
+    }
+    @media (max-width: 768px) {
+      #screenLeads table.responsive-table td.cell-comentario .lead-comentario-text {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
     }
     /* Cartões responsivos para tabelas em mobile */
     @media (max-width: 768px) {
@@ -614,11 +627,10 @@
                 <th>ID</th>
                 <th>WhatsApp</th>
                 <th>Nome</th>
-                <th>Email</th>
-                <th>Estado conversa</th>
+                <th>Comentário</th>
                 <th>Estado docs</th>
-                <th>Docs enviados</th>
                 <th>Gestora</th>
+                <th>Próximo contacto</th>
                 <th class="leads-sort-th">Atualizado <span class="sort-icons"><button type="button" id="leadsSortAsc" title="Mais antigo primeiro"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg></button><button type="button" id="leadsSortDesc" title="Mais recente primeiro"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button></span></th>
                 <th></th>
               </tr>
@@ -1184,7 +1196,7 @@
       function renderLeads() {
         const tbody = document.getElementById('leadsBody');
         const isGestora = user && user.role === 'gestora';
-        const colCount = isGestora ? 9 : 11;
+        const colCount = 9;
         var rows = _leadsRows.slice();
 
         // Agrupamento por estado_docs
@@ -1206,7 +1218,7 @@
         var filterVal = (document.getElementById('leadsFilterInput') && document.getElementById('leadsFilterInput').value) ? document.getElementById('leadsFilterInput').value.trim().toLowerCase() : '';
         if (filterVal) {
           rows = rows.filter(function (r) {
-            var text = [r.id, r.whatsapp_number, r.nome, r.email, r.estado_conversa, r.estado_docs, r.gestora_nome, r.proximo_contacto_em, formatDate(r.updated_at)].join(' ').toLowerCase();
+            var text = [r.id, r.whatsapp_number, r.nome, r.email, r.comentario, r.estado_conversa, r.estado_docs, r.gestora_nome, r.proximo_contacto_em, formatDate(r.updated_at)].join(' ').toLowerCase();
             return text.indexOf(filterVal) !== -1;
           });
         }
@@ -1234,7 +1246,9 @@
             var docsVal = r.estado_docs || '';
             var docsBadge = '<span class="' + leadBadgeClass('docs', docsVal) + '">' + escapeHtml(docsVal || '—') + '</span>';
             var comentario = (r.comentario || '').trim();
-            var comentarioCell = comentario ? '<span title="' + escapeHtml(comentario) + '">' + escapeHtml(comentario) + '</span>' : '<span class="text-muted">—</span>';
+            var comentarioCell = comentario
+              ? '<span class="lead-comentario-text" title="' + escapeHtml(comentario) + '">' + escapeHtml(comentario) + '</span>'
+              : '<span class="text-muted">—</span>';
             var prox = (r.proximo_contacto_em || '').toString().slice(0, 10);
             var proxCell = prox ? escapeHtml(prox) : '<span class="text-muted">—</span>';
             tr.innerHTML =
@@ -1242,21 +1256,23 @@
               '</td><td data-label="WhatsApp">' + escapeHtml(r.whatsapp_number || '') +
               '</td><td data-label="Nome">' + escapeHtml(r.nome || '') +
               '</td><td data-label="Email">' + escapeHtml(r.email || '') +
-              '</td><td data-label="Comentário">' + comentarioCell +
-              '</td><td data-label="Próximo contacto">' + proxCell +
+              '</td><td data-label="Comentário" class="cell-comentario">' + comentarioCell + '</td><td data-label="Próximo contacto">' + proxCell +
               '</td><td data-label="Estado docs">' + docsBadge + '</td><td class="actions" data-label="Ações">' + waBtn + ' ' + editBtn + '</td>';
           } else {
-            var convVal = r.estado_conversa || '';
             var docsVal = r.estado_docs || '';
-            var convBadge = '<span class="' + leadBadgeClass('conv', convVal) + '">' + escapeHtml(convVal || '—') + '</span>';
             var docsBadge = '<span class="' + leadBadgeClass('docs', docsVal) + '">' + escapeHtml(docsVal || '—') + '</span>';
             var prox = (r.proximo_contacto_em || '').toString().slice(0, 10);
             var proxCell = prox ? escapeHtml(prox) : '<span class="text-muted">—</span>';
+            var comentarioAdm = (r.comentario || '').trim();
+            var comentarioCellAdm = comentarioAdm
+              ? '<span class="lead-comentario-text" title="' + escapeHtml(comentarioAdm) + '">' + escapeHtml(comentarioAdm) + '</span>'
+              : '<span class="text-muted">—</span>';
             tr.innerHTML =
               '<td data-label="ID" class="cell-id">' + r.id + '</td><td data-label="WhatsApp">' +
-              escapeHtml(r.whatsapp_number || '') + '</td><td data-label="Nome">' + escapeHtml(r.nome || '') + '</td><td data-label="Email">' + escapeHtml(r.email || '') +
-              '</td><td data-label="Estado conversa">' + convBadge + '</td><td data-label="Estado docs">' + docsBadge + '</td>' +
-              '<td data-label="Docs enviados">' + (r.docs_enviados ? 'Sim' : 'Não') + '</td><td data-label="Gestora">' + escapeHtml(r.gestora_nome || '—') +
+              escapeHtml(r.whatsapp_number || '') + '</td><td data-label="Nome">' + escapeHtml(r.nome || '') +
+              '</td><td data-label="Comentário" class="cell-comentario">' + comentarioCellAdm +
+              '</td><td data-label="Estado docs">' + docsBadge + '</td>' +
+              '<td data-label="Gestora">' + escapeHtml(r.gestora_nome || '—') +
               '</td><td data-label="Próximo contacto">' + proxCell +
               '</td><td data-label="Atualizado">' + escapeHtml(formatDate(r.updated_at)) +
               '</td><td class="actions" data-label="Ações">' +
@@ -1395,14 +1411,14 @@
       function loadLeads() {
         const tbody = document.getElementById('leadsBody');
         const isGestora = user && user.role === 'gestora';
-        const colCount = isGestora ? 9 : 11;
+        const colCount = 9;
         const headRow = document.getElementById('leadsHeadRow');
         const toolbarEl = document.getElementById('leadsToolbar');
         var sortThHtml = '<th class="leads-sort-th">Atualizado <span class="sort-icons"><button type="button" id="leadsSortAsc" title="Mais antigo primeiro"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg></button><button type="button" id="leadsSortDesc" title="Mais recente primeiro"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></button></span></th>';
         if (headRow) {
           headRow.innerHTML = isGestora
             ? '<th>ID</th><th>Atualizado</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Comentário</th><th>Próximo contacto</th><th>Estado docs</th><th></th>'
-            : '<th>ID</th><th>WhatsApp</th><th>Nome</th><th>Email</th><th>Estado conversa</th><th>Estado docs</th><th>Docs enviados</th><th>Gestora</th><th>Próximo contacto</th>' + sortThHtml + '<th></th>';
+            : '<th>ID</th><th>WhatsApp</th><th>Nome</th><th>Comentário</th><th>Estado docs</th><th>Gestora</th><th>Próximo contacto</th>' + sortThHtml + '<th></th>';
         }
         // Toolbar (filtro + grupos) disponível para admin e gestora
         if (toolbarEl) toolbarEl.style.display = 'flex';
