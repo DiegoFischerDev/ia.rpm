@@ -31,11 +31,12 @@ Segredo incorreto: **403** (`Credenciais inválidas.`).
 
 ## Criar lead — `POST /api/integration/leads`
 
-O cliente envia **apenas** o WhatsApp e o **nome** do lead. O servidor:
+O cliente envia **apenas** o WhatsApp e o **nome** do lead.
 
-1. Gera um **id numérico único com 7 dígitos** (entre 1.000.000 e 9.999.999).
-2. Grava o lead com `origem_instancia = api_integracao`, `estado_conversa = aguardando_escolha`, `estado_docs = aguardando_docs`, **sem gestora** (atribuição ao confirmar email em `/upload`).
-3. Devolve o **`id`**, o **`upload_url`** completo e o objeto **`lead`**.
+1. **Número já registado:** se já existir um lead com esse **WhatsApp** (mesmos dígitos normalizados), **não** se cria um novo registo. Resposta **200** com `existing: true`, `id` e `upload_url` da conta **já existente** (o nome enviado é ignorado para não duplicar contas).
+2. **Número novo:** gera-se um **id** único com **7 dígitos**, grava-se o lead (`origem_instancia = api_integracao`, `estado_conversa = aguardando_escolha`, `estado_docs = aguardando_docs`, sem gestora até confirmar email em `/upload`). Resposta **201** com `existing: false`.
+
+Em ambos os casos o cliente recebe **`id`**, **`upload_url`** e **`lead`**.
 
 ### Corpo (JSON)
 
@@ -44,21 +45,32 @@ O cliente envia **apenas** o WhatsApp e o **nome** do lead. O servidor:
 | `whatsapp_number` ou `whatsapp` | **Sim** | Número de WhatsApp; o servidor normaliza para **apenas dígitos**. |
 | `nome` | **Sim** | Nome do lead (texto não vazio). |
 
-Não envie `id`: o servidor **ignora** ids vindos do cliente e gera sempre um id novo.
-
-### Resposta **201** (sucesso)
+### Resposta **201** (conta criada agora)
 
 ```json
 {
   "ok": true,
+  "existing": false,
   "id": 7234567,
   "upload_url": "https://ia.rafaapelomundo.com/upload/7234567",
   "lead": { ... }
 }
 ```
 
-- **`id`**: repetido por conveniência (é o mesmo que `lead.id`).
-- **`upload_url`**: link para enviar ao utilizador final (documentos / fluxo de email na página de upload).
+### Resposta **200** (WhatsApp já tinha conta)
+
+```json
+{
+  "ok": true,
+  "existing": true,
+  "id": 7234567,
+  "upload_url": "https://ia.rafaapelomundo.com/upload/7234567",
+  "lead": { ... }
+}
+```
+
+- **`existing`**: `false` = novo lead; `true` = reutilização do lead já existente para esse número.
+- **`upload_url`**: link para enviar ao utilizador final.
 
 ### Outras respostas
 
@@ -88,6 +100,6 @@ curl -sS -X POST "https://ia.rafaapelomundo.com/api/integration/leads" \
 1. Definir `IA_APP_INTEGRATION_SECRET` no servidor e reiniciar Node.
 2. Opcional: `IA_APP_PUBLIC_BASE_URL` se o domínio público for diferente do default.
 3. `POST /api/integration/leads` com JSON `{ "whatsapp" ou "whatsapp_number", "nome" }` e cabeçalho de segredo.
-4. Usar `upload_url` (ou `https://ia.rafaapelomundo.com/upload/` + `id`) para o utilizador.
+4. Usar `upload_url` (ou `https://ia.rafaapelomundo.com/upload/` + `id`) para o utilizador; tratar `existing === true` como “já existia conta para esse WhatsApp” (mesmo link).
 
 Não exponha o segredo em repositórios públicos nem em frontend; use variáveis de ambiente no serviço que chama a API.

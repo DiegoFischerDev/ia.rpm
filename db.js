@@ -355,6 +355,7 @@ function randomLeadIdSevenDigits() {
 
 /**
  * Integração externa (outra app): WhatsApp + nome; o servidor gera id único de 7 dígitos.
+ * Um número de WhatsApp só pode ter uma conta: se já existir lead com esse número, devolve o registo existente (existing: true).
  * Sem gestora até confirmar email em /upload. origem_instancia = 'api_integracao'.
  */
 async function createLeadIntegration(dados) {
@@ -364,6 +365,14 @@ async function createLeadIntegration(dados) {
 
   const nome = (dados.nome != null ? String(dados.nome) : '').trim();
   if (!nome) return { error: 'nome_obrigatorio' };
+
+  const existingRows = await query(
+    `${LEAD_INTEGRATION_SELECT}whatsapp_number = ? ORDER BY id DESC LIMIT 1`,
+    [whatsapp_number]
+  );
+  if (existingRows && existingRows[0]) {
+    return { ok: true, existing: true, lead: existingRows[0] };
+  }
 
   const estado_conversa = 'aguardando_escolha';
   const estado_docs = 'aguardando_docs';
@@ -379,7 +388,7 @@ async function createLeadIntegration(dados) {
         [id, whatsapp_number, nome, estado_conversa, estado_docs]
       );
       const rows = await query(`${LEAD_INTEGRATION_SELECT}id = ?`, [id]);
-      return { ok: true, lead: rows[0] };
+      return { ok: true, existing: false, lead: rows[0] };
     } catch (err) {
       lastErr = err;
       const dup = err && (err.code === 'ER_DUP_ENTRY' || err.errno === 1062);

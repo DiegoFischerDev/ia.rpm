@@ -134,7 +134,9 @@ app.post('/api/integration/leads', requireIntegrationSecret, async (req, res) =>
     const base = (process.env.IA_APP_PUBLIC_BASE_URL || 'https://ia.rafaapelomundo.com').replace(/\/$/, '');
     const id = result.lead.id;
     const upload_url = `${base}/upload/${id}`;
-    res.status(201).json({ ok: true, id, upload_url, lead: result.lead });
+    const existing = !!result.existing;
+    const status = existing ? 200 : 201;
+    res.status(status).json({ ok: true, existing, id, upload_url, lead: result.lead });
   } catch (err) {
     logStartup(`POST /api/integration/leads: ${err.message}`);
     res.status(500).json({ message: err.message || 'Erro ao criar lead.' });
