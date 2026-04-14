@@ -87,6 +87,14 @@ function logStartup(msg) {
 }
 
 logStartup('server.js carregou');
+for (const p of envPaths) {
+  try {
+    if (fs.existsSync(p)) logStartup(`.env encontrado em: ${p}`);
+  } catch (_) {}
+}
+if (!(process.env.IA_APP_INTEGRATION_SECRET || '').trim()) {
+  logStartup('AVISO: IA_APP_INTEGRATION_SECRET vazio — integração externa (POST /api/integration/leads) responde 503');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -110,6 +118,12 @@ function requireIntegrationSecret(req, res, next) {
 app.set('trust proxy', 1);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Verificação pública: confirma se o segredo de integração está definido no processo (não revela o valor)
+app.get('/api/integration/status', (req, res) => {
+  const integration_secret_configured = !!(process.env.IA_APP_INTEGRATION_SECRET || '').trim();
+  res.json({ integration_secret_configured });
+});
 
 // Integração externa: criar lead (outra aplicação) — autenticação por IA_APP_INTEGRATION_SECRET
 app.post('/api/integration/leads', requireIntegrationSecret, async (req, res) => {

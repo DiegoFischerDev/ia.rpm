@@ -103,3 +103,37 @@ curl -sS -X POST "https://ia.rafaapelomundo.com/api/integration/leads" \
 4. Usar `upload_url` (ou `https://ia.rafaapelomundo.com/upload/` + `id`) para o utilizador; tratar `existing === true` como “já existia conta para esse WhatsApp” (mesmo link).
 
 Não exponha o segredo em repositórios públicos nem em frontend; use variáveis de ambiente no serviço que chama a API.
+
+---
+
+## Erro «Integração não configurada no servidor» (503)
+
+Significa que, **no processo Node que serve o site**, `IA_APP_INTEGRATION_SECRET` está **vazio ou ausente**. Não é um problema do utilizador final nem da outra app em si — o servidor ainda não “vê” a variável.
+
+### Como ter a certeza
+
+1. **Endpoint de estado** (após deploy do código recente): abre no browser ou faz `curl`:
+   ```bash
+   curl -sS "https://ia.rafaapelomundo.com/api/integration/status"
+   ```
+   - `{"integration_secret_configured":true}` → o segredo está definido neste servidor.
+   - `{"integration_secret_configured":false}` → a variável **não** está carregada; continua a haver 503 no `POST`.
+
+2. **Ficheiro `startup.log`** na pasta do `ia-app` no servidor: após reiniciar Node, deve aparecer `.env encontrado em: ...` se existir ficheiro; se `IA_APP_INTEGRATION_SECRET` estiver vazio, aparece a linha de AVISO.
+
+3. **Causas frequentes (ex.: Hostinger)**  
+   - `.env` não foi enviado para o servidor ou está na **pasta errada**. O Node tenta: pasta **pai** da app (`../.env`) e pasta **`ia-app`** (`./.env`).  
+   - Variável definida só no painel mas **nome errado** (espaço, typo) ou não associada à **aplicação Node** que corre em produção.  
+   - **Reinício** em falta após alterar `.env` ou variáveis.  
+   - A outra app a apontar para **outro URL** (staging/local) onde o segredo não existe.
+
+4. **Teste manual do POST** (substitui `SEGREDO` pelo valor real do servidor):
+   ```bash
+   curl -sS -o /dev/stderr -w "%{http_code}" -X POST "https://ia.rafaapelomundo.com/api/integration/leads" \
+     -H "Content-Type: application/json" \
+     -H "X-Integration-Secret: SEGREDO" \
+     -d '{"whatsapp":"351900000000","nome":"Teste"}'
+   ```
+   - `503` + mensagem de integração → segredo vazio **no servidor**.  
+   - `403` → segredo definido mas **valor diferente** do enviado no header.  
+   - `200` ou `201` → OK.
