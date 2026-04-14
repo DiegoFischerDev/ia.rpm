@@ -392,7 +392,22 @@ async function createLeadIntegration(dados) {
     } catch (err) {
       lastErr = err;
       const dup = err && (err.code === 'ER_DUP_ENTRY' || err.errno === 1062);
-      if (dup) continue;
+      if (dup) {
+        const msg = `${err.message || ''} ${err.sqlMessage || ''}`;
+        // Colisão só no id (7 dígitos): tentar outro id
+        if (/\bPRIMARY\b|for key ['`]PRIMARY['`]/i.test(msg)) {
+          continue;
+        }
+        // Outra UNIQUE (ex.: whatsapp) — típico com dois pedidos em paralelo: devolver o lead já gravado
+        const rows = await query(
+          `${LEAD_INTEGRATION_SELECT}whatsapp_number = ? ORDER BY id DESC LIMIT 1`,
+          [whatsapp_number]
+        );
+        if (rows && rows[0]) {
+          return { ok: true, existing: true, lead: rows[0] };
+        }
+        continue;
+      }
       throw err;
     }
   }

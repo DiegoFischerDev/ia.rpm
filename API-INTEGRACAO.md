@@ -36,6 +36,8 @@ O cliente envia **apenas** o WhatsApp e o **nome** do lead.
 1. **Número já registado:** se já existir um lead com esse **WhatsApp** (mesmos dígitos normalizados), **não** se cria um novo registo. Resposta **200** com `existing: true`, `id` e `upload_url` da conta **já existente** (o nome enviado é ignorado para não duplicar contas).
 2. **Número novo:** gera-se um **id** único com **7 dígitos**, grava-se o lead (`origem_instancia = api_integracao`, `estado_conversa = aguardando_escolha`, `estado_docs = aguardando_docs`, sem gestora até confirmar email em `/upload`). Resposta **201** com `existing: false`.
 
+**Pedidos em paralelo:** na base de dados deve existir o índice **UNIQUE** em `whatsapp_number` (migration `038_ch_leads_whatsapp_unique.sql`). Assim, dois pedidos ao mesmo tempo com o mesmo número só conseguem gravar **uma** linha; o segundo recebe erro de duplicado e o backend devolve o mesmo lead (`existing: true`) em vez de criar outro registo.
+
 Em ambos os casos o cliente recebe **`id`**, **`upload_url`** e **`lead`**.
 
 ### Corpo (JSON)
