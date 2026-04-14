@@ -1,6 +1,6 @@
 # ia-app – ia.rafaapelomundo.com
 
-App mínima Node.js + Express para testar deploy na Hostinger.
+App mínima Node.js + Express para testar deploy na Hostinger
 
 ## Rodar localmente
 
