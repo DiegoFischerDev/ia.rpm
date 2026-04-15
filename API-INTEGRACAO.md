@@ -99,6 +99,55 @@ curl -sS -X POST "https://ia.rafaapelomundo.com/api/integration/leads" \
 
 ---
 
+## Atualizar comentário — `PATCH /api/integration/leads/comment`
+
+Atualiza o campo `comentario` de um lead **já existente**, identificado pelo WhatsApp.
+
+- **Autenticação**: igual (mesmo `IA_APP_INTEGRATION_SECRET`)
+- **Modo**:
+  - `mode: "append"` (default) → adiciona no fim, separado por linha em branco
+  - `mode: "replace"` → substitui o comentário inteiro
+
+### Corpo (JSON)
+
+| Campo | Obrigatório | Descrição |
+|-------|-------------|-----------|
+| `whatsapp_number` ou `whatsapp` | **Sim** | Número do lead (normalizado para dígitos). |
+| `comentario` | **Sim** | Texto a gravar. |
+| `mode` | Não | `"append"` ou `"replace"`. |
+
+### Respostas
+
+| HTTP | Significado |
+|------|-------------|
+| **200** | Atualizado. Corpo: `{ "ok": true, "lead": { ... } }` |
+| **400** | Falta WhatsApp ou comentário. |
+| **403** | Segredo inválido. |
+| **404** | Não existe lead para esse WhatsApp. |
+| **500** | Erro interno. |
+
+### Exemplo cURL
+
+Append:
+
+```bash
+curl -sS -X PATCH "https://ia.rafaapelomundo.com/api/integration/leads/comment" \
+  -H "Content-Type: application/json" \
+  -H "X-Integration-Secret: SEGREDO" \
+  -d '{ "whatsapp": "351912345678", "comentario": "Novo evento: pediu simulação.", "mode": "append" }'
+```
+
+Replace:
+
+```bash
+curl -sS -X PATCH "https://ia.rafaapelomundo.com/api/integration/leads/comment" \
+  -H "Content-Type: application/json" \
+  -H "X-Integration-Secret: SEGREDO" \
+  -d '{ "whatsapp": "351912345678", "comentario": "Comentário atualizado.", "mode": "replace" }'
+```
+
+---
+
 ## Resumo para copiar para outro projeto Cursor
 
 1. Definir `IA_APP_INTEGRATION_SECRET` no servidor e reiniciar Node.

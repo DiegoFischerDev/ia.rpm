@@ -41,6 +41,7 @@ const {
   createLeadAdmin,
   createLeadWeb,
   createLeadIntegration,
+  updateLeadComentarioIntegrationByWhatsapp,
   getAllGestoras,
   getGestorasWithLeadCounts,
   createGestora,
@@ -123,6 +124,31 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/api/integration/status', (req, res) => {
   const integration_secret_configured = !!(process.env.IA_APP_INTEGRATION_SECRET || '').trim();
   res.json({ integration_secret_configured });
+});
+
+// Integração externa: atualizar comentário de um lead existente (por WhatsApp)
+// mode: 'append' (default) ou 'replace'
+app.patch('/api/integration/leads/comment', requireIntegrationSecret, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const whatsapp = body.whatsapp_number || body.whatsapp || '';
+    const comentario = body.comentario;
+    const mode = body.mode || 'append';
+    const result = await updateLeadComentarioIntegrationByWhatsapp(whatsapp, comentario, mode);
+    if (result.error === 'whatsapp_obrigatorio') {
+      return res.status(400).json({ message: 'WhatsApp é obrigatório (whatsapp_number ou whatsapp).', code: result.error });
+    }
+    if (result.error === 'comentario_obrigatorio') {
+      return res.status(400).json({ message: 'Comentário é obrigatório (comentario).', code: result.error });
+    }
+    if (result.error === 'lead_nao_encontrado') {
+      return res.status(404).json({ message: 'Lead não encontrado para este WhatsApp.', code: result.error });
+    }
+    res.json({ ok: true, lead: result.lead });
+  } catch (err) {
+    logStartup(`PATCH /api/integration/leads/comment: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao atualizar comentário.' });
+  }
 });
 
 // Integração externa: criar lead (outra aplicação) — autenticação por IA_APP_INTEGRATION_SECRET

@@ -269,6 +269,34 @@ async function updateLeadAdmin(id, dados) {
   await query(`UPDATE ch_leads SET ${set.join(', ')} WHERE id = ?`, values);
 }
 
+/** Integração externa: atualizar comentário por WhatsApp (append/replace). */
+async function updateLeadComentarioIntegrationByWhatsapp(whatsappNumberRaw, comentarioRaw, mode) {
+  const whatsapp_number = (whatsappNumberRaw || '').trim().replace(/\D/g, '');
+  if (!whatsapp_number) return { error: 'whatsapp_obrigatorio' };
+  const comentario = comentarioRaw != null ? String(comentarioRaw).trim() : '';
+  if (!comentario) return { error: 'comentario_obrigatorio' };
+  const m = (mode || '').trim().toLowerCase();
+  const doAppend = m !== 'replace';
+
+  const rows = await query(
+    `${LEAD_INTEGRATION_SELECT}whatsapp_number = ? ORDER BY id DESC LIMIT 1`,
+    [whatsapp_number]
+  );
+  const lead = rows && rows[0] ? rows[0] : null;
+  if (!lead) return { error: 'lead_nao_encontrado' };
+
+  if (doAppend) {
+    const existing = lead.comentario ? String(lead.comentario).trim() : '';
+    const next = existing ? (existing + '\n\n' + comentario) : comentario;
+    await query('UPDATE ch_leads SET comentario = ?, updated_at = NOW() WHERE id = ?', [next, lead.id]);
+  } else {
+    await query('UPDATE ch_leads SET comentario = ?, updated_at = NOW() WHERE id = ?', [comentario, lead.id]);
+  }
+
+  const out = await query(`${LEAD_INTEGRATION_SELECT}id = ?`, [lead.id]);
+  return { ok: true, lead: out[0] };
+}
+
 /** Dashboard: apagar lead. */
 async function deleteLead(id) {
   await query('DELETE FROM ch_leads WHERE id = ?', [id]);
@@ -725,6 +753,7 @@ module.exports = {
   getLeadsForRafaCount,
   getAllLeads,
   updateLeadAdmin,
+  updateLeadComentarioIntegrationByWhatsapp,
   deleteLead,
   createLeadAdmin,
   createLeadWeb,
