@@ -569,7 +569,7 @@
 
   <div id="dashboardApp" class="app screen">
     <nav class="sidebar">
-      <div class="sidebar-footer-version">versão 5.0</div>
+      <div class="sidebar-footer-version">versão 6.0</div>
       <a href="#leads" class="sidebar-logo" aria-label="Início"><img src="logo_bg_clara.png" alt=""><span class="sidebar-tagline">Crédito Habitação</span></a>
       <a href="#leads" id="navLeads" class="sidebar-nav-item active">Leads</a>
       <a href="#proximo-contacto" id="navProximoContacto" class="sidebar-nav-item">Próximo contacto</a>
@@ -596,7 +596,7 @@
           <span></span><span></span><span></span>
         </button>
         <div style="display:flex;flex-direction:column;gap:0.15rem;align-items:flex-start;">
-          <div class="sidebar-footer-version" style="margin-top:0;">versão 5.0</div>
+          <div class="sidebar-footer-version" style="margin-top:0;">versão 6.0</div>
           <a href="#leads" class="main-header-logo"><img src="logo_bg_escura.png" alt=""></a>
         </div>
       </header>
@@ -616,6 +616,7 @@
             <button type="button" class="btn btn-outline btn-sm leads-group-btn active" data-group="todos" data-base-label="Todos">Todos</button>
             <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="sem_docs" data-base-label="Sem docs">Sem docs</button>
             <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="com_docs" data-base-label="Com docs">Com docs</button>
+            <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="pre_aprovado" data-base-label="Pré-aprovado">Pré-aprovado</button>
             <button type="button" class="btn btn-outline btn-sm leads-group-btn" data-group="aprovados" data-base-label="Aprovados">Aprovados</button>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btnInserirLead" style="display:none;">Inserir lead</button>
@@ -1146,7 +1147,7 @@
       var ESTADO_DOCS_OPCOES = ['aguardando_docs', 'sem_docs', 'docs_enviados', 'inviavel', 'pre_aprovado', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
       var _leadsRows = [];
       var _leadsSort = '';
-      var _leadsGroup = 'todos'; // todos | sem_docs | com_docs | aprovados
+      var _leadsGroup = 'todos'; // todos | sem_docs | com_docs | pre_aprovado | aprovados
 
       function leadBadgeClass(prefix, value) {
         if (!value || typeof value !== 'string') return 'lead-badge lead-badge--neutral';
@@ -1166,6 +1167,7 @@
         var total = rows.length;
         var semDocs = 0;
         var comDocs = 0;
+        var preAprovado = 0;
         var aprovados = 0;
         rows.forEach(function (r) {
           var estado = r && r.estado_docs;
@@ -1173,6 +1175,8 @@
             semDocs++;
           } else if (estado === 'docs_enviados' || estado === 'inviavel') {
             comDocs++;
+          } else if (estado === 'pre_aprovado') {
+            preAprovado++;
           } else if (
             estado === 'credito_aprovado' ||
             estado === 'agendado_escritura' ||
@@ -1188,6 +1192,7 @@
           if (group === 'todos') count = total;
           else if (group === 'sem_docs') count = semDocs;
           else if (group === 'com_docs') count = comDocs;
+          else if (group === 'pre_aprovado') count = preAprovado;
           else if (group === 'aprovados') count = aprovados;
           btn.textContent = base + ' ' + String(count);
         });
@@ -1207,6 +1212,10 @@
         } else if (_leadsGroup === 'com_docs') {
           rows = rows.filter(function (r) {
             return r.estado_docs === 'docs_enviados' || r.estado_docs === 'inviavel';
+          });
+        } else if (_leadsGroup === 'pre_aprovado') {
+          rows = rows.filter(function (r) {
+            return r.estado_docs === 'pre_aprovado';
           });
         } else if (_leadsGroup === 'aprovados') {
           rows = rows.filter(function (r) {
