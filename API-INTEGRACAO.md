@@ -104,9 +104,7 @@ curl -sS -X POST "https://ia.rafaapelomundo.com/api/integration/leads" \
 Atualiza o campo `comentario` de um lead **já existente**, identificado pelo WhatsApp.
 
 - **Autenticação**: igual (mesmo `IA_APP_INTEGRATION_SECRET`)
-- **Modo**:
-  - `mode: "append"` (default) → adiciona no fim, separado por linha em branco
-  - `mode: "replace"` → substitui o comentário inteiro
+- **Comportamento**: **substitui** o comentário inteiro pelo novo valor (mantém apenas o último).
 
 ### Corpo (JSON)
 
@@ -114,7 +112,6 @@ Atualiza o campo `comentario` de um lead **já existente**, identificado pelo Wh
 |-------|-------------|-----------|
 | `whatsapp_number` ou `whatsapp` | **Sim** | Número do lead (normalizado para dígitos). |
 | `comentario` | **Sim** | Texto a gravar. |
-| `mode` | Não | `"append"` ou `"replace"`. |
 
 ### Respostas
 
@@ -128,22 +125,11 @@ Atualiza o campo `comentario` de um lead **já existente**, identificado pelo Wh
 
 ### Exemplo cURL
 
-Append:
-
 ```bash
 curl -sS -X PATCH "https://ia.rafaapelomundo.com/api/integration/leads/comment" \
   -H "Content-Type: application/json" \
   -H "X-Integration-Secret: SEGREDO" \
-  -d '{ "whatsapp": "351912345678", "comentario": "Novo evento: pediu simulação.", "mode": "append" }'
-```
-
-Replace:
-
-```bash
-curl -sS -X PATCH "https://ia.rafaapelomundo.com/api/integration/leads/comment" \
-  -H "Content-Type: application/json" \
-  -H "X-Integration-Secret: SEGREDO" \
-  -d '{ "whatsapp": "351912345678", "comentario": "Comentário atualizado.", "mode": "replace" }'
+  -d '{ "whatsapp": "351912345678", "comentario": "Comentário atualizado (substitui o anterior)." }'
 ```
 
 ---

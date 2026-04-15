@@ -127,14 +127,12 @@ app.get('/api/integration/status', (req, res) => {
 });
 
 // Integração externa: atualizar comentário de um lead existente (por WhatsApp)
-// mode: 'append' (default) ou 'replace'
 app.patch('/api/integration/leads/comment', requireIntegrationSecret, async (req, res) => {
   try {
     const body = req.body || {};
     const whatsapp = body.whatsapp_number || body.whatsapp || '';
     const comentario = body.comentario;
-    const mode = body.mode || 'append';
-    const result = await updateLeadComentarioIntegrationByWhatsapp(whatsapp, comentario, mode);
+    const result = await updateLeadComentarioIntegrationByWhatsapp(whatsapp, comentario);
     if (result.error === 'whatsapp_obrigatorio') {
       return res.status(400).json({ message: 'WhatsApp é obrigatório (whatsapp_number ou whatsapp).', code: result.error });
     }
