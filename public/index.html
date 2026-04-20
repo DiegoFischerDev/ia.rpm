@@ -1631,7 +1631,12 @@
                 })
                   .then(function (r) { return r.json().then(function (d) { return r.ok ? d : Promise.reject(d); }); })
                   .then(function () {
-                    window.open(waUrl, '_blank', 'noopener,noreferrer');
+                    var isMobile = /Android|iPhone|iPad|iPod|Windows Phone|webOS/i.test(navigator.userAgent || '');
+                    if (isMobile) {
+                      window.location.href = waUrl;
+                    } else {
+                      window.open(waUrl, '_blank', 'noopener,noreferrer');
+                    }
                     loadAguardandoAtendimento();
                     updateAguardandoAtendimentoBadge();
                   })
