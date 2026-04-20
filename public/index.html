@@ -572,7 +572,8 @@
       <div class="sidebar-footer-version">versão 7.0</div>
       <a href="#leads" class="sidebar-logo" aria-label="Início"><img src="logo_bg_clara.png" alt=""><span class="sidebar-tagline">Crédito Habitação</span></a>
       <a href="#leads" id="navLeads" class="sidebar-nav-item active">Leads</a>
-      <a href="#aguardando-atendimento" id="navAguardandoAtendimento" class="sidebar-nav-item" style="display:none;">Aguardando atendimento</a>
+      <a href="#aguardando-atendimento" id="navAguardandoAtendimento" class="sidebar-nav-item" style="display:none;"><span class="nav-label">Aguardando atendimento</span><span id="navAguardandoAtendimentoBadge" class="nav-badge hidden">0</span></a>
+      <a href="#atendimentos" id="navAtendimentos" class="sidebar-nav-item" style="display:none;">Atendimentos</a>
       <a href="#proximo-contacto" id="navProximoContacto" class="sidebar-nav-item">Próximo contacto</a>
       <a href="#gestoras" id="navGestoras" class="sidebar-nav-item">Gestoras</a>
       <a href="#perfil" id="navPerfil" class="sidebar-nav-item" style="display:none;">Perfil</a>
@@ -657,6 +658,25 @@
               </tr>
             </thead>
             <tbody id="atendimentosAguardandoBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="screenAtendimentos" class="screen">
+        <h2 class="page-title">Atendimentos</h2>
+        <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Registo de todos os atendimentos solicitados (todos os gestores).</p>
+        <div class="table-wrap card">
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Lead</th>
+                <th>Gestora</th>
+                <th>Status</th>
+                <th>Pedido em</th>
+                <th>Atendido em</th>
+              </tr>
+            </thead>
+            <tbody id="atendimentosAdminBody"></tbody>
           </table>
         </div>
       </div>
@@ -937,6 +957,7 @@
           perfil: 'perfil',
           'proximo-contacto': 'proximoContacto',
           'aguardando-atendimento': 'aguardandoAtendimento',
+          atendimentos: 'atendimentos',
         };
         return map[hash] || 'leads';
       }
@@ -949,12 +970,39 @@
         if (a) a.classList.add('active');
         if (id === 'leads') loadLeads();
         if (id === 'aguardandoAtendimento') loadAguardandoAtendimento();
+        if (id === 'atendimentos') loadAtendimentosAdmin();
         if (id === 'proximoContacto') loadProximoContacto();
         if (id === 'gestoras') loadGestoras();
         if (id === 'perfil') loadProfile();
       }
 
       // Funções de badge para "Falar com Rafa" e "Perguntas pendentes" removidas na simplificação
+
+      function updateAguardandoAtendimentoBadge() {
+        var badge = document.getElementById('navAguardandoAtendimentoBadge');
+        if (!badge) return;
+        if (!user || user.role !== 'gestora') {
+          badge.classList.add('hidden');
+          badge.textContent = '0';
+          return;
+        }
+        fetch(API + '/atendimentos-aguardando/count', { credentials: 'include' })
+          .then(function (r) { return r.ok ? r.json() : Promise.reject(); })
+          .then(function (d) {
+            var n = (d && d.count != null) ? Number(d.count) : 0;
+            if (!n || n < 0) {
+              badge.classList.add('hidden');
+              badge.textContent = '0';
+              return;
+            }
+            badge.textContent = String(n);
+            badge.classList.remove('hidden');
+          })
+          .catch(function () {
+            badge.classList.add('hidden');
+            badge.textContent = '0';
+          });
+      }
 
       function checkAuth() {
         return fetch(API + '/me', { credentials: 'include' })
@@ -993,17 +1041,22 @@
               var navGestoras = document.getElementById('navGestoras');
               var navPerfil = document.getElementById('navPerfil');
               var navAguardandoAtendimento = document.getElementById('navAguardandoAtendimento');
+              var navAtendimentos = document.getElementById('navAtendimentos');
               if (navGestoras) navGestoras.style.display = '';
               if (navPerfil) navPerfil.style.display = 'none';
               if (navAguardandoAtendimento) navAguardandoAtendimento.style.display = 'none';
+              if (navAtendimentos) navAtendimentos.style.display = '';
             } else {
               var navGestoras2 = document.getElementById('navGestoras');
               var navPerfil2 = document.getElementById('navPerfil');
               var navAguardandoAtendimento2 = document.getElementById('navAguardandoAtendimento');
+              var navAtendimentos2 = document.getElementById('navAtendimentos');
               if (navGestoras2) navGestoras2.style.display = 'none';
               if (navPerfil2) navPerfil2.style.display = '';
               if (navAguardandoAtendimento2) navAguardandoAtendimento2.style.display = '';
+              if (navAtendimentos2) navAtendimentos2.style.display = 'none';
             }
+            updateAguardandoAtendimentoBadge();
             const hashRaw = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
             const screenId = hashToScreenId(hashRaw);
             showScreen(screenId);
@@ -1545,7 +1598,7 @@
                 '<td data-label="Pedido em">' + escapeHtml(pedidoEm) + '</td>' +
                 '<td data-label="Atendido em">' + escapeHtml(atendidoEm) + '</td>' +
                 '<td class="actions" data-label="Ações">' +
-                  (num ? '<button type="button" class="btn btn-whatsapp btn-sm btn-atender-whatsapp" data-id="' + r.id + '" data-num="' + num + '">WhatsApp</button>' : '<span class="text-muted">—</span>') +
+                  (num ? '<button type="button" class="btn btn-whatsapp btn-sm btn-atender-whatsapp" data-id="' + r.id + '" data-num="' + num + '" data-wa-url="' + escapeHtml(waUrl) + '">WhatsApp</button>' : '<span class="text-muted">—</span>') +
                 '</td>';
               tbody.appendChild(tr);
             });
@@ -1553,7 +1606,8 @@
               btn.addEventListener('click', function () {
                 const leadId = this.getAttribute('data-id');
                 const num = this.getAttribute('data-num');
-                if (!leadId || !num) return;
+                const waUrl = this.getAttribute('data-wa-url') || '';
+                if (!leadId || !num || !waUrl) return;
                 this.disabled = true;
                 fetch(API + '/atendimentos/' + encodeURIComponent(leadId) + '/marcar-atendido', {
                   method: 'POST',
@@ -1564,13 +1618,58 @@
                   .then(function () {
                     window.open(waUrl, '_blank', 'noopener,noreferrer');
                     loadAguardandoAtendimento();
+                    updateAguardandoAtendimentoBadge();
                   })
                   .catch(function (err) {
-                    const msg = (err && err.message) ? err.message : 'Erro ao marcar atendimento.';
-                    alert(msg);
+                    const msg = (err && err.message) ? String(err.message) : '';
+                    // Se já não estiver aguardando (clique duplicado/race), não mostrar alerta.
+                    if (msg && msg.toLowerCase().indexOf('já não está aguardando atendimento') !== -1) {
+                      loadAguardandoAtendimento();
+                      updateAguardandoAtendimentoBadge();
+                      return;
+                    }
+                    const fallback = msg || 'Erro ao marcar atendimento.';
+                    alert(fallback);
                     btn.disabled = false;
                   });
               });
+            });
+          })
+          .catch((err) => {
+            const msg = (err && err.message) || 'Erro ao carregar.';
+            tbody.innerHTML = '<tr><td colspan="' + colCount + '" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
+          });
+      }
+
+      function loadAtendimentosAdmin() {
+        const tbody = document.getElementById('atendimentosAdminBody');
+        if (!tbody) return;
+        const colCount = 6;
+        if (!user || user.role !== 'admin') {
+          tbody.innerHTML = '<tr><td colspan="' + colCount + '">Acesso reservado ao admin.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = '<tr><td colspan="' + colCount + '">A carregar…</td></tr>';
+        fetch(API + '/atendimentos', { credentials: 'include' })
+          .then((r) => r.json().then((data) => (r.ok ? data : Promise.reject(data))))
+          .then((rows) => {
+            const list = Array.isArray(rows) ? rows : [];
+            if (!list.length) {
+              tbody.innerHTML = '<tr><td colspan="' + colCount + '">Nenhum atendimento solicitado.</td></tr>';
+              return;
+            }
+            tbody.innerHTML = '';
+            list.forEach(function (r) {
+              const tr = document.createElement('tr');
+              const status = (r.atendimento_status || '').trim() || '—';
+              tr.innerHTML =
+                '<td data-label="ID" class="cell-id">' + escapeHtml(String(r.id || '')) + '</td>' +
+                '<td data-label="Lead">' + escapeHtml(r.nome || '—') + '</td>' +
+                '<td data-label="Gestora">' + escapeHtml(r.gestora_nome || '—') + '</td>' +
+                '<td data-label="Status">' + escapeHtml(status) + '</td>' +
+                '<td data-label="Pedido em">' + escapeHtml(formatDate(r.atendimento_solicitado_em || r.updated_at)) + '</td>' +
+                '<td data-label="Atendido em">' + escapeHtml(r.atendimento_realizado_em ? formatDate(r.atendimento_realizado_em) : '—') + '</td>';
+              tbody.appendChild(tr);
             });
           })
           .catch((err) => {

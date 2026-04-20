@@ -44,6 +44,8 @@ const {
   requestLeadAtendimentoByWhatsapp,
   updateLeadComentarioIntegrationByWhatsapp,
   getLeadsAguardandoAtendimentoByGestoraId,
+  getAguardandoAtendimentoCountByGestoraId,
+  getAllAtendimentosSolicitados,
   markLeadAtendimentoAsDone,
   getAllGestoras,
   getGestorasWithLeadCounts,
@@ -1326,6 +1328,32 @@ app.get('/api/dashboard/atendimentos-aguardando', requireDashboardAuth, async (r
   } catch (err) {
     logStartup(`getAtendimentosAguardando error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar atendimentos pendentes.' });
+  }
+});
+
+// Dashboard gestora: contagem para badge no menu de navegação
+app.get('/api/dashboard/atendimentos-aguardando/count', requireDashboardAuth, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (!user || user.role !== 'gestora') {
+    return res.status(403).json({ message: 'Acesso reservado à gestora.' });
+  }
+  try {
+    const count = await getAguardandoAtendimentoCountByGestoraId(user.id);
+    res.json({ count });
+  } catch (err) {
+    logStartup(`getAtendimentosAguardandoCount error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao obter contagem de atendimentos pendentes.' });
+  }
+});
+
+// Dashboard admin: histórico de todos os atendimentos solicitados
+app.get('/api/dashboard/atendimentos', requireDashboardAuth, requireAdminAuth, async (req, res) => {
+  try {
+    const rows = await getAllAtendimentosSolicitados();
+    res.json(rows);
+  } catch (err) {
+    logStartup(`getAllAtendimentos error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao listar atendimentos.' });
   }
 });
 

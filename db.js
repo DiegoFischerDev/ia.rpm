@@ -416,6 +416,33 @@ async function getLeadsAguardandoAtendimentoByGestoraId(gestoraId) {
   return rows;
 }
 
+/** Dashboard gestora: contagem de leads aguardando atendimento. */
+async function getAguardandoAtendimentoCountByGestoraId(gestoraId) {
+  const rows = await query(
+    `SELECT COUNT(*) AS n
+     FROM ch_leads
+     WHERE gestora_id = ? AND atendimento_status = 'aguardando_atendimento'`,
+    [gestoraId]
+  );
+  return (rows[0] && rows[0].n != null) ? Number(rows[0].n) : 0;
+}
+
+/** Dashboard admin: histórico de atendimentos solicitados (todos os gestores). */
+async function getAllAtendimentosSolicitados() {
+  const rows = await query(
+    `SELECT l.id, l.nome, l.whatsapp_number, l.atendimento_status, l.atendimento_solicitado_em, l.atendimento_realizado_em,
+            l.gestora_id, l.gestora_nome, g.nome AS gestora_nome_atual, l.updated_at
+     FROM ch_leads l
+     LEFT JOIN ch_gestoras g ON g.id = l.gestora_id
+     WHERE l.atendimento_status IS NOT NULL
+     ORDER BY COALESCE(l.atendimento_solicitado_em, l.updated_at) DESC`
+  );
+  return rows.map((r) => ({
+    ...r,
+    gestora_nome: (r.gestora_nome_atual && String(r.gestora_nome_atual).trim()) || r.gestora_nome || null,
+  }));
+}
+
 /** Dashboard gestora: marca lead como atendido por ação de WhatsApp. */
 async function markLeadAtendimentoAsDone(leadId, gestoraId) {
   const rows = await query(
@@ -827,6 +854,8 @@ module.exports = {
   createLeadIntegration,
   requestLeadAtendimentoByWhatsapp,
   getLeadsAguardandoAtendimentoByGestoraId,
+  getAguardandoAtendimentoCountByGestoraId,
+  getAllAtendimentosSolicitados,
   markLeadAtendimentoAsDone,
   getAllGestoras,
   getGestorasWithLeadCounts,
