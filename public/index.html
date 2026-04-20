@@ -650,7 +650,6 @@
               <tr>
                 <th>ID</th>
                 <th>Nome</th>
-                <th>WhatsApp</th>
                 <th>Pedido em</th>
                 <th>Atendido em</th>
                 <th></th>
@@ -1501,7 +1500,7 @@
       function loadAguardandoAtendimento() {
         const tbody = document.getElementById('atendimentosAguardandoBody');
         if (!tbody) return;
-        const colCount = 6;
+        const colCount = 5;
         if (!user || user.role !== 'gestora') {
           tbody.innerHTML = '<tr><td colspan="' + colCount + '">Acesso reservado à gestora.</td></tr>';
           return;
@@ -1524,7 +1523,6 @@
               tr.innerHTML =
                 '<td data-label="ID" class="cell-id">' + escapeHtml(String(r.id || '')) + '</td>' +
                 '<td data-label="Nome">' + escapeHtml(r.nome || '') + '</td>' +
-                '<td data-label="WhatsApp">' + escapeHtml(r.whatsapp_number || '') + '</td>' +
                 '<td data-label="Pedido em">' + escapeHtml(pedidoEm) + '</td>' +
                 '<td data-label="Atendido em">' + escapeHtml(atendidoEm) + '</td>' +
                 '<td class="actions" data-label="Ações">' +
