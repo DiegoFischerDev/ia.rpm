@@ -664,6 +664,20 @@
       <div id="screenAtendimentos" class="screen">
         <h2 class="page-title">Atendimentos</h2>
         <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Registo de todos os atendimentos solicitados (todos os gestores).</p>
+        <div class="leads-toolbar" style="display:flex;margin-bottom:0.75rem;">
+          <div class="leads-filter-wrap">
+            <label for="atendimentosFilterGestora" style="margin:0;">Gestora</label>
+            <select id="atendimentosFilterGestora" style="max-width:260px;">
+              <option value="">Todas</option>
+            </select>
+            <label for="atendimentosFilterStatus" style="margin:0;">Status</label>
+            <select id="atendimentosFilterStatus" style="max-width:220px;">
+              <option value="">Todos</option>
+              <option value="aguardando_atendimento">aguardando_atendimento</option>
+              <option value="atendido">atendido</option>
+            </select>
+          </div>
+        </div>
         <div class="table-wrap card">
           <table class="responsive-table">
             <thead>
@@ -1229,6 +1243,7 @@
 
       var ESTADO_DOCS_OPCOES = ['aguardando_docs', 'sem_docs', 'docs_enviados', 'inviavel', 'pre_aprovado', 'credito_aprovado', 'agendado_escritura', 'escritura_realizada'];
       var _leadsRows = [];
+      var _atendimentosRows = [];
       var _leadsSort = '';
       var _leadsGroup = 'todos'; // todos | sem_docs | com_docs | pre_aprovado | aprovados
 
@@ -1653,30 +1668,75 @@
         fetch(API + '/atendimentos', { credentials: 'include' })
           .then((r) => r.json().then((data) => (r.ok ? data : Promise.reject(data))))
           .then((rows) => {
-            const list = Array.isArray(rows) ? rows : [];
-            if (!list.length) {
-              tbody.innerHTML = '<tr><td colspan="' + colCount + '">Nenhum atendimento solicitado.</td></tr>';
-              return;
-            }
-            tbody.innerHTML = '';
-            list.forEach(function (r) {
-              const tr = document.createElement('tr');
-              const status = (r.atendimento_status || '').trim() || '—';
-              tr.innerHTML =
-                '<td data-label="ID" class="cell-id">' + escapeHtml(String(r.id || '')) + '</td>' +
-                '<td data-label="Lead">' + escapeHtml(r.nome || '—') + '</td>' +
-                '<td data-label="Gestora">' + escapeHtml(r.gestora_nome || '—') + '</td>' +
-                '<td data-label="Status">' + escapeHtml(status) + '</td>' +
-                '<td data-label="Pedido em">' + escapeHtml(formatDate(r.atendimento_solicitado_em || r.updated_at)) + '</td>' +
-                '<td data-label="Atendido em">' + escapeHtml(r.atendimento_realizado_em ? formatDate(r.atendimento_realizado_em) : '—') + '</td>';
-              tbody.appendChild(tr);
-            });
+            _atendimentosRows = Array.isArray(rows) ? rows : [];
+            renderAtendimentosAdmin();
           })
           .catch((err) => {
             const msg = (err && err.message) || 'Erro ao carregar.';
             tbody.innerHTML = '<tr><td colspan="' + colCount + '" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
           });
       }
+
+      function renderAtendimentosAdmin() {
+        const tbody = document.getElementById('atendimentosAdminBody');
+        if (!tbody) return;
+        const colCount = 6;
+        var list = Array.isArray(_atendimentosRows) ? _atendimentosRows.slice() : [];
+        var gestoraSelect = document.getElementById('atendimentosFilterGestora');
+        var statusSelect = document.getElementById('atendimentosFilterStatus');
+        var gestoraFilter = gestoraSelect ? String(gestoraSelect.value || '').trim() : '';
+        var statusFilter = statusSelect ? String(statusSelect.value || '').trim() : '';
+
+        // Popular opções de gestora com os dados carregados
+        if (gestoraSelect) {
+          var current = gestoraFilter;
+          var names = {};
+          list.forEach(function (r) {
+            var n = (r && r.gestora_nome) ? String(r.gestora_nome).trim() : '';
+            if (n) names[n] = true;
+          });
+          var opts = Object.keys(names).sort(function (a, b) { return a.localeCompare(b, 'pt'); });
+          gestoraSelect.innerHTML = '<option value="">Todas</option>' +
+            opts.map(function (n) { return '<option value="' + escapeHtml(n) + '">' + escapeHtml(n) + '</option>'; }).join('');
+          if (current && opts.indexOf(current) !== -1) gestoraSelect.value = current;
+        }
+
+        if (gestoraFilter) {
+          list = list.filter(function (r) {
+            return String((r && r.gestora_nome) || '').trim() === gestoraFilter;
+          });
+        }
+        if (statusFilter) {
+          list = list.filter(function (r) {
+            return String((r && r.atendimento_status) || '').trim() === statusFilter;
+          });
+        }
+
+        if (!list.length) {
+          tbody.innerHTML = '<tr><td colspan="' + colCount + '">Nenhum atendimento solicitado.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = '';
+        list.forEach(function (r) {
+          const tr = document.createElement('tr');
+          const status = (r.atendimento_status || '').trim() || '—';
+          tr.innerHTML =
+            '<td data-label="ID" class="cell-id">' + escapeHtml(String(r.id || '')) + '</td>' +
+            '<td data-label="Lead">' + escapeHtml(r.nome || '—') + '</td>' +
+            '<td data-label="Gestora">' + escapeHtml(r.gestora_nome || '—') + '</td>' +
+            '<td data-label="Status">' + escapeHtml(status) + '</td>' +
+            '<td data-label="Pedido em">' + escapeHtml(formatDate(r.atendimento_solicitado_em || r.updated_at)) + '</td>' +
+            '<td data-label="Atendido em">' + escapeHtml(r.atendimento_realizado_em ? formatDate(r.atendimento_realizado_em) : '—') + '</td>';
+          tbody.appendChild(tr);
+        });
+      }
+
+      (function initAtendimentosFilters() {
+        var gestora = document.getElementById('atendimentosFilterGestora');
+        var status = document.getElementById('atendimentosFilterStatus');
+        if (gestora) gestora.addEventListener('change', function () { renderAtendimentosAdmin(); });
+        if (status) status.addEventListener('change', function () { renderAtendimentosAdmin(); });
+      })();
 
       (function initLeadsFilter() {
         var input = document.getElementById('leadsFilterInput');
