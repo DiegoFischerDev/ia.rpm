@@ -112,7 +112,7 @@ async function getGestoraByEmail(email) {
 /** Lista leads atribuídos a uma gestora (dashboard gestora). */
 async function getLeadsByGestoraId(gestoraId) {
   const rows = await query(
-    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, quer_falar_com_rafa, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, proximo_contacto_em, created_at, updated_at FROM ch_leads WHERE gestora_id = ? ORDER BY updated_at DESC',
+    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, quer_falar_com_rafa, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, proximo_contacto_em, atendimento_status, atendimento_solicitado_em, atendimento_realizado_em, created_at, updated_at FROM ch_leads WHERE gestora_id = ? ORDER BY updated_at DESC',
     [gestoraId]
   );
   return rows;
@@ -221,7 +221,7 @@ async function getLeadsForRafaCount() {
 /** Dashboard: lista todos os leads. */
 async function getAllLeads() {
   const rows = await query(
-    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, quer_falar_com_rafa, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, proximo_contacto_em, created_at, updated_at FROM ch_leads ORDER BY updated_at DESC'
+    'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, quer_falar_com_rafa, docs_enviados, docs_enviados_em, gestora_id, gestora_nome, comentario, proximo_contacto_em, atendimento_status, atendimento_solicitado_em, atendimento_realizado_em, created_at, updated_at FROM ch_leads ORDER BY updated_at DESC'
   );
   return rows;
 }
@@ -366,7 +366,82 @@ async function createLeadWeb(dados) {
 }
 
 const LEAD_INTEGRATION_SELECT =
-  'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, gestora_id, gestora_nome, comentario, proximo_contacto_em, created_at, updated_at FROM ch_leads WHERE ';
+  'SELECT id, whatsapp_number, nome, email, estado_conversa, estado_docs, gestora_id, gestora_nome, comentario, proximo_contacto_em, atendimento_status, atendimento_solicitado_em, atendimento_realizado_em, created_at, updated_at FROM ch_leads WHERE ';
+
+/** Integração externa: solicitar atendimento de crédito para um lead (por WhatsApp). */
+async function requestLeadAtendimentoByWhatsapp(whatsappNumberRaw) {
+  const whatsapp_number = (whatsappNumberRaw || '').trim().replace(/\D/g, '');
+  if (!whatsapp_number) return { error: 'whatsapp_obrigatorio' };
+
+  const rows = await query(
+    `${LEAD_INTEGRATION_SELECT}whatsapp_number = ? ORDER BY id DESC LIMIT 1`,
+    [whatsapp_number]
+  );
+  const lead = rows && rows[0] ? rows[0] : null;
+  if (!lead) return { error: 'lead_nao_encontrado' };
+
+  let gestoraId = lead.gestora_id ? Number(lead.gestora_id) : null;
+  if (!gestoraId) {
+    const next = await getNextGestoraForLead();
+    if (!next || !next.id) return { error: 'sem_gestora_disponivel' };
+    await updateLeadGestora(lead.id, next.id);
+    gestoraId = Number(next.id);
+  }
+
+  await query(
+    `UPDATE ch_leads
+     SET atendimento_status = 'aguardando_atendimento',
+         atendimento_solicitado_em = NOW(),
+         atendimento_realizado_em = NULL,
+         updated_at = NOW()
+     WHERE id = ?`,
+    [lead.id]
+  );
+
+  const updatedRows = await query(`${LEAD_INTEGRATION_SELECT}id = ?`, [lead.id]);
+  const updatedLead = updatedRows && updatedRows[0] ? updatedRows[0] : null;
+  const gestora = gestoraId ? await getGestoraById(gestoraId) : null;
+  return { ok: true, lead: updatedLead, gestora: gestora || null };
+}
+
+/** Dashboard gestora: lista leads aguardando atendimento. */
+async function getLeadsAguardandoAtendimentoByGestoraId(gestoraId) {
+  const rows = await query(
+    `SELECT id, whatsapp_number, nome, atendimento_status, atendimento_solicitado_em, atendimento_realizado_em, updated_at
+     FROM ch_leads
+     WHERE gestora_id = ? AND atendimento_status = 'aguardando_atendimento'
+     ORDER BY atendimento_solicitado_em DESC, updated_at DESC`,
+    [gestoraId]
+  );
+  return rows;
+}
+
+/** Dashboard gestora: marca lead como atendido por ação de WhatsApp. */
+async function markLeadAtendimentoAsDone(leadId, gestoraId) {
+  const rows = await query(
+    `SELECT id, gestora_id, atendimento_status
+     FROM ch_leads
+     WHERE id = ?
+     LIMIT 1`,
+    [leadId]
+  );
+  const lead = rows && rows[0] ? rows[0] : null;
+  if (!lead) return { error: 'lead_nao_encontrado' };
+  if (Number(lead.gestora_id || 0) !== Number(gestoraId || 0)) return { error: 'lead_sem_permissao' };
+  if (lead.atendimento_status !== 'aguardando_atendimento') return { error: 'lead_nao_aguardando' };
+
+  await query(
+    `UPDATE ch_leads
+     SET atendimento_status = 'atendido',
+         atendimento_realizado_em = NOW(),
+         updated_at = NOW()
+     WHERE id = ?`,
+    [leadId]
+  );
+
+  const out = await query(`${LEAD_INTEGRATION_SELECT}id = ?`, [leadId]);
+  return { ok: true, lead: out && out[0] ? out[0] : null };
+}
 
 /** ID aleatório entre 1_000_000 e 9_999_999 (sempre 7 dígitos). */
 function randomLeadIdSevenDigits() {
@@ -750,6 +825,9 @@ module.exports = {
   createLeadAdmin,
   createLeadWeb,
   createLeadIntegration,
+  requestLeadAtendimentoByWhatsapp,
+  getLeadsAguardandoAtendimentoByGestoraId,
+  markLeadAtendimentoAsDone,
   getAllGestoras,
   getGestorasWithLeadCounts,
   createGestora,

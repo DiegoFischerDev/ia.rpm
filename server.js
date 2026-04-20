@@ -41,7 +41,10 @@ const {
   createLeadAdmin,
   createLeadWeb,
   createLeadIntegration,
+  requestLeadAtendimentoByWhatsapp,
   updateLeadComentarioIntegrationByWhatsapp,
+  getLeadsAguardandoAtendimentoByGestoraId,
+  markLeadAtendimentoAsDone,
   getAllGestoras,
   getGestorasWithLeadCounts,
   createGestora,
@@ -146,6 +149,31 @@ app.patch('/api/integration/leads/comment', requireIntegrationSecret, async (req
   } catch (err) {
     logStartup(`PATCH /api/integration/leads/comment: ${err.message}`);
     res.status(500).json({ message: err.message || 'Erro ao atualizar comentário.' });
+  }
+});
+
+// Integração externa: solicitar atendimento para lead existente (atribui gestora se necessário)
+app.post('/api/integration/leads/request-atendimento', requireIntegrationSecret, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const whatsapp = body.whatsapp_number || body.whatsapp || '';
+    const result = await requestLeadAtendimentoByWhatsapp(whatsapp);
+    if (result.error === 'whatsapp_obrigatorio') {
+      return res.status(400).json({ message: 'WhatsApp é obrigatório (whatsapp_number ou whatsapp).', code: result.error });
+    }
+    if (result.error === 'lead_nao_encontrado') {
+      return res.status(404).json({ message: 'Lead não encontrado para este WhatsApp.', code: result.error });
+    }
+    if (result.error === 'sem_gestora_disponivel') {
+      return res.status(503).json({ message: 'Nenhuma gestora disponível para atendimento.', code: result.error });
+    }
+    if (!result.ok || !result.lead) {
+      return res.status(500).json({ message: 'Erro ao solicitar atendimento.' });
+    }
+    res.json({ ok: true, lead: result.lead, gestora: result.gestora || null });
+  } catch (err) {
+    logStartup(`POST /api/integration/leads/request-atendimento: ${err.message}`);
+    res.status(500).json({ message: err.message || 'Erro ao solicitar atendimento.' });
   }
 });
 
@@ -1283,6 +1311,49 @@ app.get('/api/dashboard/leads', requireDashboardAuth, async (req, res) => {
   } catch (err) {
     logStartup(`getLeads error: ${err.message}`);
     res.status(500).json({ message: 'Erro ao listar leads.', detail: err.message });
+  }
+});
+
+// Dashboard gestora: leads aguardando atendimento (solicitados via integração)
+app.get('/api/dashboard/atendimentos-aguardando', requireDashboardAuth, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (!user || user.role !== 'gestora') {
+    return res.status(403).json({ message: 'Acesso reservado à gestora.' });
+  }
+  try {
+    const rows = await getLeadsAguardandoAtendimentoByGestoraId(user.id);
+    res.json(rows);
+  } catch (err) {
+    logStartup(`getAtendimentosAguardando error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao listar atendimentos pendentes.' });
+  }
+});
+
+// Dashboard gestora: ao clicar no WhatsApp, marca como atendido
+app.post('/api/dashboard/atendimentos/:leadId/marcar-atendido', requireDashboardAuth, async (req, res) => {
+  const user = req.session.dashboardUser;
+  if (!user || user.role !== 'gestora') {
+    return res.status(403).json({ message: 'Acesso reservado à gestora.' });
+  }
+  const leadId = req.params.leadId;
+  if (!/^\d+$/.test(String(leadId || ''))) {
+    return res.status(400).json({ message: 'ID inválido.' });
+  }
+  try {
+    const result = await markLeadAtendimentoAsDone(Number(leadId), user.id);
+    if (result.error === 'lead_nao_encontrado') {
+      return res.status(404).json({ message: 'Lead não encontrado.' });
+    }
+    if (result.error === 'lead_sem_permissao') {
+      return res.status(403).json({ message: 'Este lead não pertence à sua carteira.' });
+    }
+    if (result.error === 'lead_nao_aguardando') {
+      return res.status(409).json({ message: 'Este lead já não está aguardando atendimento.' });
+    }
+    res.json({ ok: true, lead: result.lead });
+  } catch (err) {
+    logStartup(`markAtendimentoAsDone error: ${err.message}`);
+    res.status(500).json({ message: 'Erro ao marcar atendimento.' });
   }
 });
 

@@ -134,12 +134,56 @@ curl -sS -X PATCH "https://ia.rafaapelomundo.com/api/integration/leads/comment" 
 
 ---
 
+## Solicitar atendimento — `POST /api/integration/leads/request-atendimento`
+
+Usado quando a outra aplicação quer pedir que uma gestora atenda um lead já existente.
+
+Comportamento:
+
+1. Procura o lead por `whatsapp`/`whatsapp_number`.
+2. Se o lead ainda não tiver gestora (`gestora_id` vazio), atribui uma gestora disponível (regra `getNextGestoraForLead`).
+3. Marca o lead como:
+   - `atendimento_status = "aguardando_atendimento"`
+   - `atendimento_solicitado_em = NOW()`
+   - `atendimento_realizado_em = NULL`
+4. Devolve os dados do lead e da gestora atribuída.
+
+### Corpo (JSON)
+
+| Campo | Obrigatório | Descrição |
+|-------|-------------|-----------|
+| `whatsapp_number` ou `whatsapp` | **Sim** | Número do lead (normalizado para dígitos). |
+
+### Respostas
+
+| HTTP | Significado |
+|------|-------------|
+| **200** | Pedido registado. Corpo: `{ "ok": true, "lead": { ... }, "gestora": { ... } }` |
+| **400** | Falta WhatsApp. |
+| **403** | Segredo inválido. |
+| **404** | Lead não encontrado para esse WhatsApp. |
+| **503** | Sem gestora disponível para atribuir (quando o lead não tinha gestora). |
+| **500** | Erro interno. |
+
+### Exemplo cURL
+
+```bash
+curl -sS -X POST "https://ia.rafaapelomundo.com/api/integration/leads/request-atendimento" \
+  -H "Content-Type: application/json" \
+  -H "X-Integration-Secret: SEGREDO" \
+  -d '{ "whatsapp": "351912345678" }'
+```
+
+---
+
 ## Resumo para copiar para outro projeto Cursor
 
 1. Definir `IA_APP_INTEGRATION_SECRET` no servidor e reiniciar Node.
 2. Opcional: `IA_APP_PUBLIC_BASE_URL` se o domínio público for diferente do default.
 3. `POST /api/integration/leads` com JSON `{ "whatsapp" ou "whatsapp_number", "nome" [, "comentario"] }` e cabeçalho de segredo.
-4. Usar `upload_url` (ou `https://ia.rafaapelomundo.com/upload/` + `id`) para o utilizador; tratar `existing === true` como “já existia conta para esse WhatsApp” (mesmo link).
+4. Opcional: `PATCH /api/integration/leads/comment` para substituir comentário de lead existente.
+5. Novo: `POST /api/integration/leads/request-atendimento` para colocar lead na fila da gestora (`aguardando_atendimento`).
+6. Usar `upload_url` (ou `https://ia.rafaapelomundo.com/upload/` + `id`) para o utilizador; tratar `existing === true` como “já existia conta para esse WhatsApp” (mesmo link).
 
 Não exponha o segredo em repositórios públicos nem em frontend; use variáveis de ambiente no serviço que chama a API.
 

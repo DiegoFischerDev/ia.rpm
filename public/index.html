@@ -572,6 +572,7 @@
       <div class="sidebar-footer-version">versão 6.0</div>
       <a href="#leads" class="sidebar-logo" aria-label="Início"><img src="logo_bg_clara.png" alt=""><span class="sidebar-tagline">Crédito Habitação</span></a>
       <a href="#leads" id="navLeads" class="sidebar-nav-item active">Leads</a>
+      <a href="#aguardando-atendimento" id="navAguardandoAtendimento" class="sidebar-nav-item" style="display:none;">Aguardando atendimento</a>
       <a href="#proximo-contacto" id="navProximoContacto" class="sidebar-nav-item">Próximo contacto</a>
       <a href="#gestoras" id="navGestoras" class="sidebar-nav-item">Gestoras</a>
       <a href="#perfil" id="navPerfil" class="sidebar-nav-item" style="display:none;">Perfil</a>
@@ -637,6 +638,25 @@
               </tr>
             </thead>
             <tbody id="leadsBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="screenAguardandoAtendimento" class="screen">
+        <h2 class="page-title">Aguardando atendimento</h2>
+        <p class="text-muted" style="margin-top:-0.5rem;margin-bottom:1rem;">Leads que solicitaram atendimento. Ao clicar em WhatsApp, o lead é marcado como atendido.</p>
+        <div class="table-wrap card">
+          <table class="responsive-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>WhatsApp</th>
+                <th>Pedido em</th>
+                <th>Atendido em</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="atendimentosAguardandoBody"></tbody>
           </table>
         </div>
       </div>
@@ -912,7 +932,12 @@
       // Simplificação: funcionalidades de FAQ/dúvidas removidas
 
       function hashToScreenId(hash) {
-        var map = { gestoras: 'gestoras', perfil: 'perfil', 'proximo-contacto': 'proximoContacto' };
+        var map = {
+          gestoras: 'gestoras',
+          perfil: 'perfil',
+          'proximo-contacto': 'proximoContacto',
+          'aguardando-atendimento': 'aguardandoAtendimento',
+        };
         return map[hash] || 'leads';
       }
       function showScreen(id) {
@@ -923,6 +948,7 @@
         if (s) s.classList.add('visible');
         if (a) a.classList.add('active');
         if (id === 'leads') loadLeads();
+        if (id === 'aguardandoAtendimento') loadAguardandoAtendimento();
         if (id === 'proximoContacto') loadProximoContacto();
         if (id === 'gestoras') loadGestoras();
         if (id === 'perfil') loadProfile();
@@ -966,13 +992,17 @@
             if (user.role === 'admin') {
               var navGestoras = document.getElementById('navGestoras');
               var navPerfil = document.getElementById('navPerfil');
+              var navAguardandoAtendimento = document.getElementById('navAguardandoAtendimento');
               if (navGestoras) navGestoras.style.display = '';
               if (navPerfil) navPerfil.style.display = 'none';
+              if (navAguardandoAtendimento) navAguardandoAtendimento.style.display = 'none';
             } else {
               var navGestoras2 = document.getElementById('navGestoras');
               var navPerfil2 = document.getElementById('navPerfil');
+              var navAguardandoAtendimento2 = document.getElementById('navAguardandoAtendimento');
               if (navGestoras2) navGestoras2.style.display = 'none';
               if (navPerfil2) navPerfil2.style.display = '';
+              if (navAguardandoAtendimento2) navAguardandoAtendimento2.style.display = '';
             }
             const hashRaw = (window.location.hash || '#leads').slice(1).split('?')[0] || 'leads';
             const screenId = hashToScreenId(hashRaw);
@@ -1464,6 +1494,70 @@
           })
           .catch((err) => {
             const msg = (err && (err.detail || err.message)) || 'Erro ao carregar.';
+            tbody.innerHTML = '<tr><td colspan="' + colCount + '" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
+          });
+      }
+
+      function loadAguardandoAtendimento() {
+        const tbody = document.getElementById('atendimentosAguardandoBody');
+        if (!tbody) return;
+        const colCount = 6;
+        if (!user || user.role !== 'gestora') {
+          tbody.innerHTML = '<tr><td colspan="' + colCount + '">Acesso reservado à gestora.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = '<tr><td colspan="' + colCount + '">A carregar…</td></tr>';
+        fetch(API + '/atendimentos-aguardando', { credentials: 'include' })
+          .then((r) => r.json().then((data) => (r.ok ? data : Promise.reject(data))))
+          .then((rows) => {
+            const list = Array.isArray(rows) ? rows : [];
+            if (!list.length) {
+              tbody.innerHTML = '<tr><td colspan="' + colCount + '">Nenhum lead aguardando atendimento.</td></tr>';
+              return;
+            }
+            tbody.innerHTML = '';
+            list.forEach(function (r) {
+              const tr = document.createElement('tr');
+              const num = (r.whatsapp_number || '').replace(/\D/g, '');
+              const pedidoEm = formatDate(r.atendimento_solicitado_em || r.updated_at);
+              const atendidoEm = r.atendimento_realizado_em ? formatDate(r.atendimento_realizado_em) : '—';
+              tr.innerHTML =
+                '<td data-label="ID" class="cell-id">' + escapeHtml(String(r.id || '')) + '</td>' +
+                '<td data-label="Nome">' + escapeHtml(r.nome || '') + '</td>' +
+                '<td data-label="WhatsApp">' + escapeHtml(r.whatsapp_number || '') + '</td>' +
+                '<td data-label="Pedido em">' + escapeHtml(pedidoEm) + '</td>' +
+                '<td data-label="Atendido em">' + escapeHtml(atendidoEm) + '</td>' +
+                '<td class="actions" data-label="Ações">' +
+                  (num ? '<button type="button" class="btn btn-whatsapp btn-sm btn-atender-whatsapp" data-id="' + r.id + '" data-num="' + num + '">WhatsApp</button>' : '<span class="text-muted">—</span>') +
+                '</td>';
+              tbody.appendChild(tr);
+            });
+            tbody.querySelectorAll('.btn-atender-whatsapp').forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                const leadId = this.getAttribute('data-id');
+                const num = this.getAttribute('data-num');
+                if (!leadId || !num) return;
+                this.disabled = true;
+                fetch(API + '/atendimentos/' + encodeURIComponent(leadId) + '/marcar-atendido', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                })
+                  .then(function (r) { return r.json().then(function (d) { return r.ok ? d : Promise.reject(d); }); })
+                  .then(function () {
+                    window.open('https://wa.me/' + num, '_blank', 'noopener,noreferrer');
+                    loadAguardandoAtendimento();
+                  })
+                  .catch(function (err) {
+                    const msg = (err && err.message) ? err.message : 'Erro ao marcar atendimento.';
+                    alert(msg);
+                    btn.disabled = false;
+                  });
+              });
+            });
+          })
+          .catch((err) => {
+            const msg = (err && err.message) || 'Erro ao carregar.';
             tbody.innerHTML = '<tr><td colspan="' + colCount + '" class="error-msg">' + escapeHtml(msg) + '</td></tr>';
           });
       }
