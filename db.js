@@ -407,7 +407,7 @@ async function requestLeadAtendimentoByWhatsapp(whatsappNumberRaw) {
 /** Dashboard gestora: lista leads aguardando atendimento. */
 async function getLeadsAguardandoAtendimentoByGestoraId(gestoraId) {
   const rows = await query(
-    `SELECT id, whatsapp_number, nome, atendimento_status, atendimento_solicitado_em, atendimento_realizado_em, updated_at
+    `SELECT id, whatsapp_number, nome, comentario, atendimento_status, atendimento_solicitado_em, atendimento_realizado_em, updated_at
      FROM ch_leads
      WHERE gestora_id = ? AND atendimento_status = 'aguardando_atendimento'
      ORDER BY atendimento_solicitado_em DESC, updated_at DESC`,

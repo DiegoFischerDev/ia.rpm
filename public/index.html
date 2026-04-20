@@ -650,6 +650,7 @@
               <tr>
                 <th>ID</th>
                 <th>Nome</th>
+                <th>Comentário</th>
                 <th>Pedido em</th>
                 <th>Atendido em</th>
                 <th></th>
@@ -1500,7 +1501,7 @@
       function loadAguardandoAtendimento() {
         const tbody = document.getElementById('atendimentosAguardandoBody');
         if (!tbody) return;
-        const colCount = 5;
+        const colCount = 6;
         if (!user || user.role !== 'gestora') {
           tbody.innerHTML = '<tr><td colspan="' + colCount + '">Acesso reservado à gestora.</td></tr>';
           return;
@@ -1518,11 +1519,29 @@
             list.forEach(function (r) {
               const tr = document.createElement('tr');
               const num = (r.whatsapp_number || '').replace(/\D/g, '');
+              const leadNome = (r.nome || '').trim();
+              const gestoraNome = (user && user.nome ? String(user.nome).trim() : '').trim();
               const pedidoEm = formatDate(r.atendimento_solicitado_em || r.updated_at);
               const atendidoEm = r.atendimento_realizado_em ? formatDate(r.atendimento_realizado_em) : '—';
+              const comentario = (r.comentario || '').trim();
+              const comentarioCell = comentario
+                ? '<details><summary>Ver comentário</summary><div style="margin-top:0.35rem;white-space:pre-wrap;word-break:break-word;">' + escapeHtml(comentario) + '</div></details>'
+                : '<span class="text-muted">—</span>';
+              const baseUpload = 'https://ia.rafaapelomundo.com/upload/';
+              const uploadUrl = baseUpload + encodeURIComponent(String(r.id || ''));
+              const saudacaoLead = leadNome || 'tudo bem';
+              const nomeGestoraFinal = gestoraNome || 'a sua gestora';
+              const mensagem = [
+                'Olá, ' + saudacaoLead + '.',
+                'O meu nome é ' + nomeGestoraFinal + ' e vou acompanhar o teu processo de crédito habitação.',
+                'O seu link para envio de documentos é: ' + uploadUrl,
+                'Pode tirar as dúvidas do processo aqui comigo e, se preferir, podemos agendar uma chamada.',
+              ].join(' ');
+              const waUrl = num ? ('https://wa.me/' + num + '?text=' + encodeURIComponent(mensagem)) : '';
               tr.innerHTML =
                 '<td data-label="ID" class="cell-id">' + escapeHtml(String(r.id || '')) + '</td>' +
                 '<td data-label="Nome">' + escapeHtml(r.nome || '') + '</td>' +
+                '<td data-label="Comentário">' + comentarioCell + '</td>' +
                 '<td data-label="Pedido em">' + escapeHtml(pedidoEm) + '</td>' +
                 '<td data-label="Atendido em">' + escapeHtml(atendidoEm) + '</td>' +
                 '<td class="actions" data-label="Ações">' +
@@ -1543,7 +1562,7 @@
                 })
                   .then(function (r) { return r.json().then(function (d) { return r.ok ? d : Promise.reject(d); }); })
                   .then(function () {
-                    window.open('https://wa.me/' + num, '_blank', 'noopener,noreferrer');
+                    window.open(waUrl, '_blank', 'noopener,noreferrer');
                     loadAguardandoAtendimento();
                   })
                   .catch(function (err) {
