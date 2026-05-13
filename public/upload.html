@@ -884,10 +884,12 @@
         wrap.style.display = 'block';
       }
       function setDocsEnviadosDisplay(data) {
-        setGestoraWelcomeDisplay(data.gestoraNome, data.gestoraFotoPerfil, data.gestoraBoasVindas, data.gestoraEmail, data.gestoraWhatsapp, data.nome);
+        var showWhatsapp = !!(data && data.docsEnviados);
+        var waNumber = showWhatsapp ? data.gestoraWhatsapp : '';
+        setGestoraWelcomeDisplay(data.gestoraNome, data.gestoraFotoPerfil, data.gestoraBoasVindas, data.gestoraEmail, waNumber, data.nome);
         setGestoraNomeDisplay(data.gestoraNome);
         setGestoraEmailDisplay(data.gestoraEmail);
-        setGestoraWhatsappDisplay(data.gestoraWhatsapp, data.nome);
+        setGestoraWhatsappDisplay(waNumber, data.nome);
       }
 
       const VINCULO_EFETIVO = 'Contrato Efetivo';
